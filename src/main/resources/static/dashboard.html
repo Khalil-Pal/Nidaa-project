@@ -299,7 +299,7 @@
     const sidePanel = document.getElementById('sidePanels');
     const tableTitle = document.getElementById('tableTitle');
 
-    if (role === 'beneficiary') {
+    if (userRole === 'beneficiary') {
       subtitle.textContent = 'Track your help requests and support sessions.';
       tableTitle.textContent = 'My Help Requests';
       actions.innerHTML = `
@@ -321,7 +321,7 @@
           <div class="impact-item"><div class="impact-label">Support Email</div><div class="impact-val" style="font-size:12px;">supp0rtnidaa@yandex.ru</div></div>
         </div>`;
 
-    } else if (role === 'volunteer') {
+    } else if (userRole === 'volunteer') {
       subtitle.textContent = 'Find requests near you and make a difference today.';
       tableTitle.textContent = 'Available Help Requests';
       actions.innerHTML = `
@@ -337,7 +337,7 @@
           <div class="impact-item"><div class="impact-label">Status</div><div class="impact-val" style="color:#059669;">Active ✓</div></div>
         </div>`;
 
-    } else if (role === 'psychologist') {
+    } else if (userRole === 'psychologist') {
       subtitle.textContent = 'View incoming support requests and help those in need.';
       tableTitle.textContent = 'Pending Psychological Requests';
       actions.innerHTML = `
@@ -352,7 +352,7 @@
           <div class="impact-item"><div class="impact-label">Verification</div><div class="impact-val" style="color:#059669;">Verified ✓</div></div>
         </div>`;
 
-    } else if (role === 'organization') {
+    } else if (userRole === 'organization') {
       subtitle.textContent = 'Monitor requests, coordinate volunteers and track outcomes.';
       tableTitle.textContent = 'All Help Requests';
       actions.innerHTML = `
@@ -365,7 +365,7 @@
           <div class="impact-item"><div class="impact-label">Pending</div><div class="impact-val" id="impactPending">—</div></div>
         </div>`;
 
-    } else if (role === 'admin') {
+    } else if (userRole === 'admin') {
       subtitle.textContent = 'Manage users, approve applications and monitor the platform.';
       tableTitle.textContent = 'All Recent Requests';
       actions.innerHTML = `

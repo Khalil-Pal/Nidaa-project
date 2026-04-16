@@ -99,12 +99,7 @@
     <div class="sidebar-logo">
         <a href="dashboard.html"><img src="nidaa-logo.png" alt="Nidaa"/></a>
     </div>
-    <nav class="sidebar-nav" id="sidebarNav">
-        <a href="dashboard.html" class="nav-item"><i class="fa fa-gauge"></i> Dashboard</a>
-        <a href="help-requests.html" class="nav-item active"><i class="fa fa-hand-holding-heart"></i> Help Requests</a>
-        <a href="psychological.html" class="nav-item"><i class="fa fa-brain"></i> Psychological Support</a>
-        <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
-    </nav>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
     <div class="sidebar-user">
         <div class="avatar" id="sidebarAvatar">?</div>
         <div class="user-info">
@@ -237,17 +232,7 @@
     document.getElementById('topbarName').textContent    = firstName;
     document.getElementById('topbarRole').textContent    = roleDisplay;
 
-    // Show community link only for volunteer/psychologist
-    if (userRole === 'volunteer' || userRole === 'psychologist') {
-        const nav = document.getElementById('sidebarNav');
-        const communityLink = document.createElement('a');
-        communityLink.href = 'community.html';
-        communityLink.className = 'nav-item';
-        communityLink.innerHTML = '<i class="fa fa-users"></i> Community';
-        // Insert before Settings
-        const settingsLink = nav.querySelector('a[href="settings.html"]');
-        nav.insertBefore(communityLink, settingsLink);
-    }
+
 
     // Set page text and show FAB based on role
     if (userRole === 'beneficiary') {
@@ -448,6 +433,58 @@
     });
 
     loadRequests();
+
+    // ── ACCESS CONTROL: Psychologist cannot access help-requests page ──
+    if (userRole === 'psychologist') {
+        window.location.href = 'psychological.html';
+    }
+
+    // ── BUILD SIDEBAR BASED ON ROLE ──
+    function buildSidebar(currentPage) {
+        const nav = document.getElementById('sidebarNav');
+        if (!nav) return;
+        const pages = {
+            beneficiary: [
+                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+                { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+                { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+            ],
+            volunteer: [
+                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+                { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+            ],
+            psychologist: [
+                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+                { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+            ],
+            organization: [
+                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+                { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+            ],
+            admin: [
+                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+                { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+                { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+            ]
+        };
+        const links = pages[userRole] || pages['beneficiary'];
+        nav.innerHTML = links.map(p =>
+            '<a href="' + p.href + '" class="nav-item' + (p.href === currentPage ? ' active' : '') + '">' +
+            '<i class="fa ' + p.icon + '"></i> ' + p.label + '</a>'
+        ).join('');
+    }
+    buildSidebar('help-requests.html');
+
 </script>
+
 </body>
 </html>

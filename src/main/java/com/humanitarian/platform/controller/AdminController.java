@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -15,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin(origins = "*")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     @Autowired
@@ -40,7 +42,6 @@ public class AdminController {
         user.setIsVerified(true);
         userRepository.save(user);
 
-        // Send approval email to the user
         sendApprovalEmail(user);
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -82,8 +83,7 @@ public class AdminController {
                     "Dear " + user.getFullName() + ",\n\n" +
                             "Great news! Your application to join Nidaa as a " +
                             user.getRole().name() + " has been approved.\n\n" +
-                            "You can now log in to your account at:\n" +
-                            "http://localhost:8081/login.html\n\n" +
+                            "You can now log in to your account.\n\n" +
                             "Welcome to the Nidaa community!\n\n" +
                             "— The Nidaa Team\n" +
                             "supp0rtnidaa@yandex.ru"
