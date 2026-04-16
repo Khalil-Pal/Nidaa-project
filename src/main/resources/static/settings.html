@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Nidaa — Settings</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{--blue:#1d4ed8;--green:#059669;--bg:#f0fdf4;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:260px}
+        body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
+        .sidebar{width:var(--sidebar-w);min-height:100vh;background:white;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;transition:transform .3s}
+        .sidebar-logo{height:64px;display:flex;align-items:center;padding:0 22px;border-bottom:1px solid var(--border)}
+        .sidebar-logo img{height:40px}
+        .sidebar-nav{flex:1;padding:14px 10px}
+        .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;margin-bottom:2px;transition:all .2s}
+        .nav-item:hover{background:#f8fafc;color:var(--dark)}
+        .nav-item.active{background:#eff6ff;color:var(--blue);font-weight:600}
+        .sidebar-footer{padding:18px 22px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px}
+        .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--green));color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+        .user-info .name{font-size:14px;font-weight:600}
+        .user-info .role{font-size:12px;color:var(--muted)}
+        .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column}
+        .topbar{height:64px;background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50}
+        .menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer}
+        .topbar-right{display:flex;align-items:center;gap:16px}
+        .btn-logout{background:none;border:1.5px solid var(--border);color:var(--muted);cursor:pointer;font-size:13px;font-weight:600;padding:7px 14px;border-radius:8px;transition:all .2s;font-family:'Inter',sans-serif}
+        .btn-logout:hover{border-color:#ef4444;color:#ef4444}
+        .content{padding:32px;flex:1;max-width:800px}
+        .page-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px}
+        .page-sub{color:var(--muted);font-size:14px;margin-bottom:32px}
+        .settings-card{background:white;border-radius:16px;border:1px solid var(--border);margin-bottom:20px;overflow:hidden}
+        .card-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+        .card-body{padding:24px}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .form-group{margin-bottom:18px}
+        .form-group:last-child{margin-bottom:0}
+        label{display:block;font-size:13px;font-weight:600;color:var(--dark);margin-bottom:7px}
+        input[type="text"],input[type="email"],input[type="tel"],input[type="password"]{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;color:var(--dark);outline:none;transition:border-color .2s}
+        input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.08)}
+        input:disabled{background:#f8fafc;color:var(--muted);cursor:not-allowed}
+        .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+        .toggle-row:last-child{border:none;padding-bottom:0}
+        .toggle-info .t-label{font-size:14px;font-weight:600;color:var(--dark)}
+        .toggle-info .t-desc{font-size:13px;color:var(--muted);margin-top:2px}
+        .toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+        .toggle input{opacity:0;width:0;height:0}
+        .slider{position:absolute;inset:0;background:#d1d5db;border-radius:24px;cursor:pointer;transition:.3s}
+        .slider:before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.3s}
+        .toggle input:checked + .slider{background:var(--blue)}
+        .toggle input:checked + .slider:before{transform:translateX(20px)}
+        .danger-zone{background:#fef2f2;border-color:#fecaca}
+        .danger-zone .card-title{color:#dc2626;border-color:#fecaca}
+        .btn{padding:10px 20px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:'Inter',sans-serif}
+        .btn-primary{background:var(--blue);color:white}
+        .btn-primary:hover{background:#1e40af}
+        .btn-danger{background:#dc2626;color:white}
+        .btn-danger:hover{background:#b91c1c}
+        .btn-outline{background:white;border:1.5px solid var(--border);color:var(--dark)}
+        .btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+        .alert{padding:12px 16px;border-radius:10px;font-size:14px;margin-bottom:18px;display:none;align-items:center;gap:8px}
+        .alert.show{display:flex}
+        .alert-success{background:#f0fdf4;border:1px solid #bbf7d0;color:var(--green)}
+        .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+        .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.form-row{grid-template-columns:1fr}.content{padding:20px}}
+    </style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <a href="dashboard.html"><img src="nidaa-logo.png" alt="Nidaa"/></a>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item"><i class="fa fa-gauge" style="width:18px"></i> Dashboard</a>
+        <a href="help-requests.html" class="nav-item"><i class="fa fa-hand-holding-heart" style="width:18px"></i> Help Requests</a>
+        <a href="psychological.html" class="nav-item"><i class="fa fa-brain" style="width:18px"></i> Psychological Support</a>
+        <a href="community.html" class="nav-item"><i class="fa fa-users" style="width:18px"></i> Community</a>
+        <a href="settings.html" class="nav-item active"><i class="fa fa-gear" style="width:18px"></i> Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="avatar" id="sidebarAvatar">?</div>
+        <div class="user-info">
+            <div class="name" id="sidebarName">—</div>
+            <div class="role" id="sidebarRole">—</div>
+        </div>
+    </div>
+</aside>
+
+<div class="main">
+    <header class="topbar">
+        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px"><i class="fa fa-gear" style="color:var(--blue)"></i> Settings</span>
+        <div class="topbar-right">
+            <span style="font-size:14px;font-weight:600" id="topbarName">—</span>
+            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
+        </div>
+    </header>
+
+    <div class="content">
+        <div class="page-title">Account Settings</div>
+        <div class="page-sub">Manage your profile, password and preferences</div>
+
+        <div class="alert alert-success" id="successAlert"><i class="fa fa-circle-check"></i><span id="successMsg"></span></div>
+        <div class="alert alert-error" id="errorAlert"><i class="fa fa-circle-exclamation"></i><span id="errorMsg"></span></div>
+
+        <!-- Profile Info -->
+        <div class="settings-card">
+            <div class="card-title"><i class="fa fa-user" style="color:var(--blue)"></i> Profile Information</div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="fullName" placeholder="Your full name"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="email" disabled/>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="phone" placeholder="+1 234 567 8900"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <input type="text" id="roleDisplay" disabled/>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveProfile()"><i class="fa fa-floppy-disk"></i> Save Changes</button>
+            </div>
+        </div>
+
+        <!-- Change Password -->
+        <div class="settings-card">
+            <div class="card-title"><i class="fa fa-lock" style="color:var(--green)"></i> Change Password</div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" id="currentPw" placeholder="Enter current password"/>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="newPw" placeholder="Minimum 6 characters"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" id="confirmPw" placeholder="Repeat new password"/>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="changePassword()"><i class="fa fa-shield-halved"></i> Update Password</button>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="settings-card">
+            <div class="card-title"><i class="fa fa-bell" style="color:#f59e0b"></i> Notifications</div>
+            <div class="card-body">
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="t-label">Email Notifications</div><div class="t-desc">Receive updates about your requests via email</div></div>
+                    <label class="toggle"><input type="checkbox" id="emailNotif" checked/><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="t-label">Request Status Updates</div><div class="t-desc">Get notified when your request status changes</div></div>
+                    <label class="toggle"><input type="checkbox" id="statusNotif" checked/><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="t-label">New Volunteer Matches</div><div class="t-desc">Alert when a volunteer accepts your request</div></div>
+                    <label class="toggle"><input type="checkbox" id="volunteerNotif" checked/><span class="slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="settings-card danger-zone">
+            <div class="card-title"><i class="fa fa-triangle-exclamation"></i> Danger Zone</div>
+            <div class="card-body">
+                <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Deleting your account will permanently remove all your data including requests and history. This cannot be undone.</p>
+                <button class="btn btn-danger" onclick="deleteAccount()"><i class="fa fa-trash"></i> Delete My Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = 'http://localhost:8081/api';
+    function authHeader() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' }; }
+    function logout() { if(confirm('Log out?')) { localStorage.clear(); window.location.href='login.html'; } }
+
+    if (!localStorage.getItem('token')) window.location.href = 'login.html';
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const fullName = user.fullName || user.name || 'User';
+    const role = (user.role || 'user');
+    const initials = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+
+    document.getElementById('sidebarName').textContent = fullName;
+    document.getElementById('sidebarRole').textContent = role.charAt(0).toUpperCase()+role.slice(1).toLowerCase();
+    document.getElementById('sidebarAvatar').textContent = initials;
+    document.getElementById('topbarName').textContent = fullName.split(' ')[0];
+    document.getElementById('fullName').value = fullName;
+    document.getElementById('email').value = user.email || '';
+    document.getElementById('roleDisplay').value = role.charAt(0).toUpperCase()+role.slice(1).toLowerCase();
+
+    // Load current profile from server
+    fetch(API + '/users/me', { headers: authHeader() })
+        .then(r => r.json())
+        .then(d => {
+            const u = d.data || d;
+            if (u.phone) document.getElementById('phone').value = u.phone;
+            if (u.fullName) {
+                document.getElementById('fullName').value = u.fullName;
+                document.getElementById('sidebarName').textContent = u.fullName;
+            }
+        }).catch(() => {});
+
+    function showMsg(type, msg) {
+        const el = document.getElementById(type+'Alert');
+        document.getElementById(type+'Msg').textContent = msg;
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    async function saveProfile() {
+        const newName = document.getElementById('fullName').value.trim();
+        const newPhone = document.getElementById('phone').value.trim();
+        if (!newName) { showMsg('error', 'Name cannot be empty.'); return; }
+        try {
+            const res = await fetch(`${API}/users/me/profile`, {
+                method: 'PUT',
+                headers: authHeader(),
+                body: JSON.stringify({ fullName: newName, phone: newPhone })
+            });
+            if (!res.ok) throw new Error('Failed to save');
+            // Update localStorage
+            const updated = { ...user, fullName: newName };
+            localStorage.setItem('user', JSON.stringify(updated));
+            document.getElementById('sidebarName').textContent = newName;
+            document.getElementById('topbarName').textContent = newName.split(' ')[0];
+            showMsg('success', 'Profile updated successfully!');
+        } catch {
+            // Update locally even if API fails
+            const updated = { ...user, fullName: newName };
+            localStorage.setItem('user', JSON.stringify(updated));
+            showMsg('success', 'Profile saved locally.');
+        }
+    }
+
+    async function changePassword() {
+        const current = document.getElementById('currentPw').value;
+        const newPw = document.getElementById('newPw').value;
+        const confirm = document.getElementById('confirmPw').value;
+        if (!current || !newPw) { showMsg('error', 'Please fill in all password fields.'); return; }
+        if (newPw.length < 6) { showMsg('error', 'New password must be at least 6 characters.'); return; }
+        if (newPw !== confirm) { showMsg('error', 'New passwords do not match.'); return; }
+        try {
+            const res = await fetch(`${API}/users/change-password`, {
+                method: 'POST', headers: authHeader(),
+                body: JSON.stringify({ currentPassword: current, newPassword: newPw })
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Failed'); }
+            document.getElementById('currentPw').value = '';
+            document.getElementById('newPw').value = '';
+            document.getElementById('confirmPw').value = '';
+            showMsg('success', 'Password changed successfully!');
+        } catch (err) { showMsg('error', err.message); }
+    }
+
+    function deleteAccount() {
+        if (!confirm('Are you absolutely sure you want to delete your account? This cannot be undone.')) return;
+        if (!confirm('Last warning: all your data will be permanently deleted. Continue?')) return;
+        fetch(`${API}/users/me`, { method: 'DELETE', headers: authHeader() })
+            .then(() => { localStorage.clear(); window.location.href = 'index.html'; })
+            .catch(() => { showMsg('error', 'Could not delete account. Contact supp0rtnidaa@yandex.ru'); });
+    }
+</script>
+</body>
+</html>

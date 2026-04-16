@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nidaa — A Call For Help, Answered</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--blue:#1d4ed8;--blue-dark:#1e40af;--green:#059669;--green-dark:#047857;--bg:#f0fdf4;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--white:#fff;--shadow:0 4px 24px rgba(29,78,216,.08)}
+    body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--white);scroll-behavior:smooth}
+    h1,h2,h3,h4{font-family:'Plus Jakarta Sans',sans-serif}
+    a{text-decoration:none;color:inherit}
+
+    /* ── NAVBAR ── */
+    nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 40px;height:68px;display:flex;align-items:center;justify-content:space-between;transition:box-shadow .3s}
+    nav.scrolled{box-shadow:0 2px 20px rgba(0,0,0,.08)}
+    .nav-logo img{height:46px;width:auto}
+    .nav-links{display:flex;align-items:center;gap:36px}
+    .nav-links a{color:var(--muted);font-size:15px;font-weight:500;transition:color .2s;position:relative}
+    .nav-links a::after{content:'';position:absolute;bottom:-4px;left:0;width:0;height:2px;background:var(--blue);transition:width .2s}
+    .nav-links a:hover{color:var(--blue)}
+    .nav-links a:hover::after{width:100%}
+    .nav-actions{display:flex;gap:12px;align-items:center}
+    .btn{padding:10px 22px;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px;font-family:'Inter',sans-serif}
+    .btn-outline{background:transparent;border:2px solid var(--blue);color:var(--blue)}
+    .btn-outline:hover{background:var(--blue);color:white;transform:translateY(-1px)}
+    .btn-primary{background:var(--blue);color:white;box-shadow:0 4px 14px rgba(29,78,216,.3)}
+    .btn-primary:hover{background:var(--blue-dark);transform:translateY(-2px);box-shadow:0 6px 20px rgba(29,78,216,.4)}
+    .btn-secondary{background:var(--green);color:white;box-shadow:0 4px 14px rgba(5,150,105,.3)}
+    .btn-secondary:hover{background:var(--green-dark);transform:translateY(-2px)}
+    .btn-white{background:white;color:var(--blue);font-weight:700}
+    .btn-white:hover{background:var(--bg);transform:translateY(-2px)}
+    .hamburger{display:none;background:none;border:none;cursor:pointer;padding:8px;flex-direction:column;gap:5px}
+    .hamburger span{display:block;width:24px;height:2px;background:var(--dark);transition:.3s;border-radius:2px}
+    .hamburger.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+    .hamburger.open span:nth-child(2){opacity:0}
+    .hamburger.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
+    .mobile-menu{display:none;position:fixed;top:68px;left:0;right:0;background:white;border-bottom:1px solid var(--border);padding:20px 24px;box-shadow:0 12px 32px rgba(0,0,0,.1);z-index:199;animation:slideDown .2s ease}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+    .mobile-menu.open{display:block}
+    .mobile-menu a{display:block;padding:13px 0;font-size:16px;font-weight:500;border-bottom:1px solid var(--border);color:var(--dark);transition:color .2s}
+    .mobile-menu a:hover{color:var(--blue)}
+    .mobile-menu a:last-of-type{border:none}
+    .mobile-actions{display:flex;gap:12px;margin-top:16px}
+    .mobile-actions .btn{flex:1;justify-content:center}
+
+    /* ── HERO ── */
+    .hero{background:linear-gradient(135deg,#eff6ff 0%,var(--bg) 50%,#d1fae5 100%);padding:90px 40px;min-height:600px;display:flex;align-items:center}
+    .hero-inner{max-width:1200px;margin:0 auto;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+    .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(5,150,105,.12);color:var(--green);padding:7px 16px;border-radius:100px;font-size:14px;font-weight:600;margin-bottom:24px;border:1px solid rgba(5,150,105,.2)}
+    .hero h1{font-size:clamp(2.6rem,5vw,3.8rem);font-weight:800;line-height:1.08;color:var(--blue);margin-bottom:10px}
+    .hero-arabic{font-size:clamp(2rem,4vw,3rem);color:var(--green);font-weight:700;margin-bottom:22px;direction:rtl}
+    .hero p{font-size:18px;color:var(--muted);line-height:1.75;margin-bottom:38px;max-width:500px}
+    .hero-actions{display:flex;gap:16px;flex-wrap:wrap}
+    .hero-actions .btn{padding:15px 30px;font-size:16px}
+    .hero-image img{width:100%;border-radius:24px;box-shadow:0 24px 64px rgba(29,78,216,.18);transition:transform .4s}
+    .hero-image img:hover{transform:scale(1.02)}
+
+    /* ── SECTIONS ── */
+    .section{padding:88px 40px}
+    .section-inner{max-width:1200px;margin:0 auto}
+    .section-label{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--green);margin-bottom:12px}
+    .section-title{font-size:clamp(1.9rem,3vw,2.5rem);font-weight:800;color:var(--dark);margin-bottom:16px}
+    .section-desc{font-size:17px;color:var(--muted);max-width:580px;line-height:1.75;margin-bottom:56px}
+
+    /* ── HOW IT WORKS ── */
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
+    .step{text-align:center;padding:40px 28px;background:white;border-radius:20px;border:1px solid var(--border);transition:all .3s;position:relative;overflow:hidden}
+    .step::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--green));opacity:0;transition:opacity .3s}
+    .step:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(29,78,216,.1);border-color:transparent}
+    .step:hover::before{opacity:1}
+    .step-num{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--green));color:white;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 22px;box-shadow:0 8px 24px rgba(29,78,216,.25)}
+    .step h3{font-size:18px;font-weight:700;margin-bottom:12px;color:var(--dark)}
+    .step p{font-size:15px;color:var(--muted);line-height:1.65}
+
+    /* ── HELP TYPES ── */
+    .help-types{background:var(--bg)}
+    .types-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+    .type-card{background:white;border-radius:18px;padding:30px 26px;border:1px solid var(--border);transition:all .25s;display:flex;flex-direction:column;align-items:flex-start;cursor:default}
+    .type-card:hover{transform:translateY(-5px);box-shadow:0 14px 36px rgba(29,78,216,.1);border-color:var(--blue)}
+    .type-icon{font-size:34px;margin-bottom:16px;display:block}
+    .type-card h3{font-size:17px;font-weight:700;color:var(--dark);margin-bottom:9px}
+    .type-card p{font-size:14px;color:var(--muted);line-height:1.65}
+
+    /* ── STATS ── */
+    .stats{background:linear-gradient(135deg,var(--blue),#1e3a8a);padding:88px 40px;position:relative;overflow:hidden}
+    .stats::before{content:'';position:absolute;top:-50%;right:-10%;width:600px;height:600px;background:rgba(255,255,255,.04);border-radius:50%}
+    .stats-inner{max-width:1200px;margin:0 auto;position:relative;z-index:1}
+    .stats-title{font-size:clamp(1.7rem,3vw,2.1rem);font-weight:800;color:white;text-align:center;margin-bottom:56px}
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px}
+    .stat{text-align:center;padding:32px 20px;background:rgba(255,255,255,.08);border-radius:20px;border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);transition:transform .3s}
+    .stat:hover{transform:translateY(-4px)}
+    .stat-num{font-size:clamp(2.2rem,4vw,3.2rem);font-weight:800;color:white;font-family:'Plus Jakarta Sans',sans-serif}
+    .stat-label{font-size:15px;color:rgba(255,255,255,.75);margin-top:8px}
+
+    /* ── TESTIMONIALS ── */
+    .testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+    .testimonial{background:white;border-radius:18px;padding:30px;border:1px solid var(--border);box-shadow:0 4px 20px rgba(0,0,0,.04);transition:all .3s}
+    .testimonial:hover{transform:translateY(-4px);box-shadow:0 12px 36px rgba(0,0,0,.08)}
+    .t-stars{color:#f59e0b;font-size:17px;margin-bottom:14px;letter-spacing:3px}
+    .t-text{font-size:15px;color:var(--muted);line-height:1.75;margin-bottom:22px;font-style:italic}
+    .t-author{display:flex;align-items:center;gap:13px}
+    .t-avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--green));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0}
+    .t-name{font-weight:700;font-size:15px;color:var(--dark)}
+    .t-role{font-size:13px;color:var(--muted)}
+
+    /* ── CTA ── */
+    .cta-section{background:linear-gradient(135deg,var(--blue),var(--green));padding:88px 40px;text-align:center}
+    .cta-section h2{font-size:clamp(1.9rem,3vw,2.5rem);color:white;font-weight:800;margin-bottom:16px}
+    .cta-section p{color:rgba(255,255,255,.85);font-size:18px;margin-bottom:36px}
+
+    /* ── FOOTER ── */
+    footer{background:#0f172a;color:#94a3b8;padding:72px 40px 36px}
+    .footer-inner{max-width:1200px;margin:0 auto}
+    .footer-grid{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr;gap:48px;margin-bottom:56px}
+    .footer-logo img{height:46px;margin-bottom:18px}
+    .footer-desc{font-size:14px;line-height:1.75;max-width:300px;margin-bottom:16px}
+    .footer-email{display:inline-flex;align-items:center;gap:8px;color:#38bdf8;font-size:14px;font-weight:500;transition:color .2s}
+    .footer-email:hover{color:white}
+    .footer-col h4{font-family:'Plus Jakarta Sans',sans-serif;color:white;font-size:15px;font-weight:700;margin-bottom:18px}
+    .footer-col a{display:block;font-size:14px;color:#94a3b8;margin-bottom:11px;transition:color .2s}
+    .footer-col a:hover{color:white;padding-left:4px}
+    .footer-bottom{border-top:1px solid #1e293b;padding-top:28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:13px}
+
+    /* ── CONTACT MODAL ── */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;animation:fadeIn .2s ease}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .modal-overlay.open{display:flex}
+    .modal-box{background:white;border-radius:24px;padding:44px 40px;max-width:460px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,.2);text-align:center;animation:slideUp .25s ease}
+    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .modal-icon{font-size:52px;margin-bottom:16px}
+    .modal-box h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.5rem;font-weight:800;color:var(--dark);margin-bottom:8px}
+    .modal-box p{color:var(--muted);font-size:15px;margin-bottom:24px;line-height:1.6}
+    .email-badge{display:inline-flex;align-items:center;gap:10px;background:var(--bg);border:1px solid rgba(5,150,105,.25);border-radius:12px;padding:14px 22px;margin-bottom:20px}
+    .email-badge a{font-size:17px;font-weight:700;color:var(--green)}
+    .modal-note{font-size:13px;color:#94a3b8;margin-bottom:24px}
+    .btn-close{background:var(--blue);color:white;border:none;border-radius:10px;padding:11px 32px;font-size:15px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s}
+    .btn-close:hover{background:var(--blue-dark)}
+
+    /* ── TOAST NOTIFICATIONS ── */
+    .toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px}
+    .toast{background:white;border-radius:12px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,.12);border-left:4px solid var(--blue);font-size:14px;font-weight:500;display:flex;align-items:center;gap:10px;animation:toastIn .3s ease;max-width:320px}
+    .toast.success{border-color:var(--green)}
+    .toast.error{border-color:#ef4444}
+    @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:1024px){.hero-inner{gap:40px}.types-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:900px){
+      .hero-inner,.steps{grid-template-columns:1fr}
+      .hero-image{order:-1}
+      .stats-grid{grid-template-columns:repeat(2,1fr)}
+      .testimonials-grid,.footer-grid{grid-template-columns:1fr}
+      .nav-links,.nav-actions{display:none}
+      .hamburger{display:flex}
+      .footer-grid{grid-template-columns:1fr 1fr}
+      .hero,.section,.stats,.cta-section,footer{padding-left:24px;padding-right:24px}
+      nav{padding:0 24px}
+    }
+    @media(max-width:600px){
+      .stats-grid,.types-grid{grid-template-columns:1fr}
+      .footer-grid{grid-template-columns:1fr}
+      .hero-actions{flex-direction:column}
+      .hero-actions .btn{width:100%;justify-content:center}
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav id="mainNav">
+  <a href="index.html" class="nav-logo"><img src="nidaa-logo.png" alt="Nidaa"/></a>
+  <div class="nav-links">
+    <a href="#how-it-works">How It Works</a>
+    <a href="#help-types">Types of Help</a>
+    <a href="#testimonials">Stories</a>
+  </div>
+  <div class="nav-actions">
+    <a href="login.html" class="btn btn-outline">Log In</a>
+    <a href="register.html" class="btn btn-primary"><i class="fa fa-user-plus"></i> Register</a>
+  </div>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#how-it-works" onclick="toggleMenu()">How It Works</a>
+  <a href="#help-types" onclick="toggleMenu()">Types of Help</a>
+  <a href="#testimonials" onclick="toggleMenu()">Stories</a>
+  <div class="mobile-actions">
+    <a href="login.html" class="btn btn-outline">Log In</a>
+    <a href="register.html" class="btn btn-primary">Register</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-badge"><i class="fa fa-heart"></i> A Call For Help — Answered</div>
+      <h1>Nidaa</h1>
+      <div class="hero-arabic">نداء</div>
+      <p>Connecting people in crisis with the humanitarian aid they need. Whether you're seeking help or offering a steady hand, you're not alone.</p>
+      <div class="hero-actions">
+        <a href="register.html" class="btn btn-primary"><i class="fa fa-hand-holding-heart"></i> Get Help Now</a>
+        <a href="register.html" class="btn btn-secondary"><i class="fa fa-hands-helping"></i> Become a Volunteer</a>
+      </div>
+    </div>
+    <div class="hero-image">
+      <img src="nidaa-hero.png" alt="Humanitarian assistance"/>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works">
+  <div class="section-inner">
+    <div class="section-label">The Process</div>
+    <h2 class="section-title">How Nidaa Works</h2>
+    <p class="section-desc">Three simple steps connect those in need with compassionate support from verified volunteers and professionals.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Submit a Request</h3>
+        <p>Tell us what you need — medical help, food, shelter, or emotional support. Every request is treated with urgency and care.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>Get Matched</h3>
+        <p>Our system connects your request with verified volunteers, psychologists, and partner organizations nearest to you.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Receive Support</h3>
+        <p>Help arrives safely, securely, and with compassion. You track progress in real time through your dashboard.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TYPES OF HELP -->
+<section class="section help-types" id="help-types">
+  <div class="section-inner">
+    <div class="section-label">Services</div>
+    <h2 class="section-title">Types of Assistance</h2>
+    <p class="section-desc">We coordinate a wide range of humanitarian support to meet diverse needs across communities.</p>
+    <div class="types-grid">
+      <div class="type-card"><span class="type-icon">⚕️</span><h3>Medical Aid</h3><p>Access to medical supplies, emergency care referrals, and health professional consultations.</p></div>
+      <div class="type-card"><span class="type-icon">🍞</span><h3>Food Assistance</h3><p>Emergency food packages, meal delivery, and nutritional support for families in need.</p></div>
+      <div class="type-card"><span class="type-icon">👕</span><h3>Clothing</h3><p>Dignified clothing donations for all ages, distributed through our verified partner network.</p></div>
+      <div class="type-card"><span class="type-icon">🏠</span><h3>Shelter</h3><p>Temporary housing arrangements and emergency accommodation support for displaced families.</p></div>
+      <div class="type-card"><span class="type-icon">💧</span><h3>Clean Water</h3><p>Safe drinking water access and sanitation support for communities facing water scarcity.</p></div>
+      <div class="type-card"><span class="type-icon">🧠</span><h3>Psychological Support</h3><p>Confidential mental health support from licensed psychologists via chat, audio, or video.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="stats">
+  <div class="stats-inner">
+    <h2 class="stats-title">Making a Difference Together</h2>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-num" data-stat="requestsAnswered">0</div><div class="stat-label">Requests Answered</div></div>
+      <div class="stat"><div class="stat-num" data-stat="activeVolunteers">0</div><div class="stat-label">Active Volunteers</div></div>
+      <div class="stat"><div class="stat-num" data-stat="psychologists">0</div><div class="stat-label">Licensed Psychologists</div></div>
+      <div class="stat"><div class="stat-num" data-stat="completionRate">0</div><div class="stat-label">% Completion Rate</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="section" id="testimonials">
+  <div class="section-inner">
+    <div class="section-label">Stories</div>
+    <h2 class="section-title">Voices From Our Community</h2>
+    <p class="section-desc">Real stories from people whose lives were touched through Nidaa.</p>
+    <div class="testimonials-grid">
+      <div class="testimonial">
+        <div class="t-stars">★★★★★</div>
+        <p class="t-text">"After the disaster, I didn't know where to turn. Nidaa connected us with food and shelter within hours. This platform saved my family."</p>
+        <div class="t-author"><div class="t-avatar">FA</div><div><div class="t-name">Fatima Al-Rashidi</div><div class="t-role">Beneficiary — Amman, Jordan</div></div></div>
+      </div>
+      <div class="testimonial">
+        <div class="t-stars">★★★★★</div>
+        <p class="t-text">"As a volunteer, Nidaa makes it easy to find where help is needed most. I've assisted 18 families this month alone. This is what community looks like."</p>
+        <div class="t-author"><div class="t-avatar">AH</div><div><div class="t-name">Ahmed Hassan</div><div class="t-role">Volunteer — Cairo, Egypt</div></div></div>
+      </div>
+      <div class="testimonial">
+        <div class="t-stars">★★★★★</div>
+        <p class="t-text">"Providing psychological support through Nidaa has been deeply meaningful. The platform connects me with those who truly need to be heard."</p>
+        <div class="t-author"><div class="t-avatar">MK</div><div><div class="t-name">Dr. Mohammed Khalil</div><div class="t-role">Psychologist — Beirut, Lebanon</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2>Ready to Make a Difference?</h2>
+  <p>Join thousands of volunteers and organizations already helping communities through Nidaa.</p>
+  <a href="register.html" class="btn btn-white btn-lg" style="font-size:17px;padding:15px 36px;">Get Started Today <i class="fa fa-arrow-right"></i></a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></div>
+        <p class="footer-desc">A humanitarian assistance platform dedicated to connecting those in need with verified resources, volunteers, and professionals.</p>
+        <a href="mailto:supp0rtnidaa@yandex.ru" class="footer-email"><i class="fa fa-envelope"></i> supp0rtnidaa@yandex.ru</a>
+      </div>
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <a href="#how-it-works">How It Works</a>
+        <a href="help-requests.html">Help Requests</a>
+        <a href="psychological.html">Psychological Support</a>
+        <a href="dashboard.html">Dashboard</a>
+      </div>
+      <div class="footer-col">
+        <h4>Join Us</h4>
+        <a href="register.html">Become a Volunteer</a>
+        <a href="register.html">Register as Psychologist</a>
+        <a href="register.html">Partner Organization</a>
+      </div>
+      <div class="footer-col">
+        <h4>Support</h4>
+        <a href="#how-it-works">About Nidaa</a>
+        <a href="#" onclick="openContact();return false;">Contact Us</a>
+        <a href="Privacy.html" target="_blank">Privacy Policy</a>
+        <a href="Terms.html" target="_blank">Terms &amp; Services</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; <span id="year"></span> Nidaa. All rights reserved. A Call For Help — Answered.</p>
+      <p>Made with love for communities in need.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- CONTACT MODAL -->
+<div class="modal-overlay" id="contactModal" onclick="if(event.target===this)closeContact()">
+  <div class="modal-box">
+    <div class="modal-icon">✉️</div>
+    <h2>Contact Us</h2>
+    <p>Have questions or need support? Reach out to our team directly.</p>
+    <div class="email-badge">
+      <i class="fa fa-envelope" style="color:var(--green)"></i>
+      <a href="mailto:supp0rtnidaa@yandex.ru">supp0rtnidaa@yandex.ru</a>
+    </div>
+    <p class="modal-note">We typically respond within 24 hours.</p>
+    <button class="btn-close" onclick="closeContact()">Close</button>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  const API = 'http://localhost:8081/api';
+
+  // Navbar scroll effect
+  window.addEventListener('scroll', () => {
+    document.getElementById('mainNav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  // Mobile menu
+  function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const btn = document.getElementById('hamburger');
+    menu.classList.toggle('open');
+    btn.classList.toggle('open');
+  }
+
+  // Contact modal
+  function openContact() { document.getElementById('contactModal').classList.add('open'); }
+  function closeContact() { document.getElementById('contactModal').classList.remove('open'); }
+
+  // Toast notifications
+  function showToast(msg, type = 'info') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<i class="fa fa-${type==='success'?'check-circle':type==='error'?'exclamation-circle':'info-circle'}" style="color:var(${type==='success'?'green':type==='error'?'red':'blue'})"></i> ${msg}`;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300); }, 3500);
+  }
+
+  // Animated counter
+  function animateCounter(el, target) {
+    if (target === 0) { el.textContent = '0'; return; }
+    const duration = 1800;
+    const step = target / (duration / 16);
+    let current = 0;
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = Math.floor(current).toLocaleString();
+      if (current >= target) clearInterval(timer);
+    }, 16);
+  }
+
+  // Load real stats
+  async function loadPublicStats() {
+    const els = document.querySelectorAll('[data-stat]');
+    try {
+      const res = await fetch(`${API}/dashboard/public-stats`);
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      els.forEach(el => {
+        const value = data[el.dataset.stat] ?? 0;
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(e => {
+            if (e.isIntersecting) { animateCounter(el, value); observer.unobserve(el); }
+          });
+        }, { threshold: 0.5 });
+        observer.observe(el);
+      });
+    } catch (e) {
+      els.forEach(el => { el.textContent = '0'; });
+    }
+  }
+
+  document.getElementById('year').textContent = new Date().getFullYear();
+  loadPublicStats();
+</script>
+</body>
+</html>

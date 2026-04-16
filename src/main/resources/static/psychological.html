@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nidaa — Psychological Support</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --blue: #1d4ed8; --green: #059669; --bg: #f0fdf4; --dark: #1e293b; --muted: #64748b; --border: #e2e8f0; --sidebar-w: 256px; }
+    body { font-family: 'Inter', sans-serif; color: var(--dark); background: #f8fafc; display: flex; min-height: 100vh; }
+
+    /* SIDEBAR */
+    .sidebar { width: var(--sidebar-w); min-height: 100vh; background: white; border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 100; transition: transform .3s; }
+    .sidebar-logo { height: 64px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo img { height: 40px; }
+    .sidebar-nav { flex: 1; padding: 12px 8px; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; transition: all .2s; text-decoration: none; margin-bottom: 2px; }
+    .nav-item:hover, .nav-item.active { background: #eff6ff; color: var(--blue); }
+    .nav-item .icon { font-size: 18px; width: 22px; text-align: center; }
+    .sidebar-user { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--green)); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .user-info .name { font-size: 14px; font-weight: 600; }
+    .user-info .role { font-size: 12px; color: var(--muted); }
+
+    /* MAIN */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+    .topbar { height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; flex: 1; }
+    .topbar-actions { display: flex; align-items: center; gap: 12px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 700; background: #eff6ff; color: var(--blue); }
+    .btn-logout { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+    .menu-toggle { display: none; background: none; border: none; font-size: 22px; cursor: pointer; }
+
+    /* CONTENT */
+    .content { padding: 28px 24px; flex: 1; }
+    .page-header { margin-bottom: 28px; }
+    .page-header h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .page-header p { color: var(--muted); font-size: 14px; }
+
+    /* FORMAT CARDS */
+    .format-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+    .format-card { background: white; border-radius: 16px; border: 2px solid var(--border); padding: 24px; text-align: center; cursor: pointer; transition: all .2s; }
+    .format-card:hover, .format-card.selected { border-color: var(--blue); box-shadow: 0 4px 20px rgba(29,78,216,.12); }
+    .format-card.selected { background: #eff6ff; }
+    .format-icon { font-size: 36px; margin-bottom: 12px; }
+    .format-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--dark); }
+    .format-card p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* CATEGORIES */
+    .categories-section { background: white; border-radius: 14px; border: 1px solid var(--border); padding: 24px; margin-bottom: 24px; }
+    .section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    .pill { padding: 7px 16px; border-radius: 100px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; border: 2px solid transparent; }
+    .pill-anxiety { background: #fef3c7; color: #92400e; }
+    .pill-depression { background: #e0e7ff; color: #3730a3; }
+    .pill-ptsd { background: #fce7f3; color: #9d174d; }
+    .pill-grief { background: #f5f3ff; color: #5b21b6; }
+    .pill-violence { background: #fef2f2; color: #991b1b; }
+    .pill-crisis { background: #fff7ed; color: #9a3412; }
+    .pill.active { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,.1); }
+    .btn-request { padding: 12px 28px; background: var(--green); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .2s; font-family: 'Inter', sans-serif; }
+    .btn-request:hover { background: #047857; }
+
+    /* MY REQUESTS */
+    .panel { background: white; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 20px; }
+    .panel-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .panel-header h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; }
+    .req-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
+    .req-row:last-child { border: none; }
+    .req-info .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .req-info .meta { font-size: 13px; color: var(--muted); }
+    .req-actions { display: flex; gap: 8px; align-items: center; }
+    .tag { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .status-pending { background: #fefce8; color: #a16207; }
+    .status-assigned { background: #eff6ff; color: var(--blue); }
+    .status-completed { background: #f0fdf4; color: var(--green); }
+    .btn-accept { padding: 7px 14px; background: var(--green); color: white; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s; }
+    .btn-accept:hover { background: #047857; }
+    .btn-decline { padding: 7px 14px; background: #fef2f2; color: #dc2626; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s; }
+    .btn-decline:hover { background: #fecaca; }
+
+    /* MODAL */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+    .overlay.open { opacity: 1; pointer-events: all; }
+    .modal { background: white; border-radius: 20px; width: 100%; max-width: 500px; padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,.2); transform: translateY(20px); transition: transform .25s; }
+    .overlay.open .modal { transform: translateY(0); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .modal-header h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 800; }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    select, textarea { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-family: 'Inter', sans-serif; color: var(--dark); outline: none; transition: border-color .2s; background: white; }
+    select:focus, textarea:focus { border-color: var(--blue); }
+    textarea { resize: vertical; min-height: 90px; }
+    .btn-submit { width: 100%; padding: 13px; background: var(--blue); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif; }
+    .btn-submit:hover { background: #1e40af; }
+
+    /* ALERT */
+    .alert { position: fixed; top: 80px; right: 24px; padding: 14px 20px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 999; box-shadow: 0 8px 24px rgba(0,0,0,.12); opacity: 0; transition: opacity .3s; pointer-events: none; }
+    .alert.show { opacity: 1; }
+    .alert-success { background: var(--green); color: white; }
+
+    @media (max-width: 900px) { .format-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } .main { margin-left: 0; } .menu-toggle { display: block; } .format-grid { grid-template-columns: 1fr; } }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><a href="dashboard.html"><img src="nidaa-logo.png" alt="Nidaa" /></a></div>
+  <nav class="sidebar-nav">
+    <a href="dashboard.html" class="nav-item"><i class="fa fa-gauge"></i> Dashboard</a>
+    <a href="help-requests.html" class="nav-item"><i class="fa fa-hand-holding-heart"></i> Help Requests</a>
+    <a href="psychological.html" class="nav-item active"><i class="fa fa-brain"></i> Psychological Support</a>
+    <a href="community.html" class="nav-item"><i class="fa fa-users"></i> Community</a>
+    <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
+  </nav>
+  <div class="sidebar-user">
+    <div class="avatar" id="sidebarAvatar">AH</div>
+    <div class="user-info"><div class="name" id="sidebarName">Ahmed Hassan</div><div class="role" id="sidebarRole">Volunteer</div></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+    <div class="topbar-actions">
+      <span id="topbarName">Ahmed H.</span>
+      <span class="badge" id="topbarRole">Volunteer</span>
+      <button class="btn-logout" onclick="logout()">&#x2192;</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="page-header">
+      <h1>Psychological Support</h1>
+      <p>Confidential mental health care from licensed professionals. You are not alone.</p>
+    </div>
+
+    <!-- FORMAT SELECTION -->
+    <div class="format-grid">
+      <div class="format-card selected" onclick="selectFormat(this, 'chat')">
+        <div class="format-icon">&#128172;</div>
+        <h3>Text Chat</h3>
+        <p>Communicate through text messages with a licensed psychologist at your own pace.</p>
+      </div>
+      <div class="format-card" onclick="selectFormat(this, 'audio')">
+        <div class="format-icon">&#127897;</div>
+        <h3>Audio Call</h3>
+        <p>Speak directly with a mental health professional in a private, secure audio session.</p>
+      </div>
+      <div class="format-card" onclick="selectFormat(this, 'video')">
+        <div class="format-icon">&#127909;</div>
+        <h3>Video Session</h3>
+        <p>Face-to-face video sessions for a more personal therapeutic experience.</p>
+      </div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div class="categories-section">
+      <h3 class="section-title">What are you seeking support for?</h3>
+      <div class="pills">
+        <span class="pill pill-anxiety active" onclick="togglePill(this)">Anxiety</span>
+        <span class="pill pill-depression" onclick="togglePill(this)">Depression</span>
+        <span class="pill pill-ptsd" onclick="togglePill(this)">PTSD</span>
+        <span class="pill pill-grief" onclick="togglePill(this)">Grief &amp; Loss</span>
+        <span class="pill pill-violence" onclick="togglePill(this)">Domestic Violence</span>
+        <span class="pill pill-crisis" onclick="togglePill(this)">Crisis Support</span>
+      </div>
+      <button class="btn-request" onclick="openModal()">Request Support Session</button>
+    </div>
+
+    <!-- MY REQUESTS -->
+    <div class="panel" id="myRequestsPanel">
+      <div class="panel-header"><h3>My Support Requests</h3></div>
+      <div id="myRequestsList">
+        <div style="text-align:center;padding:32px;color:#64748b;">
+          <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>
+          Loading your requests...
+        </div>
+      </div>
+    </div>
+
+    <!-- PSYCHOLOGIST VIEW -->
+    <div class="panel" id="psychPanel" style="display:none">
+      <div class="panel-header"><h3>Pending Requests — Awaiting Your Response</h3></div>
+      <div id="pendingRequestsList">
+        <div style="text-align:center;padding:32px;color:#64748b;">
+          <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>
+          Loading pending requests...
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Request Support Session</h2>
+      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <form id="supportForm">
+      <div class="form-group">
+        <label>Support Category</label>
+        <select id="supportCategory">
+          <option>Anxiety</option><option>Depression</option><option>PTSD</option>
+          <option>Grief &amp; Loss</option><option>Domestic Violence</option><option>Crisis Support</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Session Format</label>
+        <select id="supportFormat">
+          <option value="chat">Text Chat</option>
+          <option value="audio">Audio Call</option>
+          <option value="video">Video Session</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tell us a bit about what you're going through <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <textarea id="supportDesc" placeholder="Your message is private and confidential..."></textarea>
+      </div>
+      <button type="submit" class="btn-submit">Submit Request</button>
+    </form>
+  </div>
+</div>
+
+<div class="alert alert-success" id="successAlert">Request submitted. A psychologist will be in touch shortly.</div>
+
+<script>
+  const API = 'http://localhost:8081/api';
+  function authHeader() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' }; }
+  function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = 'login.html'; }
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+  if (!localStorage.getItem('token')) window.location.href = 'login.html';
+
+  const user     = JSON.parse(localStorage.getItem('user') || '{}');
+  const fullName = user.fullName || user.name || 'User';
+  const firstName= fullName.split(' ')[0];
+  const userRole = (user.role || 'user').toLowerCase();
+  const roleDisp = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+  const initials = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+
+  document.getElementById('sidebarName').textContent   = fullName;
+  document.getElementById('sidebarRole').textContent   = roleDisp;
+  document.getElementById('sidebarAvatar').textContent = initials;
+  document.getElementById('topbarName').textContent    = firstName;
+  document.getElementById('topbarRole').textContent    = roleDisp;
+
+  if (userRole === 'psychologist') {
+    document.getElementById('psychPanel').style.display = 'block';
+  }
+
+  let selectedFormat = 'CHAT';
+  function selectFormat(el, format) {
+    document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedFormat = format.toUpperCase();
+    document.getElementById('supportFormat').value = format;
+  }
+  function togglePill(el) { el.classList.toggle('active'); }
+  function openModal()  { document.getElementById('overlay').classList.add('open'); }
+  function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+  function handleOverlayClick(e) { if (e.target === document.getElementById('overlay')) closeModal(); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function showToast(msg, ok) {
+    const el = document.getElementById('successAlert');
+    el.textContent = msg;
+    el.style.background   = ok ? '#f0fdf4' : '#fef2f2';
+    el.style.borderColor  = ok ? '#bbf7d0' : '#fecaca';
+    el.style.color        = ok ? '#059669' : '#dc2626';
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  function fmtDate(d) {
+    return d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  }
+
+  // Load MY requests (beneficiary)
+  async function loadMyRequests() {
+    const list = document.getElementById('myRequestsList');
+    if (!list) return;
+    try {
+      const res  = await fetch(API + '/psychological-requests/my', { headers: authHeader() });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const reqs = Array.isArray(data) ? data : (data.data || []);
+      if (!reqs.length) {
+        list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No support requests yet.</div>';
+        return;
+      }
+      const sc = {PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
+      list.innerHTML = reqs.map(r => `
+        <div class="req-row">
+          <div class="req-info">
+            <div class="title">${r.category||''} — ${r.preferredFormat||r.supportType||''}</div>
+            <div class="meta">Submitted ${fmtDate(r.createdAt)}${r.description?' · '+r.description.substring(0,40):''}</div>
+          </div>
+          <div class="req-actions"><span class="tag ${sc[r.status]||'status-pending'}">${r.status||'PENDING'}</span></div>
+        </div>`).join('');
+    } catch {
+      if (list) list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">Could not load requests.</div>';
+    }
+  }
+
+  // Load PENDING requests (psychologist)
+  async function loadPendingRequests() {
+    const list = document.getElementById('pendingRequestsList');
+    if (!list) return;
+    try {
+      const res  = await fetch(API + '/psychological-requests/pending', { headers: authHeader() });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const reqs = Array.isArray(data) ? data : (data.data || []);
+      if (!reqs.length) {
+        list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No pending requests.</div>';
+        return;
+      }
+      list.innerHTML = reqs.map(r => `
+        <div class="req-row" id="pr-${r.id}">
+          <div class="req-info">
+            <div class="title">${r.category||''} — ${r.preferredFormat||''}</div>
+            <div class="meta">${fmtDate(r.createdAt)} · ${r.urgencyLevel||''}</div>
+          </div>
+          <div class="req-actions">
+            <button class="btn-accept"  onclick="acceptReq(${r.id},this)">Accept</button>
+            <button class="btn-decline" onclick="document.getElementById('pr-${r.id}').remove()">Decline</button>
+          </div>
+        </div>`).join('');
+    } catch {
+      if (list) list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">Could not load.</div>';
+    }
+  }
+
+  // SUBMIT support request
+  document.getElementById('supportForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('.btn-submit');
+    btn.disabled = true; btn.textContent = 'Submitting...';
+
+    const payload = {
+      supportType:     'INDIVIDUAL',
+      category:        document.getElementById('supportCategory').value,
+      urgencyLevel:    'MEDIUM',
+      preferredFormat: selectedFormat,
+      description:     document.getElementById('supportDesc').value.trim(),
+      isAnonymous:     false
+    };
+
+    try {
+      const res = await fetch(API + '/psychological-requests', {
+        method: 'POST', headers: authHeader(), body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Server error ' + res.status);
+      }
+      closeModal();
+      e.target.reset();
+      showToast('✅ Request submitted! A psychologist will contact you shortly.', true);
+      loadMyRequests(); // reload to show the new saved request
+    } catch (err) {
+      showToast('❌ Failed: ' + err.message, false);
+    }
+    btn.disabled = false; btn.textContent = 'Submit Request';
+  });
+
+  async function acceptReq(id, btn) {
+    try {
+      const res = await fetch(API + '/psychological-requests/' + id + '/accept', { method: 'PUT', headers: authHeader() });
+      if (!res.ok) throw new Error();
+      btn.textContent = '✓ Accepted'; btn.style.background = '#047857'; btn.disabled = true;
+      const dec = btn.nextElementSibling; if (dec) dec.remove();
+    } catch { alert('Could not accept. Please try again.'); }
+  }
+
+  loadMyRequests();
+  if (userRole === 'psychologist') loadPendingRequests();
+</script>
+</body>
+</html>

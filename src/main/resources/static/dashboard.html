@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nidaa — Dashboard</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --blue: #1d4ed8; --green: #059669; --bg: #f0fdf4; --dark: #1e293b; --muted: #64748b; --border: #e2e8f0; --sidebar-w: 256px; }
+    body { font-family: 'Inter', sans-serif; color: var(--dark); background: #f8fafc; display: flex; min-height: 100vh; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: var(--sidebar-w); min-height: 100vh; background: white;
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; z-index: 100; transition: transform .3s;
+    }
+    .sidebar-logo { height: 64px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo img { height: 40px; width: auto; }
+    .sidebar-nav { flex: 1; padding: 12px 8px; overflow-y: auto; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; transition: all .2s; text-decoration: none; margin-bottom: 2px; }
+    .nav-item:hover, .nav-item.active { background: #eff6ff; color: var(--blue); }
+    .nav-item .icon { font-size: 18px; width: 22px; text-align: center; }
+    .sidebar-user { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--green)); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .user-info .name { font-size: 14px; font-weight: 600; color: var(--dark); }
+    .user-info .role { font-size: 12px; color: var(--muted); }
+
+    /* MAIN */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* TOP BAR */
+    .topbar { height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 50; }
+    .search-wrap { flex: 1; max-width: 400px; position: relative; }
+    .search-wrap input { width: 100%; padding: 9px 14px 9px 38px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--dark); outline: none; font-family: 'Inter', sans-serif; transition: border-color .2s; }
+    .search-wrap input:focus { border-color: var(--blue); }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+    .topbar-actions { display: flex; align-items: center; gap: 16px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 700; background: #eff6ff; color: var(--blue); }
+    .topbar-user { font-size: 14px; font-weight: 600; }
+    .btn-logout { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; transition: color .2s; }
+    .btn-logout:hover { color: #dc2626; }
+    .menu-toggle { display: none; background: none; border: none; font-size: 22px; cursor: pointer; }
+
+    /* CONTENT */
+    .content { padding: 28px 24px; flex: 1; }
+    .welcome-bar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+    .welcome-bar h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .welcome-bar p { color: var(--muted); font-size: 14px; }
+    .actions-group { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-sm { padding: 9px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .2s; font-family: 'Inter', sans-serif; }
+    .btn-sm-outline { background: white; border: 1.5px solid var(--border); color: var(--dark); }
+    .btn-sm-outline:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-sm-primary { background: var(--blue); color: white; }
+    .btn-sm-primary:hover { background: #1e40af; }
+
+    /* STAT CARDS */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: white; border-radius: 14px; padding: 20px; border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
+    .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .icon-blue { background: #eff6ff; }
+    .icon-yellow { background: #fefce8; }
+    .icon-green { background: #f0fdf4; }
+    .icon-purple { background: #faf5ff; }
+    .stat-info .num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 26px; font-weight: 800; color: var(--dark); line-height: 1; margin-bottom: 4px; }
+    .stat-info .label { font-size: 13px; color: var(--muted); }
+
+    /* MAIN GRID */
+    .main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+
+    /* TABLE */
+    .panel { background: white; border-radius: 14px; border: 1px solid var(--border); }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+    .panel-header h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; }
+    .view-all { font-size: 13px; color: var(--blue); font-weight: 600; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; background: #f8fafc; border-bottom: 1px solid var(--border); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    tbody tr:last-child { border: none; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody td { padding: 14px 16px; font-size: 14px; }
+    .req-title { font-weight: 600; color: var(--dark); }
+    .req-id { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* BADGES */
+    .tag { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .tag-medical { background: #fef2f2; color: #dc2626; }
+    .tag-food { background: #fefce8; color: #a16207; }
+    .tag-shelter { background: #f0fdf4; color: var(--green); }
+    .tag-water { background: #eff6ff; color: var(--blue); }
+    .tag-psychological { background: #faf5ff; color: #7c3aed; }
+    .tag-clothing { background: #fff7ed; color: #c2410c; }
+    .status-pending { background: #fefce8; color: #a16207; }
+    .status-assigned { background: #eff6ff; color: var(--blue); }
+    .status-completed { background: #f0fdf4; color: var(--green); }
+    .status-cancelled { background: #fef2f2; color: #dc2626; }
+
+    .action-btn { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; transition: color .2s; }
+    .action-btn:hover { color: var(--blue); }
+
+    /* SIDE PANELS */
+    .side-panels { display: flex; flex-direction: column; gap: 16px; }
+    .impact-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    .impact-item:last-child { border: none; }
+    .impact-label { font-size: 14px; color: var(--muted); }
+    .impact-val { font-size: 14px; font-weight: 700; color: var(--dark); }
+    .progress-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 6px; }
+    .progress-fill { height: 100%; border-radius: 3px; background: var(--blue); }
+    .schedule-item { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 14px; align-items: flex-start; }
+    .schedule-item:last-child { border: none; }
+    .schedule-date { background: var(--bg); border-radius: 8px; padding: 6px 10px; text-align: center; min-width: 52px; }
+    .schedule-date .month { font-size: 10px; font-weight: 700; color: var(--green); text-transform: uppercase; }
+    .schedule-date .day { font-size: 20px; font-weight: 800; color: var(--dark); line-height: 1.1; }
+    .schedule-info .title { font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 3px; }
+    .schedule-info .time { font-size: 12px; color: var(--muted); }
+
+    /* RESPONSIVE */
+    @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .main-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; }
+      .menu-toggle { display: block; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr; } }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <a href="dashboard.html"><img src="nidaa-logo.png" alt="Nidaa"/></a>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-user">
+    <div class="avatar" id="sidebarAvatar">?</div>
+    <div class="user-info">
+      <div class="name" id="sidebarName">—</div>
+      <div class="role" id="sidebarRole">—</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa fa-bars"></i></button>
+    <div class="search-wrap">
+      <i class="search-icon fa fa-magnifying-glass"></i>
+      <input type="text" id="searchBar" placeholder="Search requests..." oninput="filterCards ? filterCards() : null"/>
+    </div>
+    <div class="topbar-actions">
+      <span class="topbar-user" id="topbarName">—</span>
+      <span class="badge" id="topbarRole">—</span>
+      <button class="btn-logout" onclick="logout()" title="Logout"><i class="fa fa-right-from-bracket"></i></button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- Welcome, bar — text changes by role -->
+    <div class="welcome-bar">
+      <div>
+        <h1>Welcome back, <span id="welcomeName">User</span> 👋</h1>
+        <p id="welcomeSubtitle">Here is what is happening today.</p>
+      </div>
+      <div class="actions-group" id="actionButtons"></div>
+    </div>
+
+    <!-- STATS — real numbers -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon icon-blue">&#128228;</div>
+        <div class="stat-info"><div class="num" id="statTotal">0</div><div class="label" id="labelTotal">Total Requests</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-yellow">&#128336;</div>
+        <div class="stat-info"><div class="num" id="statPending">0</div><div class="label" id="labelPending">Pending</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-green">&#10003;</div>
+        <div class="stat-info"><div class="num" id="statCompleted">0</div><div class="label">Completed</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-purple">&#128172;</div>
+        <div class="stat-info"><div class="num" id="statPsych">0</div><div class="label">Support Requests</div></div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+      <!-- TABLE — loaded dynamically -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 id="tableTitle">Recent Activity</h3>
+          <span class="view-all" onclick="window.location='help-requests.html'">View all</span>
+        </div>
+        <div id="requestsTableWrap">
+          <table>
+            <thead><tr><th>Request</th><th>Type</th><th>Status</th></tr></thead>
+            <tbody id="requestsTable">
+            <tr><td colspan="3" style="text-align:center;padding:32px;color:#64748b;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SIDE PANEL — changes by role -->
+      <div class="side-panels" id="sidePanels"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API = 'http://localhost:8081/api';
+
+  // ── USER INIT ──
+  if (!localStorage.getItem('token')) window.location.href = 'login.html';
+  const user        = JSON.parse(localStorage.getItem('user') || '{}');
+  const fullName    = user.fullName || user.name || 'User';
+  const firstName   = fullName.split(' ')[0];
+  const userRole    = (user.role || 'beneficiary').toLowerCase();
+  const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+  const initials    = fullName.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+
+  function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+  setEl('sidebarName',   fullName);
+  setEl('sidebarRole',   roleDisplay);
+  setEl('sidebarAvatar', initials);
+  setEl('topbarName',    firstName);
+  setEl('topbarRole',    roleDisplay);
+  setEl('welcomeName',   firstName);
+
+  function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = 'login.html'; }
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+  // ── BUILD SIDEBAR BASED ON ROLE ──
+  function buildSidebar(currentPage) {
+    const nav = document.getElementById('sidebarNav');
+    if (!nav) return;
+
+    // Define pages per role
+    const pages = {
+      beneficiary: [
+        { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+        { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+        { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+        { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+      ],
+      volunteer: [
+        { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+        { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+      ],
+      psychologist: [
+        { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+        { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+      ],
+      organization: [
+        { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+        { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+      ],
+      admin: [
+        { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
+        { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+        { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+      ]
+    };
+
+    const links = pages[userRole] || pages['beneficiary'];
+    nav.innerHTML = links.map(p =>
+            `<a href="${p.href}" class="nav-item${p.href === currentPage ? ' active' : ''}">` +
+            `<i class="fa ${p.icon}"></i> ${p.label}</a>`
+    ).join('');
+  }
+
+  buildSidebar('dashboard.html');
+
+
+  function authHeader() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' }; }
+
+
+  // Set user info in sidebar/topbar
+
+  // ==================== ROLE-BASED DASHBOARD ====================
+  function setupDashboardByRole() {
+    const subtitle = document.getElementById('welcomeSubtitle');
+    const actions = document.getElementById('actionButtons');
+    const sidePanel = document.getElementById('sidePanels');
+    const tableTitle = document.getElementById('tableTitle');
+
+    if (role === 'beneficiary') {
+      subtitle.textContent = 'Track your help requests and support sessions.';
+      tableTitle.textContent = 'My Help Requests';
+      actions.innerHTML = `
+        <a href="help-requests.html" class="btn-sm btn-sm-primary" style="text-decoration:none;">+ New Help Request</a>
+        <a href="psychological.html" class="btn-sm btn-sm-outline" style="text-decoration:none;">Request Support</a>`;
+      document.getElementById('labelTotal').textContent = 'My Requests';
+      document.getElementById('labelPending').textContent = 'Awaiting Help';
+      sidePanel.innerHTML = `
+        <div class="panel">
+          <div class="panel-header"><h3>Need Help?</h3></div>
+          <div class="impact-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
+            <p style="font-size:14px;color:#64748b;line-height:1.6;">You can request food, medical, shelter, clothing, water, or psychological support.</p>
+            <a href="help-requests.html" class="btn-sm btn-sm-primary" style="text-decoration:none;width:100%;text-align:center;">Submit a Request</a>
+            <a href="psychological.html" class="btn-sm btn-sm-outline" style="text-decoration:none;width:100%;text-align:center;">Psychological Support</a>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Emergency Contact</h3></div>
+          <div class="impact-item"><div class="impact-label">Support Email</div><div class="impact-val" style="font-size:12px;">supp0rtnidaa@yandex.ru</div></div>
+        </div>`;
+
+    } else if (role === 'volunteer') {
+      subtitle.textContent = 'Find requests near you and make a difference today.';
+      tableTitle.textContent = 'Available Help Requests';
+      actions.innerHTML = `
+        <a href="help-requests.html" class="btn-sm btn-sm-primary" style="text-decoration:none;">View All Requests</a>
+        <a href="help-requests.html" class="btn-sm btn-sm-outline" style="text-decoration:none;">My Accepted Tasks</a>`;
+      document.getElementById('labelTotal').textContent = 'Open Requests';
+      document.getElementById('labelPending').textContent = 'Needs Volunteer';
+      sidePanel.innerHTML = `
+        <div class="panel">
+          <div class="panel-header"><h3>Your Impact</h3></div>
+          <div class="impact-item"><div class="impact-label">Tasks Accepted</div><div class="impact-val" id="impactAccepted">—</div></div>
+          <div class="impact-item"><div class="impact-label">Tasks Completed</div><div class="impact-val" id="impactCompleted">—</div></div>
+          <div class="impact-item"><div class="impact-label">Status</div><div class="impact-val" style="color:#059669;">Active ✓</div></div>
+        </div>`;
+
+    } else if (role === 'psychologist') {
+      subtitle.textContent = 'View incoming support requests and help those in need.';
+      tableTitle.textContent = 'Pending Psychological Requests';
+      actions.innerHTML = `
+        <a href="psychological.html" class="btn-sm btn-sm-primary" style="text-decoration:none;">View Support Requests</a>`;
+      document.getElementById('labelTotal').textContent = 'Support Requests';
+      document.getElementById('labelPending').textContent = 'Awaiting You';
+      sidePanel.innerHTML = `
+        <div class="panel">
+          <div class="panel-header"><h3>Your Sessions</h3></div>
+          <div class="impact-item"><div class="impact-label">Pending Requests</div><div class="impact-val" id="impactPending">—</div></div>
+          <div class="impact-item"><div class="impact-label">Completed</div><div class="impact-val" id="impactDone">—</div></div>
+          <div class="impact-item"><div class="impact-label">Verification</div><div class="impact-val" style="color:#059669;">Verified ✓</div></div>
+        </div>`;
+
+    } else if (role === 'organization') {
+      subtitle.textContent = 'Monitor requests, coordinate volunteers and track outcomes.';
+      tableTitle.textContent = 'All Help Requests';
+      actions.innerHTML = `
+        <a href="help-requests.html" class="btn-sm btn-sm-primary" style="text-decoration:none;">Manage Requests</a>`;
+      sidePanel.innerHTML = `
+        <div class="panel">
+          <div class="panel-header"><h3>Platform Overview</h3></div>
+          <div class="impact-item"><div class="impact-label">Total Requests</div><div class="impact-val" id="impactTotal">—</div></div>
+          <div class="impact-item"><div class="impact-label">Completed</div><div class="impact-val" id="impactDone">—</div></div>
+          <div class="impact-item"><div class="impact-label">Pending</div><div class="impact-val" id="impactPending">—</div></div>
+        </div>`;
+
+    } else if (role === 'admin') {
+      subtitle.textContent = 'Manage users, approve applications and monitor the platform.';
+      tableTitle.textContent = 'All Recent Requests';
+      actions.innerHTML = `
+        <a href="help-requests.html" class="btn-sm btn-sm-primary" style="text-decoration:none;">All Requests</a>
+        <a href="psychological.html" class="btn-sm btn-sm-outline" style="text-decoration:none;">Support Queue</a>`;
+      sidePanel.innerHTML = `
+        <div class="panel">
+          <div class="panel-header"><h3>Admin Panel</h3></div>
+          <div class="impact-item"><div class="impact-label">Total Users</div><div class="impact-val" id="impactUsers">—</div></div>
+          <div class="impact-item"><div class="impact-label">Total Requests</div><div class="impact-val" id="impactTotal">—</div></div>
+          <div class="impact-item"><div class="impact-label">Completed</div><div class="impact-val" id="impactDone">—</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Pending Approvals</h3></div>
+          <div style="padding:12px 20px;" id="pendingApprovals">
+            <p style="font-size:13px;color:#64748b;">Check pgAdmin → users table → where is_active = false</p>
+          </div>
+        </div>`;
+    }
+  }
+
+  // Load real stats from API
+  async function loadStats() {
+    try {
+      const res = await fetch(`${API}/dashboard/stats`, { headers: authHeader() });
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById('statTotal').textContent = data.total ?? 0;
+      document.getElementById('statPending').textContent = data.pending ?? 0;
+      document.getElementById('statCompleted').textContent = data.completed ?? 0;
+      document.getElementById('statPsych').textContent = data.psychological ?? 0;
+      // Fill side panel numbers too
+      ['impactTotal','impactDone','impactPending','impactUsers'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (id === 'impactTotal') el.textContent = data.total ?? 0;
+        if (id === 'impactDone') el.textContent = data.completed ?? 0;
+        if (id === 'impactPending') el.textContent = data.pending ?? 0;
+      });
+    } catch (e) {}
+  }
+
+  // Load recent requests table
+  async function loadRecentRequests() {
+    try {
+      const endpoint = (role === 'beneficiary') ? '/help-requests/my' : '/help-requests';
+      const res = await fetch(`${API}${endpoint}`, { headers: authHeader() });
+      const data = await res.json();
+      const requests = (data.data || data || []).slice(0, 5);
+      const tbody = document.getElementById('requestsTable');
+
+      if (!requests.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:32px;color:#64748b;">No requests yet.</td></tr>';
+        return;
+      }
+
+      const statusClass = s => ({PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled',IN_PROGRESS:'status-assigned'}[s]||'status-pending');
+      const typeClass = t => ({MEDICAL:'tag-medical',FOOD:'tag-food',SHELTER:'tag-shelter',WATER:'tag-water',CLOTHING:'tag-clothing',OTHER:'tag-psychological'}[t]||'tag-food');
+
+      tbody.innerHTML = requests.map(r => `
+        <tr>
+          <td>
+            <div class="req-title">${r.title || r.description?.substring(0,40) || 'Help Request'}</div>
+            <div class="req-id">#${r.id || r.requestId || '—'} &nbsp;&#128205; ${r.address || 'Not specified'}</div>
+          </td>
+          <td><span class="tag ${typeClass(r.helpType)}">${r.helpType || 'OTHER'}</span></td>
+          <td><span class="tag ${statusClass(r.status)}">${r.status || 'PENDING'}</span></td>
+        </tr>`).join('');
+    } catch (e) {
+      document.getElementById('requestsTable').innerHTML =
+              '<tr><td colspan="3" style="text-align:center;padding:32px;color:#64748b;">Could not load requests.</td></tr>';
+    }
+  }
+
+  setupDashboardByRole();
+  loadStats();
+  loadRecentRequests();
+
+</script>
+</body>
+</html>
