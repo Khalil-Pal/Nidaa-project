@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nidaa Admin — Approvals</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root{--blue:#1d4ed8;--green:#059669;--bg:#f0fdf4;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:256px}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
+    .sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;transition:transform .25s}
+    .sidebar-logo{height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border)}
+    .sidebar-logo img{height:40px;width:auto}
+    .sidebar-nav{padding:12px 10px;flex:1;overflow-y:auto}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:background .15s,color .15s;margin-bottom:2px}
+    .nav-item i{width:18px;text-align:center}
+    .nav-item:hover{background:#f8fafc;color:var(--dark)}
+    .nav-item.active{background:#eff6ff;color:var(--blue)}
+    .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
+    .btn-logout-side{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:8px;border:none;background:none;color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;transition:background .15s,color .15s}
+    .btn-logout-side:hover{background:#fef2f2;color:#dc2626}
+    .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column}
+    .topbar{background:#fff;border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100}
+    .menu-toggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+    .topbar-title{font-size:16px;font-weight:600;flex:1}
+    .topbar-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+    .badge{background:#eff6ff;color:var(--blue);border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600}
+    .btn-logout{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s}
+    .btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+    .content{padding:28px;flex:1}
+    .page-header{margin-bottom:24px}
+    .page-header h1{font-size:24px;font-weight:700}
+    .page-header p{font-size:14px;color:var(--muted);margin-top:4px}
+
+    /* Tabs */
+    .tabs{display:flex;gap:4px;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:24px;width:fit-content}
+    .tab-btn{padding:8px 20px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;background:none;color:var(--muted);font-family:'Inter',sans-serif}
+    .tab-btn.active{background:white;color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+    /* Application cards */
+    .apps-grid{display:flex;flex-direction:column;gap:14px}
+    .app-card{background:white;border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;align-items:center;gap:18px;transition:box-shadow .2s}
+    .app-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06)}
+    .app-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:white;flex-shrink:0}
+    .app-info{flex:1;min-width:0}
+    .app-name{font-size:15px;font-weight:700;color:var(--dark);margin-bottom:4px}
+    .app-meta{display:flex;gap:16px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+    .app-meta span{display:flex;align-items:center;gap:5px}
+    .role-pill{font-size:12px;font-weight:700;padding:3px 10px;border-radius:100px;display:inline-block}
+    .pill-volunteer{background:#eff6ff;color:var(--blue)}
+    .pill-psychologist{background:#f5f3ff;color:#7c3aed}
+    .pill-organization{background:#fff7ed;color:#ea580c}
+    .pill-beneficiary{background:#f0fdf4;color:var(--green)}
+    .pill-admin{background:#fef2f2;color:#dc2626}
+    .app-actions{display:flex;gap:10px;flex-shrink:0}
+    .btn-approve{background:var(--green);color:white;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+    .btn-approve:hover{background:#047857;transform:translateY(-1px)}
+    .btn-approve:disabled{background:#86efac;cursor:not-allowed;transform:none}
+    .btn-deny{background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+    .btn-deny:hover{background:#dc2626;color:white;transform:translateY(-1px)}
+    .btn-deny:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .empty-state{text-align:center;padding:60px 24px;color:var(--muted)}
+    .empty-state i{font-size:40px;margin-bottom:14px;display:block;opacity:.4}
+    .empty-state h3{font-size:17px;font-weight:700;color:var(--dark);margin-bottom:8px}
+    .loading-state{text-align:center;padding:60px;color:var(--muted);font-size:14px}
+    .toast{position:fixed;top:20px;right:20px;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,.12);animation:toastIn .3s ease}
+    @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+    .toast.success{background:#f0fdf4;border:1px solid #bbf7d0;color:#059669}
+    .toast.error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+    .count-badge{background:#ef4444;color:white;border-radius:100px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:6px}
+    @media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.app-card{flex-direction:column;align-items:flex-start}.app-actions{width:100%}.btn-approve,.btn-deny{flex:1;justify-content:center}}
+  </style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <a href="admin-requests.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" style="height:40px;width:auto"/></a>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="admin-requests.html" class="nav-item"><i class="fa fa-list-check"></i> All Requests</a>
+    <a href="admin.html" class="nav-item"><i class="fa fa-chart-bar"></i> Analytics</a>
+    <a href="admin-approvals.html" class="nav-item active"><i class="fa fa-user-check"></i> Approvals</a>
+    <a href="admin-users.html" class="nav-item"><i class="fa fa-users"></i> All Users</a>
+    <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn-logout-side" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+    <span class="topbar-title"><i class="fa fa-user-check" style="color:var(--blue);margin-right:8px"></i>Application Approvals</span>
+    <div class="topbar-actions">
+      <span id="topbarName">—</span>
+      <span class="badge">Admin</span>
+      <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i></button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="page-header">
+      <h1>Application Approvals</h1>
+      <p>Review and approve or deny registration applications from volunteers, psychologists and organizations.</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('pending', this)">
+        <i class="fa fa-clock"></i> Pending <span class="count-badge" id="tabPendingCount">0</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('all', this)">
+        <i class="fa fa-list"></i> All Users
+      </button>
+    </div>
+
+    <!-- Lists -->
+    <div id="pendingList" class="apps-grid">
+      <div class="loading-state"><i class="fa fa-spinner fa-spin" style="font-size:24px;margin-bottom:10px;display:block"></i>Loading applications...</div>
+    </div>
+    <div id="allList" class="apps-grid" style="display:none">
+      <div class="loading-state"><i class="fa fa-spinner fa-spin" style="font-size:24px;margin-bottom:10px;display:block"></i>Loading users...</div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API = 'http://localhost:8081/api';
+  function authHeader() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' }; }
+  function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = 'login.html'; }
+
+  if (!localStorage.getItem('token')) window.location.href = 'login.html';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const fullName = user.fullName || user.name || 'Admin';
+  const userRole = (user.role || '').toLowerCase();
+  if (userRole !== 'admin') window.location.href = 'dashboard.html';
+
+  document.getElementById('sidebarName').textContent = fullName;
+  document.getElementById('sidebarAvatar').textContent = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('topbarName').textContent = fullName.split(' ')[0];
+
+  const roleColors = {
+    volunteer:'#1d4ed8', psychologist:'#7c3aed',
+    organization:'#ea580c', beneficiary:'#059669', admin:'#dc2626'
+  };
+  const rolePillClass = {
+    volunteer:'pill-volunteer', psychologist:'pill-psychologist',
+    organization:'pill-organization', beneficiary:'pill-beneficiary', admin:'pill-admin'
+  };
+
+  function showToast(msg, type='success') {
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<i class="fa fa-${type==='success'?'circle-check':'circle-exclamation'}"></i> ${msg}`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300); }, 3000);
+  }
+
+  function formatDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+  }
+
+  function renderPending(users) {
+    const list = document.getElementById('pendingList');
+    const count = users.length;
+    document.getElementById('pendingCount').textContent = count;
+    document.getElementById('tabPendingCount').textContent = count;
+
+    if (!count) {
+      list.innerHTML = `<div class="empty-state"><i class="fa fa-circle-check"></i><h3>All caught up!</h3><p>No pending applications right now.</p></div>`;
+      return;
+    }
+
+    list.innerHTML = users.map(u => {
+      const role = (u.role || '').toLowerCase();
+      const initials = (u.fullName||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+      const color = roleColors[role] || '#64748b';
+      const pill  = rolePillClass[role] || '';
+      return `
+            <div class="app-card" id="app-${u.id||u.userId}">
+                <div class="app-avatar" style="background:${color}">${initials}</div>
+                <div class="app-info">
+                    <div class="app-name">${u.fullName || '—'} <span class="role-pill ${pill}">${(u.role||'').toLowerCase()}</span></div>
+                    <div class="app-meta">
+                        <span><i class="fa fa-envelope"></i> ${u.email || '—'}</span>
+                        ${u.phone ? `<span><i class="fa fa-phone"></i> ${u.phone}</span>` : ''}
+                        <span><i class="fa fa-calendar"></i> Applied ${formatDate(u.createdAt)}</span>
+                    </div>
+                </div>
+                <div class="app-actions">
+                    <button class="btn-approve" onclick="approveUser(${u.id||u.userId}, this)">
+                        <i class="fa fa-check"></i> Approve
+                    </button>
+                    <button class="btn-deny" onclick="denyUser(${u.id||u.userId}, this)">
+                        <i class="fa fa-xmark"></i> Deny
+                    </button>
+                </div>
+            </div>`;
+    }).join('');
+  }
+
+  function renderAllUsers(users) {
+    const list = document.getElementById('allList');
+    if (!users.length) {
+      list.innerHTML = `<div class="empty-state"><i class="fa fa-users"></i><h3>No users found</h3></div>`;
+      return;
+    }
+    list.innerHTML = users.map(u => {
+      const role = (u.role || '').toLowerCase();
+      const initials = (u.fullName||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+      const color = roleColors[role] || '#64748b';
+      const pill  = rolePillClass[role] || '';
+      const isActive = u.isActive === true || u.isActive === 'true';
+      return `
+            <div class="app-card">
+                <div class="app-avatar" style="background:${color}">${initials}</div>
+                <div class="app-info">
+                    <div class="app-name">${u.fullName || '—'} <span class="role-pill ${pill}">${(u.role||'').toLowerCase()}</span></div>
+                    <div class="app-meta">
+                        <span><i class="fa fa-envelope"></i> ${u.email || '—'}</span>
+                        ${u.phone ? `<span><i class="fa fa-phone"></i> ${u.phone}</span>` : ''}
+                        <span><i class="fa fa-circle" style="color:${isActive?'#059669':'#dc2626'};font-size:9px"></i> ${isActive?'Active':'Inactive'}</span>
+                        <span><i class="fa fa-calendar"></i> Joined ${formatDate(u.createdAt)}</span>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+  }
+
+  async function loadPending() {
+    try {
+      const res  = await fetch(API + '/admin/pending', { headers: authHeader() });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const users = Array.isArray(data) ? data : (data.data || []);
+      renderPending(users);
+    } catch (e) {
+      document.getElementById('pendingList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${e.message}</p></div>`;
+    }
+  }
+
+  async function loadAllUsers() {
+    try {
+      const res  = await fetch(API + '/admin/users', { headers: authHeader() });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const users = Array.isArray(data) ? data : (data.data || []);
+      renderAllUsers(users);
+    } catch (e) {
+      document.getElementById('allList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${e.message}</p></div>`;
+    }
+  }
+
+  async function approveUser(userId, btn) {
+    if (!confirm('Approve this application? They will receive a confirmation email.')) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Approving...';
+    const denyBtn = btn.nextElementSibling;
+    if (denyBtn) denyBtn.disabled = true;
+
+    try {
+      const res = await fetch(API + '/admin/approve/' + userId, { method: 'PUT', headers: authHeader() });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      showToast('✅ Application approved! Confirmation email sent.');
+      // Remove card smoothly
+      const card = document.getElementById('app-' + userId);
+      if (card) { card.style.opacity='0'; card.style.transition='.3s'; setTimeout(()=>{ card.remove(); loadPending(); }, 300); }
+    } catch (e) {
+      showToast('❌ Failed: ' + e.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-check"></i> Approve';
+      if (denyBtn) denyBtn.disabled = false;
+    }
+  }
+
+  async function denyUser(userId, btn) {
+    if (!confirm('Deny this application? Their account will be deleted and they will be notified.')) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Denying...';
+    const approveBtn = btn.previousElementSibling;
+    if (approveBtn) approveBtn.disabled = true;
+
+    try {
+      const res = await fetch(API + '/admin/reject/' + userId, { method: 'PUT', headers: authHeader() });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      showToast('Application denied and user notified.', 'success');
+      const card = document.getElementById('app-' + userId);
+      if (card) { card.style.opacity='0'; card.style.transition='.3s'; setTimeout(()=>{ card.remove(); loadPending(); }, 300); }
+    } catch (e) {
+      showToast('❌ Failed: ' + e.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-xmark"></i> Deny';
+      if (approveBtn) approveBtn.disabled = false;
+    }
+  }
+
+  let allLoaded = false;
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (tab === 'pending') {
+      document.getElementById('pendingList').style.display = 'flex';
+      document.getElementById('allList').style.display = 'none';
+    } else {
+      document.getElementById('pendingList').style.display = 'none';
+      document.getElementById('allList').style.display = 'flex';
+      if (!allLoaded) { loadAllUsers(); allLoaded = true; }
+    }
+  }
+
+  loadPending();
+</script>
+</body>
+</html>

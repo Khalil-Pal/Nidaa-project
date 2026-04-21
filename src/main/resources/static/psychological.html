@@ -13,7 +13,7 @@
     /* SIDEBAR */
     .sidebar { width: var(--sidebar-w); min-height: 100vh; background: white; border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 100; transition: transform .3s; }
     .sidebar-logo { height: 64px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); }
-    .sidebar-logo img { height: 40px; }
+    .sidebar-logo img { height: 40px; width: auto; }
     .sidebar-nav { flex: 1; padding: 12px 8px; }
     .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; transition: all .2s; text-decoration: none; margin-bottom: 2px; }
     .nav-item:hover, .nav-item.active { background: #eff6ff; color: var(--blue); }
@@ -103,6 +103,10 @@
 
     @media (max-width: 900px) { .format-grid { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } .main { margin-left: 0; } .menu-toggle { display: block; } .format-grid { grid-template-columns: 1fr; } }
+
+    .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
+    .btn-logout-side{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:8px;border:none;background:none;color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s,color .15s}
+    .btn-logout-side:hover{background:#fef2f2;color:#dc2626}
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 </head>
@@ -110,11 +114,10 @@
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo"><a href="dashboard.html"><img src="nidaa-logo.png" alt="Nidaa" /></a></div>
+  <div class="sidebar-logo"><a href="dashboard.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" /></a></div>
   <nav class="sidebar-nav" id="sidebarNav"></nav>
-  <div class="sidebar-user">
-    <div class="avatar" id="sidebarAvatar">AH</div>
-    <div class="user-info"><div class="name" id="sidebarName">Ahmed Hassan</div><div class="role" id="sidebarRole">Volunteer</div></div>
+  <div class="sidebar-footer">
+    <button class="btn-logout-side" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
   </div>
 </aside>
 
@@ -240,9 +243,9 @@
   const roleDisp = userRole.charAt(0).toUpperCase() + userRole.slice(1);
   const initials = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
 
-  document.getElementById('sidebarName').textContent   = fullName;
-  document.getElementById('sidebarRole').textContent   = roleDisp;
-  document.getElementById('sidebarAvatar').textContent = initials;
+  {const _e=document.getElementById('sidebarName'); if(_e) _e.textContent = fullName;}
+  {const _e=document.getElementById('sidebarRole'); if(_e) _e.textContent = roleDisp;}
+  {const _e=document.getElementById('sidebarAvatar'); if(_e) _e.textContent = initials;}
   document.getElementById('topbarName').textContent    = firstName;
   document.getElementById('topbarRole').textContent    = roleDisp;
 
@@ -413,11 +416,11 @@
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       admin: [
-        { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-        { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
-        { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
-        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
-        { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+        { href: 'admin-requests.html',  icon: 'fa-list-check',  label: 'All Requests' },
+        { href: 'admin.html',           icon: 'fa-chart-bar',   label: 'Analytics' },
+        { href: 'admin-approvals.html', icon: 'fa-user-check',  label: 'Approvals' },
+        { href: 'admin-users.html',     icon: 'fa-users',       label: 'All Users' },
+        { href: 'settings.html',        icon: 'fa-gear',        label: 'Settings' }
       ]
     };
     const links = pages[userRole] || pages['beneficiary'];

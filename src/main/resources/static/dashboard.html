@@ -125,6 +125,10 @@
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr; } }
+
+    .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
+    .btn-logout-side{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:8px;border:none;background:none;color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s,color .15s}
+    .btn-logout-side:hover{background:#fef2f2;color:#dc2626}
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 </head>
@@ -133,15 +137,11 @@
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <a href="dashboard.html"><img src="nidaa-logo.png" alt="Nidaa"/></a>
+    <a href="dashboard.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
   </div>
   <nav class="sidebar-nav" id="sidebarNav"></nav>
-  <div class="sidebar-user">
-    <div class="avatar" id="sidebarAvatar">?</div>
-    <div class="user-info">
-      <div class="name" id="sidebarName">—</div>
-      <div class="role" id="sidebarRole">—</div>
-    </div>
+  <div class="sidebar-footer">
+    <button class="btn-logout-side" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
   </div>
 </aside>
 
@@ -269,11 +269,11 @@
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       admin: [
-        { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-        { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
-        { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
-        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
-        { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
+        { href: 'admin-requests.html',  icon: 'fa-list-check',  label: 'All Requests' },
+        { href: 'admin.html',           icon: 'fa-chart-bar',   label: 'Analytics' },
+        { href: 'admin-approvals.html', icon: 'fa-user-check',  label: 'Approvals' },
+        { href: 'admin-users.html',     icon: 'fa-users',       label: 'All Users' },
+        { href: 'settings.html',        icon: 'fa-gear',        label: 'Settings' }
       ]
     };
 

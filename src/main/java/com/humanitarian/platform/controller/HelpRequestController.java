@@ -3,81 +3,114 @@ package com.humanitarian.platform.controller;
 import com.humanitarian.platform.dto.ApiResponse;
 import com.humanitarian.platform.dto.HelpRequestDto;
 import com.humanitarian.platform.model.HelpRequest;
+import com.humanitarian.platform.model.User;
+import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.service.HelpRequestService;
+import com.humanitarian.platform.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/help-requests")
 @CrossOrigin(origins = "*")
 public class HelpRequestController {
 
-    @Autowired
-    private HelpRequestService helpRequestService;
+    @Autowired private HelpRequestService helpRequestService;
+    @Autowired private UserService userService;
+    @Autowired private UserRepository userRepository;
 
-    // POST /api/help-requests — create new request (any authenticated user)
     @PostMapping
-    public ResponseEntity<ApiResponse<HelpRequest>> createRequest(
-            @Valid @RequestBody HelpRequestDto dto) {
-        HelpRequest request = helpRequestService.createRequest(dto);
-        return ResponseEntity.ok(ApiResponse.success("Help request created", request));
+    public ResponseEntity<ApiResponse<HelpRequest>> createRequest(@Valid @RequestBody HelpRequestDto dto) {
+        return ResponseEntity.ok(ApiResponse.success("Help request created", helpRequestService.createRequest(dto)));
     }
 
-    // GET /api/help-requests — get all requests
     @GetMapping
     public ResponseEntity<ApiResponse<List<HelpRequest>>> getAllRequests() {
-        List<HelpRequest> requests = helpRequestService.getAllRequests();
-        return ResponseEntity.ok(ApiResponse.success("Requests retrieved", requests));
+        return ResponseEntity.ok(ApiResponse.success("Requests retrieved", helpRequestService.getAllRequests()));
     }
 
-    // GET /api/help-requests/my — get MY requests only
     @GetMapping("/my")
     public ResponseEntity<ApiResponse<List<HelpRequest>>> getMyRequests() {
-        List<HelpRequest> requests = helpRequestService.getMyRequests();
-        return ResponseEntity.ok(ApiResponse.success("My requests retrieved", requests));
+        return ResponseEntity.ok(ApiResponse.success("My requests retrieved", helpRequestService.getMyRequests()));
     }
 
-    // GET /api/help-requests/pending
     @GetMapping("/pending")
     public ResponseEntity<ApiResponse<List<HelpRequest>>> getPendingRequests() {
-        List<HelpRequest> requests = helpRequestService.getPendingByPriority();
-        return ResponseEntity.ok(ApiResponse.success("Pending requests retrieved", requests));
+        return ResponseEntity.ok(ApiResponse.success("Pending requests retrieved", helpRequestService.getPendingByPriority()));
     }
 
-    // GET /api/help-requests/{id}
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<HelpRequest>> getRequestById(@PathVariable Long id) {
-        HelpRequest request = helpRequestService.getRequestById(id);
-        return ResponseEntity.ok(ApiResponse.success("Request retrieved", request));
+        return ResponseEntity.ok(ApiResponse.success("Request retrieved", helpRequestService.getRequestById(id)));
     }
 
-    // GET /api/help-requests/status/{status}
     @GetMapping("/status/{status}")
     public ResponseEntity<ApiResponse<List<HelpRequest>>> getByStatus(@PathVariable String status) {
-        List<HelpRequest> requests = helpRequestService.getRequestsByStatus(status);
-        return ResponseEntity.ok(ApiResponse.success("Requests retrieved", requests));
+        return ResponseEntity.ok(ApiResponse.success("Requests retrieved", helpRequestService.getRequestsByStatus(status)));
     }
 
-    // GET /api/help-requests/type/{type}
     @GetMapping("/type/{type}")
     public ResponseEntity<ApiResponse<List<HelpRequest>>> getByType(@PathVariable String type) {
-        List<HelpRequest> requests = helpRequestService.getRequestsByType(type);
-        return ResponseEntity.ok(ApiResponse.success("Requests retrieved", requests));
+        return ResponseEntity.ok(ApiResponse.success("Requests retrieved", helpRequestService.getRequestsByType(type)));
     }
 
-    // PUT /api/help-requests/{id}/status
     @PutMapping("/{id}/status")
     public ResponseEntity<ApiResponse<HelpRequest>> updateStatus(
             @PathVariable Long id, @RequestParam String status) {
-        HelpRequest request = helpRequestService.updateStatus(id, status);
-        return ResponseEntity.ok(ApiResponse.success("Status updated", request));
+        return ResponseEntity.ok(ApiResponse.success("Status updated", helpRequestService.updateStatus(id, status)));
     }
 
-    // DELETE /api/help-requests/{id}
+    // PUT /api/help-requests/{id}/assign — volunteer/org starts working on a request
+    @PutMapping("/{id}/assign")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> assignToMe(@PathVariable Long id) {
+        User currentUser = userService.getCurrentUser();
+        HelpRequest request = helpRequestService.getRequestById(id);
+
+        // Assign the worker
+        String role = currentUser.getRole().name().toLowerCase();
+        if (role.equals("volunteer")) {
+            request.setAssignedVolunteerId(currentUser.getId());
+        } else if (role.equals("organization")) {
+            request.setAssignedOrganizationId(currentUser.getId());
+        }
+        request.setStatus("ASSIGNED");
+        helpRequestService.saveRequest(request);
+
+        // Return requester contact info
+        Map<String, Object> result = new HashMap<>();
+        result.put("requestId", id);
+        result.put("status", "ASSIGNED");
+        result.put("workerName", currentUser.getFullName());
+
+        // Look up beneficiary info to show contact
+        userRepository.findById(request.getBeneficiaryId()).ifPresent(beneficiary -> {
+            result.put("requesterName",  beneficiary.getFullName());
+            result.put("requesterEmail", beneficiary.getEmail());
+            result.put("requesterPhone", beneficiary.getPhone() != null ? beneficiary.getPhone() : "Not provided");
+        });
+
+        return ResponseEntity.ok(ApiResponse.success("Request assigned", result));
+    }
+
+    // GET /api/help-requests/{id}/contact — get requester contact info
+    @GetMapping("/{id}/contact")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getRequesterContact(@PathVariable Long id) {
+        HelpRequest request = helpRequestService.getRequestById(id);
+        Map<String, Object> contact = new HashMap<>();
+        userRepository.findById(request.getBeneficiaryId()).ifPresent(b -> {
+            contact.put("name",  b.getFullName());
+            contact.put("email", b.getEmail());
+            contact.put("phone", b.getPhone() != null ? b.getPhone() : "Not provided");
+        });
+        return ResponseEntity.ok(ApiResponse.success("Contact retrieved", contact));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<?>> deleteRequest(@PathVariable Long id) {
         helpRequestService.deleteRequest(id);

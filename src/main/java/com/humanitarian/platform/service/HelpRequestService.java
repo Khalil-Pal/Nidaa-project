@@ -123,4 +123,10 @@ public class HelpRequestService {
     public List<HelpRequest> getRequestsByType(String helpType) {
         return helpRequestRepository.findByHelpType(mapHelpType(helpType));
     }
+
+    // Save a request directly (used by assign endpoint)
+    public HelpRequest saveRequest(HelpRequest request) {
+        return helpRequestRepository.save(request);
+    }
+
 }

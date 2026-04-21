@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Nidaa Admin — Users</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <style>
+        :root{--blue:#1d4ed8;--green:#059669;--bg:#f0fdf4;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:256px}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
+        .sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;transition:transform .25s}
+        .sidebar-logo{height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border)}
+        .sidebar-logo img{height:40px;width:auto}
+        .sidebar-nav{padding:12px 10px;flex:1;overflow-y:auto}
+        .nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:background .15s,color .15s;margin-bottom:2px}
+        .nav-item i{width:18px;text-align:center}
+        .nav-item:hover{background:#f8fafc;color:var(--dark)}
+        .nav-item.active{background:#eff6ff;color:var(--blue)}
+        .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
+        .btn-logout-side{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:8px;border:none;background:none;color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;transition:background .15s,color .15s}
+        .btn-logout-side:hover{background:#fef2f2;color:#dc2626}
+        .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column}
+        .topbar{background:#fff;border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100}
+        .menu-toggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+        .topbar-title{font-size:16px;font-weight:600;flex:1}
+        .topbar-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+        .badge{background:#eff6ff;color:var(--blue);border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600}
+        .btn-logout{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s}
+        .btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+        .content{padding:28px;flex:1}
+        .page-header{margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+        .page-header h1{font-size:24px;font-weight:700}
+        .page-header p{font-size:14px;color:var(--muted);margin-top:4px}
+
+        /* Search + filter bar */
+        .toolbar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+        .search-box{position:relative;flex:1;min-width:220px}
+        .search-box input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;background:white}
+        .search-box input:focus{border-color:var(--blue)}
+        .search-box i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}
+        .filter-select{padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:'Inter',sans-serif;outline:none;background:white;color:var(--dark);cursor:pointer}
+        .filter-select:focus{border-color:var(--blue)}
+        .total-count{font-size:13px;color:var(--muted);white-space:nowrap}
+
+        /* Users table */
+        .table-wrap{background:white;border-radius:14px;border:1px solid var(--border);overflow:hidden}
+        table{width:100%;border-collapse:collapse}
+        thead tr{background:#f8fafc}
+        th{padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+        td{padding:14px 16px;font-size:14px;border-bottom:1px solid var(--border);vertical-align:middle}
+        tr:last-child td{border-bottom:none}
+        tbody tr{transition:background .15s;cursor:pointer}
+        tbody tr:hover{background:#f8fafc}
+        .user-cell{display:flex;align-items:center;gap:12px}
+        .user-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:white;flex-shrink:0}
+        .user-name{font-size:14px;font-weight:600;color:var(--dark)}
+        .user-email{font-size:12px;color:var(--muted)}
+        .role-pill{font-size:12px;font-weight:700;padding:3px 10px;border-radius:100px;display:inline-block}
+        .pill-volunteer{background:#eff6ff;color:var(--blue)}
+        .pill-psychologist{background:#f5f3ff;color:#7c3aed}
+        .pill-organization{background:#fff7ed;color:#ea580c}
+        .pill-beneficiary{background:#f0fdf4;color:var(--green)}
+        .pill-admin{background:#fef2f2;color:#dc2626}
+        .status-dot{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+        .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+        .dot-active{background:#059669}
+        .dot-inactive{background:#dc2626}
+        .empty-state{text-align:center;padding:60px;color:var(--muted)}
+        .empty-state i{font-size:36px;margin-bottom:12px;display:block;opacity:.4}
+
+        /* Modal */
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px}
+        .modal-overlay.open{display:flex}
+        .modal-box{background:white;border-radius:20px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.18);animation:modalIn .25s ease;overflow:hidden}
+        @keyframes modalIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .modal-header{padding:22px 26px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+        .modal-header h2{font-size:17px;font-weight:700}
+        .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);transition:color .2s}
+        .modal-close:hover{color:var(--dark)}
+        .modal-body{padding:26px}
+        .modal-user-header{display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+        .modal-av{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:white;flex-shrink:0}
+        .modal-name{font-size:18px;font-weight:700;color:var(--dark);margin-bottom:4px}
+        .info-grid{display:grid;gap:14px}
+        .info-row{display:flex;align-items:center;gap:12px}
+        .info-icon{width:36px;height:36px;border-radius:9px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;flex-shrink:0}
+        .info-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px}
+        .info-value{font-size:14px;font-weight:500;color:var(--dark)}
+        .modal-footer{padding:18px 26px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+        .btn-modal-close{padding:9px 22px;border-radius:8px;border:1.5px solid var(--border);background:white;color:var(--dark);font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
+        .btn-modal-close:hover{border-color:var(--blue);color:var(--blue)}
+
+        @media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.table-wrap{overflow-x:auto}}
+    </style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <a href="admin-requests.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" style="height:40px;width:auto"/></a>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="admin-requests.html" class="nav-item"><i class="fa fa-list-check"></i> All Requests</a>
+        <a href="admin.html" class="nav-item"><i class="fa fa-chart-bar"></i> Analytics</a>
+        <a href="admin-approvals.html" class="nav-item"><i class="fa fa-user-check"></i> Approvals</a>
+        <a href="admin-users.html" class="nav-item active"><i class="fa fa-users"></i> All Users</a>
+        <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+        <button class="btn-logout-side" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
+    </div>
+</aside>
+
+<div class="main">
+    <header class="topbar">
+        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <span class="topbar-title"><i class="fa fa-users" style="color:var(--blue);margin-right:8px"></i>All Users</span>
+        <div class="topbar-actions">
+            <span id="topbarName">—</span>
+            <span class="badge">Admin</span>
+            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i></button>
+        </div>
+    </header>
+
+    <main class="content">
+        <div class="page-header">
+            <div>
+                <h1>Platform Users</h1>
+                <p>Click on any user row to see their full details.</p>
+            </div>
+            <span class="total-count" id="totalCount">Loading...</span>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="search-box">
+                <i class="fa fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Search by name or email..." oninput="filterUsers()"/>
+            </div>
+            <select class="filter-select" id="roleFilter" onchange="filterUsers()">
+                <option value="">All Roles</option>
+                <option value="BENEFICIARY">Beneficiary</option>
+                <option value="VOLUNTEER">Volunteer</option>
+                <option value="PSYCHOLOGIST">Psychologist</option>
+                <option value="ORGANIZATION">Organization</option>
+                <option value="ADMIN">Admin</option>
+            </select>
+            <select class="filter-select" id="statusFilter" onchange="filterUsers()">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Phone</th>
+                    <th>Joined</th>
+                </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted)">
+                    <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>Loading users...
+                </td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+<!-- User Detail Modal -->
+<div class="modal-overlay" id="userModal" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2>User Details</h2>
+            <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-user-header">
+                <div class="modal-av" id="modalAv">?</div>
+                <div>
+                    <div class="modal-name" id="modalName">—</div>
+                    <span class="role-pill" id="modalRolePill">—</span>
+                </div>
+            </div>
+            <div class="info-grid">
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-envelope"></i></div>
+                    <div><div class="info-label">Email</div><div class="info-value" id="modalEmail">—</div></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-phone"></i></div>
+                    <div><div class="info-label">Phone</div><div class="info-value" id="modalPhone">—</div></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-circle-check"></i></div>
+                    <div><div class="info-label">Account Status</div><div class="info-value" id="modalStatus">—</div></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-shield-halved"></i></div>
+                    <div><div class="info-label">Verified</div><div class="info-value" id="modalVerified">—</div></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-calendar"></i></div>
+                    <div><div class="info-label">Joined</div><div class="info-value" id="modalJoined">—</div></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-clock"></i></div>
+                    <div><div class="info-label">Last Login</div><div class="info-value" id="modalLastLogin">—</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = 'http://localhost:8081/api';
+    function authHeader() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' }; }
+    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = 'login.html'; }
+
+    if (!localStorage.getItem('token')) window.location.href = 'login.html';
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const fullName = user.fullName || user.name || 'Admin';
+    const userRole = (user.role || '').toLowerCase();
+    if (userRole !== 'admin') window.location.href = 'dashboard.html';
+
+    document.getElementById('sidebarName').textContent = fullName;
+    document.getElementById('sidebarAvatar').textContent = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('topbarName').textContent = fullName.split(' ')[0];
+
+    const roleColors = {
+        volunteer:'#1d4ed8', psychologist:'#7c3aed',
+        organization:'#ea580c', beneficiary:'#059669', admin:'#dc2626'
+    };
+    const rolePillClass = {
+        volunteer:'pill-volunteer', psychologist:'pill-psychologist',
+        organization:'pill-organization', beneficiary:'pill-beneficiary', admin:'pill-admin'
+    };
+
+    let allUsers = [];
+
+    function formatDate(d) {
+        if (!d) return '—';
+        return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+    }
+
+    function renderTable(users) {
+        const tbody = document.getElementById('usersTableBody');
+        document.getElementById('totalCount').textContent = users.length + ' user' + (users.length !== 1 ? 's' : '');
+
+        if (!users.length) {
+            tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><i class="fa fa-magnifying-glass"></i><p>No users match your search.</p></div></td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = users.map(u => {
+            const role     = (u.role || '').toLowerCase();
+            const initials = (u.fullName||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+            const color    = roleColors[role] || '#64748b';
+            const pill     = rolePillClass[role] || '';
+            const isActive = u.isActive === true || u.isActive === 'true';
+            const uid      = u.id || u.userId || 0;
+
+            return `<tr onclick="openModal(${uid})">
+                <td>
+                    <div class="user-cell">
+                        <div class="user-av" style="background:${color}">${initials}</div>
+                        <div>
+                            <div class="user-name">${u.fullName || '—'}</div>
+                            <div class="user-email">${u.email || '—'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="role-pill ${pill}">${(u.role||'').toLowerCase()}</span></td>
+                <td>
+                    <span class="status-dot">
+                        <span class="dot ${isActive?'dot-active':'dot-inactive'}"></span>
+                        ${isActive ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td>${u.phone || '—'}</td>
+                <td>${formatDate(u.createdAt)}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function filterUsers() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const role   = document.getElementById('roleFilter').value.toUpperCase();
+        const status = document.getElementById('statusFilter').value;
+
+        const filtered = allUsers.filter(u => {
+            const matchSearch = !search ||
+                (u.fullName||'').toLowerCase().includes(search) ||
+                (u.email||'').toLowerCase().includes(search);
+            const matchRole   = !role   || (u.role||'').toUpperCase() === role;
+            const isActive    = u.isActive === true || u.isActive === 'true';
+            const matchStatus = !status || (status==='active' ? isActive : !isActive);
+            return matchSearch && matchRole && matchStatus;
+        });
+        renderTable(filtered);
+    }
+
+    function openModal(userId) {
+        const u = allUsers.find(x => (x.id||x.userId) == userId);
+        if (!u) return;
+
+        const role     = (u.role || '').toLowerCase();
+        const initials = (u.fullName||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+        const color    = roleColors[role] || '#64748b';
+        const pill     = rolePillClass[role] || '';
+        const isActive = u.isActive === true || u.isActive === 'true';
+
+        document.getElementById('modalAv').textContent      = initials;
+        document.getElementById('modalAv').style.background = color;
+        document.getElementById('modalName').textContent    = u.fullName || '—';
+        document.getElementById('modalEmail').textContent   = u.email    || '—';
+        document.getElementById('modalPhone').textContent   = u.phone    || 'Not provided';
+        document.getElementById('modalJoined').textContent  = formatDate(u.createdAt);
+        document.getElementById('modalLastLogin').textContent = u.lastLogin ? formatDate(u.lastLogin) : 'Never';
+        document.getElementById('modalStatus').textContent  = isActive ? '✅ Active' : '❌ Inactive';
+        document.getElementById('modalVerified').textContent = (u.isVerified===true||u.isVerified==='true') ? '✅ Verified' : '⏳ Not verified';
+
+        const pillEl = document.getElementById('modalRolePill');
+        pillEl.textContent  = (u.role||'').toLowerCase();
+        pillEl.className    = `role-pill ${pill}`;
+
+        document.getElementById('userModal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('userModal').classList.remove('open');
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    async function loadUsers() {
+        try {
+            const res  = await fetch(API + '/admin/users', { headers: authHeader() });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            allUsers   = Array.isArray(data) ? data : (data.data || []);
+            renderTable(allUsers);
+        } catch (e) {
+            document.getElementById('usersTableBody').innerHTML =
+                `<tr><td colspan="5" style="text-align:center;padding:40px;color:#dc2626">
+                    <i class="fa fa-triangle-exclamation" style="font-size:24px;margin-bottom:8px;display:block"></i>
+                    Could not load users: ${e.message}
+                </td></tr>`;
+        }
+    }
+
+    loadUsers();
+</script>
+</body>
+</html>

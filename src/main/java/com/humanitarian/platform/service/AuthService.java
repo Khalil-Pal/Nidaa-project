@@ -29,32 +29,21 @@ public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
-    // Roles that require admin approval
     private static final Set<UserRole> ROLES_REQUIRING_APPROVAL = Set.of(
             UserRole.VOLUNTEER,
             UserRole.PSYCHOLOGIST,
             UserRole.ORGANIZATION
     );
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    @Autowired
-    private AuthenticationManager authenticationManager;
-
-    @Autowired(required = false)
-    private JavaMailSender mailSender;
+    @Autowired private UserRepository userRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtUtils jwtUtils;
+    @Autowired private AuthenticationManager authenticationManager;
+    @Autowired(required = false) private JavaMailSender mailSender;
 
     @Value("${spring.mail.username:}")
     private String senderEmail;
 
-    // Admin receives all notifications at this address
     @Value("${nidaa.admin.email:supp0rtnidaa@yandex.ru}")
     private String adminEmail;
 
@@ -66,7 +55,6 @@ public class AuthService {
             throw new RuntimeException("This email is already registered.");
         }
 
-        // Roles that need admin approval are created as inactive
         boolean needsApproval = ROLES_REQUIRING_APPROVAL.contains(request.getRole());
 
         User user = User.builder()
@@ -76,17 +64,26 @@ public class AuthService {
                 .phone(request.getPhone())
                 .role(request.getRole())
                 .isVerified(false)
-                .isActive(!needsApproval) // inactive until admin approves
+                .isActive(!needsApproval)
                 .isLocked(false)
                 .build();
 
         User savedUser = userRepository.save(user);
-        logger.info("User saved with ID: {} | role: {} | active: {}",
-                savedUser.getId(), savedUser.getRole(), savedUser.getIsActive());
 
-        // Send admin notification email for roles requiring approval
         if (needsApproval) {
             sendAdminNotification(savedUser);
+            // Return response WITHOUT a token — pending users cannot log in yet
+            return AuthResponse.builder()
+                    .token(null)          // NO token for pending accounts
+                    .type("Bearer")
+                    .userId(savedUser.getId())
+                    .email(savedUser.getEmail())
+                    .fullName(savedUser.getFullName())
+                    .role(savedUser.getRole())
+                    .isVerified(false)
+                    .isActive(false)
+                    .pendingApproval(true)
+                    .build();
         }
 
         String token = jwtUtils.generateToken(savedUser.getEmail());
@@ -98,75 +95,55 @@ public class AuthService {
         String email = request.getEmail().toLowerCase().trim();
         logger.info("Login attempt: {}", email);
 
-        // Check if user exists first
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("No account found with this email."));
 
-        // Check if account is pending approval
-        if (!user.getIsActive() && ROLES_REQUIRING_APPROVAL.contains(user.getRole())) {
-            throw new RuntimeException(
-                    "Your account is pending admin approval. " +
-                            "You will be notified by email once approved."
-            );
-        }
-
+        // Block ALL inactive accounts — regardless of role
         if (!user.getIsActive()) {
-            throw new RuntimeException("Your account has been deactivated. Please contact support.");
+            if (ROLES_REQUIRING_APPROVAL.contains(user.getRole())) {
+                throw new RuntimeException(
+                        "Your account is pending admin approval. " +
+                                "You will be notified at " + email + " once approved."
+                );
+            }
+            throw new RuntimeException("Your account has been deactivated. Contact support.");
         }
 
         if (user.getIsLocked()) {
-            throw new RuntimeException("Your account is locked. Please contact support.");
+            throw new RuntimeException("Your account is locked. Contact support.");
         }
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, request.getPassword())
         );
-
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
         logger.info("Login successful: {}", email);
-
         String token = jwtUtils.generateToken(user.getEmail());
         return AuthResponse.of(token, user);
     }
 
     private void sendAdminNotification(User applicant) {
-        if (mailSender == null || adminEmail == null || adminEmail.isBlank()) {
-            logger.warn("Mail not configured — skipping admin notification for {}", applicant.getEmail());
-            return;
-        }
-
+        if (mailSender == null || adminEmail == null || adminEmail.isBlank()) return;
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(adminEmail);
-            message.setSubject("[Nidaa] New " + applicant.getRole().name() + " Application — Action Required");
-            message.setText(
-                    "A new user has registered on Nidaa and requires your approval.\n\n" +
-                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                            "APPLICANT DETAILS\n" +
-                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                            "Name:   " + applicant.getFullName() + "\n" +
-                            "Email:  " + applicant.getEmail() + "\n" +
-                            "Phone:  " + (applicant.getPhone() != null ? applicant.getPhone() : "Not provided") + "\n" +
-                            "Role:   " + applicant.getRole().name() + "\n" +
-                            "Date:   " + LocalDateTime.now() + "\n\n" +
-                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                            "ACTION REQUIRED\n" +
-                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                            "This account is currently INACTIVE and waiting for approval.\n\n" +
-                            "To approve this applicant, please contact them directly at:\n" +
-                            applicant.getEmail() + "\n\n" +
-                            "Once you verify their credentials, activate their account in the admin panel.\n\n" +
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setTo(adminEmail);
+            msg.setSubject("[Nidaa] New " + applicant.getRole().name() + " Application — Action Required");
+            msg.setText(
+                    "A new user has registered and requires approval.\n\n" +
+                            "Name:  " + applicant.getFullName() + "\n" +
+                            "Email: " + applicant.getEmail() + "\n" +
+                            "Phone: " + (applicant.getPhone() != null ? applicant.getPhone() : "Not provided") + "\n" +
+                            "Role:  " + applicant.getRole().name() + "\n\n" +
+                            "Log in to the admin panel to approve or deny this application.\n\n" +
                             "— Nidaa Platform"
             );
-            mailSender.send(message);
-            logger.info("Admin notification sent for applicant: {}", applicant.getEmail());
+            mailSender.send(msg);
         } catch (Exception e) {
-            logger.error("Failed to send admin notification: {}", e.getMessage());
-            // Don't throw — registration should still succeed even if email fails
+            logger.error("Admin notification failed: {}", e.getMessage());
         }
     }
 }

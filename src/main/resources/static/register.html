@@ -262,20 +262,24 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Registration failed. Please try again.');
 
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify({
-                id: data.userId, email: data.email, fullName: data.fullName,
-                role: data.role, isActive: data.isActive, pendingApproval: data.pendingApproval
-            }));
-
             if (data.pendingApproval) {
+                // Pending: do NOT save token — they cannot log in until approved
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
                 showAlert(
-                    '✅ Application submitted! Your account is under review. The admin will contact you at ' + data.email + ' once approved.',
+                    '✅ Application submitted! Your account is under review. You will receive an email at ' + data.email + ' once approved.',
                     'pending'
                 );
                 document.getElementById('registerBtn').textContent = '✓ Application Submitted';
+                document.getElementById('registerBtn').disabled = true;
                 return;
             }
+            // Active user (beneficiary) — save token and go to dashboard
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify({
+                id: data.userId, email: data.email, fullName: data.fullName,
+                role: data.role, isActive: data.isActive, pendingApproval: false
+            }));
             window.location.href = 'dashboard.html';
         } catch (err) {
             showAlert(err.message);
