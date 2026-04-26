@@ -104,12 +104,26 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles all other runtime exceptions.
+     * Handles all other runtime exceptions. Picks a sensible status code from the
+     * message text so legitimate "not found" responses come back as 404 and
+     * unexpected database/JPA failures come back as 500 instead of being masked
+     * as 400 (which used to make every backend error look like a validation bug).
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(
             RuntimeException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+        String msg = ex.getMessage() == null ? "" : ex.getMessage();
+        String lower = msg.toLowerCase();
+        HttpStatus status;
+        if (lower.contains("not found")) {
+            status = HttpStatus.NOT_FOUND;
+        } else if (lower.contains("no longer available") || lower.contains("already")
+                || lower.contains("invalid") || lower.contains("must ")) {
+            status = HttpStatus.BAD_REQUEST;
+        } else {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        return buildResponse(status, msg.isEmpty() ? status.getReasonPhrase() : msg, null);
     }
 
     /**

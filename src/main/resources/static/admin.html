@@ -110,7 +110,7 @@
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-        <a href="dashboard.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
+        <a href="admin.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
     </div>
     <nav class="sidebar-nav">
         <a href="admin-requests.html" class="nav-item"><i class="fa fa-list-check"></i> All Requests</a>
@@ -210,11 +210,9 @@
         window.location.href = 'dashboard.html';
     }
 
-    document.getElementById('sidebarName').textContent   = fullName;
-    document.getElementById('sidebarRole').textContent   = roleDisplay;
-    document.getElementById('sidebarAvatar').textContent = initials;
-    document.getElementById('topbarName').textContent    = firstName;
-    document.getElementById('topbarRole').textContent    = roleDisplay;
+    const _s = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+    _s('topbarName', firstName);
+    _s('topbarRole', roleDisplay);
 
     // ── LOAD STATS ──────────────────────────────────────────────────────────
     async function loadStats() {

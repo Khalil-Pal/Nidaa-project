@@ -93,13 +93,16 @@
         .btn-modal-close:hover{border-color:var(--blue);color:var(--blue)}
 
         @media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.table-wrap{overflow-x:auto}}
+
+        .btn-delete-account{padding:9px 22px;border-radius:8px;border:1.5px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
+        .btn-delete-account:hover{background:#dc2626;color:white}
     </style>
 </head>
 <body>
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-        <a href="admin-requests.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" style="height:40px;width:auto"/></a>
+        <a href="admin.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" style="height:40px;width:auto"/></a>
     </div>
     <nav class="sidebar-nav">
         <a href="admin-requests.html" class="nav-item"><i class="fa fa-list-check"></i> All Requests</a>
@@ -219,6 +222,9 @@
             </div>
         </div>
         <div class="modal-footer">
+            <button class="btn-delete-account" id="modalDeleteBtn" onclick="deleteUserAccount()">
+                <i class="fa fa-trash"></i> Delete Account
+            </button>
             <button class="btn-modal-close" onclick="closeModal()">Close</button>
         </div>
     </div>
@@ -235,8 +241,6 @@
     const userRole = (user.role || '').toLowerCase();
     if (userRole !== 'admin') window.location.href = 'dashboard.html';
 
-    document.getElementById('sidebarName').textContent = fullName;
-    document.getElementById('sidebarAvatar').textContent = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
     document.getElementById('topbarName').textContent = fullName.split(' ')[0];
 
     const roleColors = {
@@ -312,7 +316,10 @@
         renderTable(filtered);
     }
 
+    let currentModalUserId = null;
+
     function openModal(userId) {
+        currentModalUserId = userId;
         const u = allUsers.find(x => (x.id||x.userId) == userId);
         if (!u) return;
 
@@ -344,6 +351,39 @@
     }
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    async function deleteUserAccount() {
+        if (!currentModalUserId) return;
+        const u = allUsers.find(x => (x.id||x.userId) == currentModalUserId);
+        const name = u ? (u.fullName || u.email) : 'this user';
+        if (!confirm('Delete ' + name + '\'s account permanently? This cannot be undone.\nAn email will be sent to the user.')) return;
+
+        const btn = document.getElementById('modalDeleteBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Deleting...';
+
+        try {
+            const res = await fetch(API + '/admin/users/' + currentModalUserId, {
+                method: 'DELETE', headers: authHeader()
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+
+            // Remove from local list and re-render
+            allUsers = allUsers.filter(x => (x.id||x.userId) != currentModalUserId);
+            renderTable(allUsers);
+            closeModal();
+
+            const t = document.createElement('div');
+            t.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#059669;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;font-size:14px;font-family:Inter,sans-serif';
+            t.textContent = '✅ Account deleted and user notified by email.';
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        } catch (e) {
+            alert('Could not delete account: ' + e.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-trash"></i> Delete Account';
+        }
+    }
 
     async function loadUsers() {
         try {

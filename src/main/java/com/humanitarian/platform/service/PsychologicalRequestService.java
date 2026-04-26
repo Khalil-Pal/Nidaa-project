@@ -5,6 +5,7 @@ import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,18 +14,15 @@ import java.util.List;
 @Service
 public class PsychologicalRequestService {
 
-    @Autowired
-    private PsychologicalRequestRepository psychologicalRequestRepository;
-
-    @Autowired
-    private UserService userService;
+    @Autowired private PsychologicalRequestRepository repo;
+    @Autowired private UserService                    userService;
+    @Autowired private JdbcTemplate                   jdbc;
 
     @Transactional
     public PsychologicalRequest createRequest(PsychologicalRequestDto dto) {
-        User currentUser = userService.getCurrentUser();
-
-        PsychologicalRequest request = PsychologicalRequest.builder()
-                .beneficiaryId(currentUser.getId())
+        User user = userService.getCurrentUser();
+        PsychologicalRequest r = PsychologicalRequest.builder()
+                .beneficiaryId(user.getId())
                 .supportType(toSupportType(dto.getSupportType()))
                 .category(toCategory(dto.getCategory()))
                 .urgencyLevel(toUrgency(dto.getUrgencyLevel()))
@@ -34,29 +32,83 @@ public class PsychologicalRequestService {
                 .status("PENDING")
                 .isCrisis(false)
                 .build();
-
-        return psychologicalRequestRepository.save(request);
+        return repo.save(r);
     }
 
-    // These methods normalize frontend values to exact PostgreSQL enum values
+    @Transactional
+    public PsychologicalRequest acceptRequest(Long requestId) {
+        User currentUser = userService.getCurrentUser();
+
+        // Must store psychologist_id (PK of psychologists table), not user_id
+        // psychological_requests.assigned_psychologist_id → FK to psychologists.psychologist_id
+        Long psychologistId;
+        try {
+            psychologistId = jdbc.queryForObject(
+                    "SELECT psychologist_id FROM psychologists WHERE user_id = ?",
+                    Long.class, currentUser.getId());
+        } catch (Exception e) {
+            psychologistId = null;
+        }
+
+        if (psychologistId == null) {
+            throw new RuntimeException("Psychologist profile not found. Contact admin.");
+        }
+
+        int updated = repo.assignPsychologist(requestId, psychologistId, "ASSIGNED", "PENDING");
+        if (updated == 0) {
+            throw new RuntimeException("Request is no longer available or already assigned.");
+        }
+        return getRequestById(requestId);
+    }
+
+    @Transactional
+    public PsychologicalRequest updateStatus(Long id, String status) {
+        repo.updateStatusNative(id, status.toUpperCase());
+        return getRequestById(id);
+    }
+
+    public List<PsychologicalRequest> getAllRequests() { return repo.findAll(); }
+
+    public List<PsychologicalRequest> getPendingRequests() {
+        return repo.findByStatusAndAssignedPsychologistIdIsNull("PENDING");
+    }
+
+    public List<PsychologicalRequest> getMyRequests() {
+        return repo.findByBeneficiaryId(userService.getCurrentUser().getId());
+    }
+
+    public List<PsychologicalRequest> getMyAssignedRequests() {
+        User user = userService.getCurrentUser();
+        Long psychologistId;
+        try {
+            psychologistId = jdbc.queryForObject(
+                    "SELECT psychologist_id FROM psychologists WHERE user_id = ?",
+                    Long.class, user.getId());
+        } catch (Exception e) {
+            psychologistId = null;
+        }
+        if (psychologistId == null) return List.of();
+        return repo.findByAssignedPsychologistId(psychologistId);
+    }
+
+    public PsychologicalRequest getRequestById(Long id) {
+        return repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Request not found: " + id));
+    }
+
     private String toCategory(String v) {
         if (v == null) return "ANXIETY";
-        String u = v.toUpperCase().trim()
-                .replace(" & ", "_AND_")
-                .replace(" ", "_")
-                .replace("-", "_");
+        String u = v.toUpperCase().trim().replace(" & ","_AND_").replace(" ","_").replace("-","_");
         return switch (u) {
-            case "ANXIETY"                        -> "ANXIETY";
-            case "DEPRESSION"                     -> "DEPRESSION";
-            case "PTSD"                           -> "PTSD";
-            case "GRIEF_AND_LOSS", "GRIEF_LOSS",
-                 "GRIEF"                          -> "GRIEF_AND_LOSS";
-            case "DOMESTIC_VIOLENCE", "VIOLENCE"  -> "DOMESTIC_VIOLENCE";
-            case "CRISIS_SUPPORT", "CRISIS"       -> "CRISIS_SUPPORT";
-            default                               -> "ANXIETY";
+            case "ANXIETY"                             -> "ANXIETY";
+            case "DEPRESSION"                          -> "DEPRESSION";
+            case "PTSD"                                -> "PTSD";
+            case "GRIEF_AND_LOSS","GRIEF_LOSS","GRIEF" -> "GRIEF_AND_LOSS";
+            case "DOMESTIC_VIOLENCE","VIOLENCE"        -> "DOMESTIC_VIOLENCE";
+            case "CRISIS_SUPPORT","CRISIS"             -> "CRISIS_SUPPORT";
+            default                                    -> "ANXIETY";
         };
     }
-
     private String toSupportType(String v) {
         if (v == null) return "INDIVIDUAL";
         return switch (v.toUpperCase().trim()) {
@@ -65,7 +117,6 @@ public class PsychologicalRequestService {
             default       -> "INDIVIDUAL";
         };
     }
-
     private String toUrgency(String v) {
         if (v == null) return "MEDIUM";
         return switch (v.toUpperCase().trim()) {
@@ -75,56 +126,12 @@ public class PsychologicalRequestService {
             default         -> "MEDIUM";
         };
     }
-
     private String toFormat(String v) {
         if (v == null) return "CHAT";
         return switch (v.toUpperCase().trim()) {
-            case "AUDIO", "AUDIO_CALL" -> "AUDIO";
-            case "VIDEO", "VIDEO_SESSION" -> "VIDEO";
-            default -> "CHAT";
+            case "AUDIO","AUDIO_CALL"    -> "AUDIO";
+            case "VIDEO","VIDEO_SESSION" -> "VIDEO";
+            default                      -> "CHAT";
         };
-    }
-
-    public List<PsychologicalRequest> getAllRequests() {
-        return psychologicalRequestRepository.findAll();
-    }
-
-    public List<PsychologicalRequest> getPendingRequests() {
-        return psychologicalRequestRepository
-                .findByStatusAndAssignedPsychologistIdIsNull("PENDING");
-    }
-
-    public List<PsychologicalRequest> getMyRequests() {
-        User currentUser = userService.getCurrentUser();
-        return psychologicalRequestRepository.findByBeneficiaryId(currentUser.getId());
-    }
-
-    public List<PsychologicalRequest> getMyAssignedRequests() {
-        User currentUser = userService.getCurrentUser();
-        return psychologicalRequestRepository.findByAssignedPsychologistId(currentUser.getId());
-    }
-
-    public PsychologicalRequest getRequestById(Long id) {
-        return psychologicalRequestRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Request not found: " + id));
-    }
-
-    @Transactional
-    public PsychologicalRequest acceptRequest(Long requestId) {
-        User currentUser = userService.getCurrentUser();
-        PsychologicalRequest request = getRequestById(requestId);
-        if (!"PENDING".equals(request.getStatus())) {
-            throw new RuntimeException("This request is no longer available.");
-        }
-        request.setAssignedPsychologistId(currentUser.getId());
-        request.setStatus("ASSIGNED");
-        return psychologicalRequestRepository.save(request);
-    }
-
-    @Transactional
-    public PsychologicalRequest updateStatus(Long id, String status) {
-        PsychologicalRequest request = getRequestById(id);
-        request.setStatus(status.toUpperCase());
-        return psychologicalRequestRepository.save(request);
     }
 }

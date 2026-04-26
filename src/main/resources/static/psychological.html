@@ -25,12 +25,12 @@
 
     /* MAIN */
     .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
-    .topbar { height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 50; }
+    .topbar{height:64px;background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:50}
     .topbar-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; flex: 1; }
-    .topbar-actions { display: flex; align-items: center; gap: 12px; }
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 700; background: #eff6ff; color: var(--blue); }
-    .btn-logout { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
-    .menu-toggle { display: none; background: none; border: none; font-size: 22px; cursor: pointer; }
+    .topbar-actions{display:flex;align-items:center;gap:14px;margin-left:auto}
+    .badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
+    .btn-logout{display:flex;align-items:center;gap:6px;padding:7px 14px;background:white;border:1.5px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+    .menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--dark)}
 
     /* CONTENT */
     .content { padding: 28px 24px; flex: 1; }
@@ -102,11 +102,30 @@
     .alert-success { background: var(--green); color: white; }
 
     @media (max-width: 900px) { .format-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } .main { margin-left: 0; } .menu-toggle { display: block; } .format-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } .main { margin-left: ck; } .format-grid { grid-template-columns: 1fr; } }
 
     .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
     .btn-logout-side{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:8px;border:none;background:none;color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s,color .15s}
     .btn-logout-side:hover{background:#fef2f2;color:#dc2626}
+
+    /* Contact / Status Modal */
+    .psych-contact-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+    .psych-contact-overlay.open{display:flex}
+    .psych-contact-box{background:white;border-radius:20px;width:100%;max-width:420px;padding:28px;box-shadow:0 24px 64px rgba(0,0,0,.18)}
+    .psych-contact-title{font-size:17px;font-weight:800;margin-bottom:18px;font-family:'Plus Jakarta Sans',sans-serif}
+    .pcrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+    .pcrow:last-of-type{border:none}
+    .pcicon{width:34px;height:34px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:13px;flex-shrink:0}
+    .pclbl{font-size:11px;color:var(--muted);text-transform:uppercase}
+    .pcval{font-size:14px;font-weight:600;color:var(--dark)}
+    .psych-status-section{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+    .psych-status-title{font-size:13px;font-weight:600;margin-bottom:8px;color:var(--dark)}
+    .psych-status-sel{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'Inter',sans-serif;outline:none;background:white}
+    .psych-status-sel:focus{border-color:var(--blue)}
+    .btn-psych-update{width:100%;padding:11px;background:var(--blue);color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;font-family:'Inter',sans-serif;transition:background .2s}
+    .btn-psych-update:hover{background:#1e40af}
+    .btn-psych-close{width:100%;padding:9px;background:none;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;font-family:'Inter',sans-serif;color:var(--muted);transition:all .2s}
+    .btn-psych-close:hover{border-color:var(--blue);color:var(--blue)}
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 </head>
@@ -116,19 +135,18 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><a href="dashboard.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" /></a></div>
   <nav class="sidebar-nav" id="sidebarNav"></nav>
-  <div class="sidebar-footer">
-    <button class="btn-logout-side" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
-  </div>
 </aside>
 
 <!-- MAIN -->
 <div class="main">
   <header class="topbar">
-    <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+    <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa fa-bars"></i></button>
     <div class="topbar-actions">
-      <span id="topbarName">Ahmed H.</span>
-      <span class="badge" id="topbarRole">Volunteer</span>
-      <button class="btn-logout" onclick="logout()">&#x2192;</button>
+      <span class="topbar-user" id="topbarName">—</span>
+      <span class="badge" id="topbarRole">—</span>
+      <button class="btn-logout" onclick="logout()" title="Logout">
+        <i class="fa fa-right-from-bracket"></i> Logout
+      </button>
     </div>
   </header>
 
@@ -182,13 +200,24 @@
       </div>
     </div>
 
-    <!-- PSYCHOLOGIST VIEW -->
+    <!-- PSYCHOLOGIST VIEW — PENDING -->
     <div class="panel" id="psychPanel" style="display:none">
       <div class="panel-header"><h3>Pending Requests — Awaiting Your Response</h3></div>
       <div id="pendingRequestsList">
         <div style="text-align:center;padding:32px;color:#64748b;">
           <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>
           Loading pending requests...
+        </div>
+      </div>
+    </div>
+
+    <!-- PSYCHOLOGIST VIEW — ACTIVE SESSIONS -->
+    <div class="panel" id="activeSessionsPanel" style="display:none">
+      <div class="panel-header"><h3>My Active Sessions</h3></div>
+      <div id="activeSessionsList">
+        <div style="text-align:center;padding:32px;color:#64748b;">
+          <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>
+          Loading...
         </div>
       </div>
     </div>
@@ -251,6 +280,11 @@
 
   if (userRole === 'psychologist') {
     document.getElementById('psychPanel').style.display = 'block';
+    document.getElementById('activeSessionsPanel').style.display = 'block';
+    // Hide beneficiary-only sections from psychologist
+    document.querySelector('.format-grid').style.display = 'none';
+    document.querySelector('.categories-section').style.display = 'none';
+    document.getElementById('myRequestsPanel').style.display = 'none';
   }
 
   let selectedFormat = 'CHAT';
@@ -327,7 +361,7 @@
             <div class="meta">${fmtDate(r.createdAt)} · ${r.urgencyLevel||''}</div>
           </div>
           <div class="req-actions">
-            <button class="btn-accept"  onclick="acceptReq(${r.id},this)">Accept</button>
+            <button class="btn-accept" onclick="startPsychWork(${r.id},this)">&#9654; Start Working</button>
             <button class="btn-decline" onclick="document.getElementById('pr-${r.id}').remove()">Decline</button>
           </div>
         </div>`).join('');
@@ -369,17 +403,125 @@
     btn.disabled = false; btn.textContent = 'Submit Request';
   });
 
-  async function acceptReq(id, btn) {
+  let currentPsychRequestId = null;
+
+  async function startPsychWork(id, btn) {
+    if (!confirm('Start working with this person? Their contact information will be shown.')) return;
+    btn.disabled = true;
+    btn.textContent = 'Starting...';
     try {
       const res = await fetch(API + '/psychological-requests/' + id + '/accept', { method: 'PUT', headers: authHeader() });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      // Remove decline button
+      const row = document.getElementById('pr-' + id);
+      if (row) {
+        const dec = row.querySelector('.btn-decline');
+        if (dec) dec.remove();
+        btn.textContent = '✓ Working';
+        btn.style.background = '#047857';
+        btn.disabled = false;
+        btn.onclick = () => openPsychContact(id, row.querySelector('.title') ? row.querySelector('.title').textContent : 'Support Request');
+      }
+      // Show contact modal
+      openPsychContact(id, 'Support Request');
+    } catch (e) {
+      alert('Could not start: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = '▶ Start Working';
+    }
+  }
+
+  async function openPsychContact(id, title) {
+    currentPsychRequestId = id;
+    document.getElementById('psychContactTitle').textContent = title || 'Requester Contact';
+    document.getElementById('psychContactName').textContent  = '...';
+    document.getElementById('psychContactEmail').textContent = '...';
+    document.getElementById('psychContactPhone').textContent = '...';
+    document.getElementById('psychContactOverlay').classList.add('open');
+    try {
+      // Get the request to find beneficiary id
+      const res = await fetch(API + '/psychological-requests/' + id, { headers: authHeader() });
       if (!res.ok) throw new Error();
-      btn.textContent = '✓ Accepted'; btn.style.background = '#047857'; btn.disabled = true;
-      const dec = btn.nextElementSibling; if (dec) dec.remove();
-    } catch { alert('Could not accept. Please try again.'); }
+      const data = await res.json();
+      const req  = data.data || data;
+      if (req.beneficiaryId) {
+        const ures = await fetch(API + '/users/' + req.beneficiaryId, { headers: authHeader() });
+        if (ures.ok) {
+          const ud = await ures.json();
+          const u  = ud.data || ud;
+          document.getElementById('psychContactName').textContent  = u.fullName || '—';
+          document.getElementById('psychContactEmail').textContent = u.email    || '—';
+          document.getElementById('psychContactPhone').textContent = u.phone    || 'Not provided';
+        }
+      }
+    } catch {
+      document.getElementById('psychContactName').textContent = 'Could not load contact';
+    }
+  }
+
+  async function loadActiveSessions() {
+    const list = document.getElementById('activeSessionsList');
+    if (!list) return;
+    try {
+      const res  = await fetch(API + '/psychological-requests/my-assigned', { headers: authHeader() });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const reqs = Array.isArray(data) ? data : (data.data || []);
+      if (!reqs.length) {
+        list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No active sessions yet.</div>';
+        return;
+      }
+      const sc = {PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
+      list.innerHTML = reqs.map(r => `
+        <div class="req-row" id="as-${r.id}">
+          <div class="req-info">
+            <div class="title">${r.category||''} — ${r.preferredFormat||r.supportType||''}</div>
+            <div class="meta">Started ${fmtDate(r.createdAt)}${r.description?' · '+r.description.substring(0,40):''}</div>
+          </div>
+          <div class="req-actions">
+            <span class="tag ${sc[r.status]||'status-assigned'}">${r.status||'ASSIGNED'}</span>
+            <button class="btn-accept" style="font-size:12px;padding:6px 12px" onclick="openPsychContact(${r.id},'${(r.category||'Session').replace(/'/g,'')}')">Contact & Status</button>
+          </div>
+        </div>`).join('');
+    } catch {
+      if (list) list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">Could not load sessions.</div>';
+    }
+  }
+
+  function closePsychContact() {
+    document.getElementById('psychContactOverlay').classList.remove('open');
+    currentPsychRequestId = null;
+  }
+
+  async function submitPsychStatus() {
+    if (!currentPsychRequestId) return;
+    const status = document.getElementById('psychStatusSelect').value;
+    const btn = document.querySelector('.btn-psych-update');
+    if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+    try {
+      const res = await fetch(API + '/psychological-requests/' + currentPsychRequestId + '/status?status=' + status, {
+        method: 'PUT', headers: authHeader()
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      closePsychContact();
+      loadPendingRequests();
+      const t = document.createElement('div');
+      t.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#059669;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;font-size:14px;font-family:Inter,sans-serif';
+      t.textContent = '✅ Status updated to ' + status.charAt(0) + status.slice(1).toLowerCase();
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    } catch (e) {
+      alert('Could not update: ' + e.message);
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Update Status'; }
   }
 
   loadMyRequests();
-  if (userRole === 'psychologist') loadPendingRequests();
+  if (userRole === 'psychologist') {
+    loadPendingRequests();
+    loadActiveSessions();
+  }
 
   // ── ACCESS CONTROL: Volunteer & Organization cannot access this page ──
   if (userRole === 'volunteer' || userRole === 'organization') {
@@ -399,8 +541,8 @@
       ],
       volunteer: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
         { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       psychologist: [
@@ -411,8 +553,8 @@
       ],
       organization: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
         { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+        { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       admin: [
@@ -433,5 +575,25 @@
 
 </script>
 
+
+<!-- Psychologist Contact & Status Modal -->
+<div class="psych-contact-overlay" id="psychContactOverlay">
+  <div class="psych-contact-box">
+    <div class="psych-contact-title" id="psychContactTitle">Requester Contact</div>
+    <div class="pcrow"><div class="pcicon"><i class="fa fa-user"></i></div><div><div class="pclbl">Name</div><div class="pcval" id="psychContactName">—</div></div></div>
+    <div class="pcrow"><div class="pcicon"><i class="fa fa-envelope"></i></div><div><div class="pclbl">Email</div><div class="pcval" id="psychContactEmail">—</div></div></div>
+    <div class="pcrow"><div class="pcicon"><i class="fa fa-phone"></i></div><div><div class="pclbl">Phone</div><div class="pcval" id="psychContactPhone">—</div></div></div>
+    <div class="psych-status-section">
+      <div class="psych-status-title">Update Request Status</div>
+      <select class="psych-status-sel" id="psychStatusSelect">
+        <option value="ASSIGNED">Assigned (In Progress)</option>
+        <option value="COMPLETED">Completed</option>
+        <option value="CANCELLED">Cancelled</option>
+      </select>
+      <button class="btn-psych-update" onclick="submitPsychStatus()">Update Status</button>
+    </div>
+    <button class="btn-psych-close" onclick="closePsychContact()">Close</button>
+  </div>
+</div>
 </body>
 </html>

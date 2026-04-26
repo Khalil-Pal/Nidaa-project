@@ -77,12 +77,12 @@
 
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <a href="admin-requests.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" style="height:40px;width:auto"/></a>
+    <a href="admin.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" style="height:40px;width:auto"/></a>
   </div>
   <nav class="sidebar-nav">
     <a href="admin-requests.html" class="nav-item"><i class="fa fa-list-check"></i> All Requests</a>
     <a href="admin.html" class="nav-item"><i class="fa fa-chart-bar"></i> Analytics</a>
-    <a href="admin-approvals.html" class="nav-item active"><i class="fa fa-user-check"></i> Approvals</a>
+    <a href="admin-approvals.html" class="nav-item active"><i class="fa fa-user-check"></i> Approvals <span class="count-badge" id="pendingCount">0</span></a>
     <a href="admin-users.html" class="nav-item"><i class="fa fa-users"></i> All Users</a>
     <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
   </nav>
@@ -139,8 +139,7 @@
   const userRole = (user.role || '').toLowerCase();
   if (userRole !== 'admin') window.location.href = 'dashboard.html';
 
-  document.getElementById('sidebarName').textContent = fullName;
-  document.getElementById('sidebarAvatar').textContent = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  const _s = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
   document.getElementById('topbarName').textContent = fullName.split(' ')[0];
 
   const roleColors = {
@@ -168,8 +167,8 @@
   function renderPending(users) {
     const list = document.getElementById('pendingList');
     const count = users.length;
-    document.getElementById('pendingCount').textContent = count;
-    document.getElementById('tabPendingCount').textContent = count;
+    const _pc = document.getElementById('pendingCount'); if(_pc) _pc.textContent = count;
+    const _tpc = document.getElementById('tabPendingCount'); if(_tpc) _tpc.textContent = count;
 
     if (!count) {
       list.innerHTML = `<div class="empty-state"><i class="fa fa-circle-check"></i><h3>All caught up!</h3><p>No pending applications right now.</p></div>`;

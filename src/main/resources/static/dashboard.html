@@ -31,17 +31,17 @@
     .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
 
     /* TOP BAR */
-    .topbar { height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 50; }
-    .search-wrap { flex: 1; max-width: 400px; position: relative; }
-    .search-wrap input { width: 100%; padding: 9px 14px 9px 38px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--dark); outline: none; font-family: 'Inter', sans-serif; transition: border-color .2s; }
-    .search-wrap input:focus { border-color: var(--blue); }
-    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
-    .topbar-actions { display: flex; align-items: center; gap: 16px; }
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 700; background: #eff6ff; color: var(--blue); }
-    .topbar-user { font-size: 14px; font-weight: 600; }
-    .btn-logout { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; transition: color .2s; }
-    .btn-logout:hover { color: #dc2626; }
-    .menu-toggle { display: none; background: none; border: none; font-size: 22px; cursor: pointer; }
+    .topbar{height:64px;background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:50}
+    .search-wrap{flex:1;max-width:380px;position:relative}
+    .search-wrap input{width:100%;padding:9px 14px 9px 38px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;outline:none;font-family:inherit;transition:border-color .2s}
+    .search-wrap input:focus{border-color:var(--blue)}
+    .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}
+    .topbar-actions{display:flex;align-items:center;gap:14px;margin-left:auto}
+    .badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
+    .topbar-user{font-size:14px;font-weight:600;color:var(--dark)}
+    .btn-logout{display:flex;align-items:center;gap:6px;padding:7px 14px;background:white;border:1.5px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+    .btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+    .menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--dark)}
 
     /* CONTENT */
     .content { padding: 28px 24px; flex: 1; }
@@ -121,9 +121,9 @@
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .main { margin-left: 0; }
-      .menu-toggle { display: block; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    }
+      ck; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
     @media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr; } }
 
     .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
@@ -140,23 +140,19 @@
     <a href="dashboard.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
   </div>
   <nav class="sidebar-nav" id="sidebarNav"></nav>
-  <div class="sidebar-footer">
-    <button class="btn-logout-side" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
-  </div>
+
 </aside>
 
 <!-- MAIN -->
 <div class="main">
   <header class="topbar">
     <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa fa-bars"></i></button>
-    <div class="search-wrap">
-      <i class="search-icon fa fa-magnifying-glass"></i>
-      <input type="text" id="searchBar" placeholder="Search requests..." oninput="filterCards ? filterCards() : null"/>
-    </div>
     <div class="topbar-actions">
       <span class="topbar-user" id="topbarName">—</span>
       <span class="badge" id="topbarRole">—</span>
-      <button class="btn-logout" onclick="logout()" title="Logout"><i class="fa fa-right-from-bracket"></i></button>
+      <button class="btn-logout" onclick="logout()" title="Logout">
+        <i class="fa fa-right-from-bracket"></i> Logout
+      </button>
     </div>
   </header>
 
@@ -258,8 +254,8 @@
       ],
       psychologist: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-        { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
         { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       organization: [

@@ -169,14 +169,18 @@
                 isActive: data.isActive
             }));
 
-            window.location.href = 'dashboard.html';
+            // Admin goes to their own landing page, everyone else to dashboard
+            const role = (data.role || '').toLowerCase();
+            if (role === 'admin') {
+                window.location.href = 'admin-requests.html';
+            } else {
+                window.location.href = 'dashboard.html';
+            }
         } catch (err) {
             showError(err.message);
             btn.disabled = false; btn.textContent = 'Sign In';
         }
     });
-
-    if (localStorage.getItem('token')) window.location.href = 'dashboard.html';
 
 </script>
 </body>

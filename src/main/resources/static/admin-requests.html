@@ -95,7 +95,7 @@
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-        <a href="admin-requests.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" style="height:40px;width:auto"/></a>
+        <a href="admin.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa" style="height:40px;width:auto"/></a>
     </div>
     <nav class="sidebar-nav">
         <a href="admin-requests.html" class="nav-item active"><i class="fa fa-list-check"></i> All Requests</a>
@@ -229,15 +229,7 @@
             <div class="info-grid">
                 <div class="info-row">
                     <div class="info-icon"><i class="fa fa-hard-hat"></i></div>
-                    <div><div class="info-lbl">Name</div><div class="info-val" id="mWorkerName">—</div></div>
-                </div>
-                <div class="info-row">
-                    <div class="info-icon"><i class="fa fa-id-badge"></i></div>
-                    <div><div class="info-lbl">Role</div><div class="info-val" id="mWorkerRole">—</div></div>
-                </div>
-                <div class="info-row">
-                    <div class="info-icon"><i class="fa fa-envelope"></i></div>
-                    <div><div class="info-lbl">Email</div><div class="info-val" id="mWorkerEmail">—</div></div>
+                    <div><div class="info-lbl">Worker Name</div><div class="info-val" id="mWorkerName">—</div></div>
                 </div>
             </div>
         </div>
@@ -322,9 +314,7 @@
         document.getElementById('mRequesterName').textContent  = r.requesterName  || '—';
         document.getElementById('mRequesterEmail').textContent = r.requesterEmail || '—';
         document.getElementById('mRequesterPhone').textContent = r.requesterPhone || '—';
-        document.getElementById('mWorkerName').textContent     = r.workerName  || 'Not assigned yet';
-        document.getElementById('mWorkerRole').textContent     = r.workerRole  || '—';
-        document.getElementById('mWorkerEmail').textContent    = r.workerEmail || '—';
+        document.getElementById('mWorkerName').textContent = r.workerName || 'Not assigned yet';
         document.getElementById('detailModal').classList.add('open');
     }
 

@@ -23,12 +23,12 @@
         .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--green));color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
         .user-info .name{font-size:14px;font-weight:600}
         .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column}
-        .topbar{height:64px;background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50}
-        .menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer}
-        .topbar-right{display:flex;align-items:center;gap:16px}
-        .btn-logout{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s}
+        .topbar{height:64px;background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:50}
+        .menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--dark)}
+
+        .btn-logout{display:flex;align-items:center;gap:6px;padding:7px 14px;background:white;border:1.5px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
         .btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
-        .btn-logout:hover{border-color:#ef4444;color:#ef4444}
+
         .content{padding:32px;flex:1;max-width:800px}
         .page-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px}
         .page-sub{color:var(--muted);font-size:14px;margin-bottom:32px}
@@ -67,7 +67,10 @@
         .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
         .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
         @keyframes spin{to{transform:rotate(360deg)}}
-        @media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.form-row{grid-template-columns:1fr}.content{padding:20px}}
+        @media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.mgle{display:block}.form-row{grid-template-columns:1fr}.content{padding:20px}}
+        .topbar-actions{display:flex;align-items:center;gap:14px;margin-left:auto}
+        .topbar-user{font-size:14px;font-weight:600;color:var(--dark)}
+        .badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
     </style>
 </head>
 <body>
@@ -76,18 +79,18 @@
     <div class="sidebar-logo">
         <a href="dashboard.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>    </div>
     <nav class="sidebar-nav" id="sidebarNav"></nav>
-    <div class="sidebar-footer">
-        <button class="btn-logout-side" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
-    </div>
+
 </aside>
 
 <div class="main">
     <header class="topbar">
-        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
-        <span style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px"><i class="fa fa-gear" style="color:var(--blue)"></i> Settings</span>
-        <div class="topbar-right">
-            <span style="font-size:14px;font-weight:600" id="topbarName">—</span>
-            <button class="btn-logout" onclick="logout()" title="Logout"><i class="fa fa-right-from-bracket"></i></button>
+        <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa fa-bars"></i></button>
+        <div class="topbar-actions">
+            <span class="topbar-user" id="topbarName">—</span>
+            <span class="badge" id="topbarRole">—</span>
+            <button class="btn-logout" onclick="logout()" title="Logout">
+                <i class="fa fa-right-from-bracket"></i> Logout
+            </button>
         </div>
     </header>
 
@@ -185,19 +188,23 @@
 
     if (!localStorage.getItem('token')) window.location.href = 'login.html';
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const fullName = user.fullName || user.name || 'User';
-    const role = (user.role || 'user');
-    const userRole = role.toLowerCase();
-    const initials = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    const user        = JSON.parse(localStorage.getItem('user') || '{}');
+    const fullName    = user.fullName || user.name || 'User';
+    const firstName   = fullName.split(' ')[0];
+    const userRole    = (user.role || 'user').toLowerCase();
+    const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+    const initials    = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
 
-    {const _e=document.getElementById('sidebarName'); if(_e) _e.textContent = fullName;}
-    {const _e=document.getElementById('sidebarRole'); if(_e) _e.textContent = role.charAt(0).toUpperCase()+role.slice(1).toLowerCase();}
-    {const _e=document.getElementById('sidebarAvatar'); if(_e) _e.textContent = initials;}
-    document.getElementById('topbarName').textContent = fullName.split(' ')[0];
-    document.getElementById('fullName').value = fullName;
-    document.getElementById('email').value = user.email || '';
-    document.getElementById('roleDisplay').value = role.charAt(0).toUpperCase()+role.slice(1).toLowerCase();
+    function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+    setEl('sidebarName',   fullName);
+    setEl('sidebarRole',   roleDisplay);
+    setEl('sidebarAvatar', initials);
+    setEl('topbarName',    firstName);
+    setEl('topbarRole',    roleDisplay);
+
+    const fnEl = document.getElementById('fullName'); if (fnEl) fnEl.value = fullName;
+    const emEl = document.getElementById('email');    if (emEl) emEl.value = user.email || '';
+    const rdEl = document.getElementById('roleDisplay'); if (rdEl) rdEl.value = roleDisplay;
 
     // Load current profile from server
     fetch(API + '/users/me', { headers: authHeader() })
@@ -285,8 +292,8 @@
             ],
             volunteer: [
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
                 { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             psychologist: [
@@ -297,8 +304,8 @@
             ],
             organization: [
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
                 { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
+                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             admin: [
@@ -317,6 +324,8 @@
     }
     buildSidebar('settings.html');
 
+
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 </script>
 
 </body>

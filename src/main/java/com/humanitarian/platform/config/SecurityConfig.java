@@ -27,11 +27,8 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private UserDetailsServiceImpl userDetailsService;
-
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @Autowired private UserDetailsServiceImpl userDetailsService;
+    @Autowired private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -40,78 +37,51 @@ public class SecurityConfig {
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
+        DaoAuthenticationProvider p = new DaoAuthenticationProvider();
+        p.setUserDetailsService(userDetailsService);
+        p.setPasswordEncoder(passwordEncoder());
+        return p;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
-            throws Exception {
-        return config.getAuthenticationManager();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
+        return cfg.getAuthenticationManager();
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(c -> c.disable())
+                .cors(c -> c.configurationSource(corsConfigurationSource()))
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // All static frontend files
-                        .requestMatchers(
-                                "/", "/index.html", "/login.html", "/register.html",
-                                "/dashboard.html", "/help-requests.html", "/psychological.html",
-                                "/css/**", "/js/**", "/images/**", "/fonts/**",
-                                "/favicon.ico", "/static/**", "/assets/**",
-                                "/*.html", "/*.css", "/*.js", "/*.png",
-                                "/*.jpg", "/*.ico", "/*.svg", "/*.woff", "/*.woff2"
-                        ).permitAll()
-
-                        // Auth endpoints
+                        // Static files — no auth needed
+                        .requestMatchers("/*.html", "/*.css", "/*.js", "/*.png",
+                                "/*.jpg", "/*.ico", "/*.svg", "/*.woff", "/*.woff2",
+                                "/", "/favicon.ico", "/static/**", "/assets/**",
+                                "/js/**", "/css/**", "/images/**").permitAll()
+                        // Auth endpoints — no auth needed
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        // Public stats for landing page (no login needed)
-                        .requestMatchers("/api/dashboard/public-stats").permitAll()
-
-                        // Public read of help requests
-                        .requestMatchers(
-                                "/api/help-requests",
-                                "/api/help-requests/**"
-                        ).permitAll()
-
-                        // Admin endpoints — authenticated users only for now
-                        .requestMatchers("/api/admin/**").authenticated()
-
-                        // Everything else needs a token
+                        // Everything else — just needs a valid JWT token
+                        // Method-level @PreAuthorize handles finer-grained role checks
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:8081",
-                "http://127.0.0.1:5500",
-                "http://127.0.0.1:8081",
-                "null"
-        ));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
+        CorsConfiguration cfg = new CorsConfiguration();
+        cfg.setAllowedOriginPatterns(List.of("*"));
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        cfg.setAllowedHeaders(List.of("*"));
+        cfg.setAllowCredentials(true);
+        cfg.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
+        src.registerCorsConfiguration("/**", cfg);
+        return src;
     }
 }
