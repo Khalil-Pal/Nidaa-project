@@ -11,17 +11,18 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
-
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
     @Autowired private UserRepository                 userRepository;
     @Autowired private HelpRequestRepository          helpRequestRepository;
     @Autowired private PsychologicalRequestRepository psychRepository;
@@ -155,20 +156,59 @@ public class AdminController {
     }
 
     @PutMapping("/approve/{userId}")
-    public ResponseEntity<Map<String, Object>> approveUser(@PathVariable Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        user.setIsActive(true); user.setIsVerified(true);
-        userRepository.save(user);
-        sendEmail(user.getEmail(), "[Nidaa] Your application has been approved! ✅",
-                "Dear " + user.getFullName() + ",\n\nYour application as a " +
-                        user.getRole().name().toLowerCase() + " has been approved.\n" +
-                        "You can now log in at: http://localhost:8081/login.html\n\n" +
-                        "Welcome to Nidaa!\n— The Nidaa Team");
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("success", true); res.put("message", "Approved"); res.put("userId", userId);
-        return ResponseEntity.ok(res);
+@Transactional
+public ResponseEntity<Map<String, Object>> approveUser(@PathVariable Long userId) {
+
+    User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+    user.setIsActive(true);
+    user.setIsVerified(true);
+    userRepository.save(user);
+
+    String role = user.getRole().name();
+
+    if (role.equals("VOLUNTEER")) {
+
+        jdbcTemplate.update("""
+            INSERT INTO volunteers (user_id, is_available)
+            VALUES (?, true)
+            ON CONFLICT (user_id) DO NOTHING
+        """, user.getId());
+
+    } else if (role.equals("PSYCHOLOGIST")) {
+
+        jdbcTemplate.update("""
+            INSERT INTO psychologists (user_id, is_on_duty)
+            VALUES (?, true)
+            ON CONFLICT (user_id) DO NOTHING
+        """, user.getId());
+
+    } else if (role.equals("ORGANIZATION")) {
+
+        jdbcTemplate.update("""
+            INSERT INTO organizations (user_id, official_name, is_verified)
+            VALUES (?, ?, false)
+            ON CONFLICT (user_id) DO NOTHING
+        """, user.getId(), user.getFullName());
     }
+
+    sendEmail(
+        user.getEmail(),
+        "[Nidaa] Your application has been approved! ✅",
+        "Dear " + user.getFullName() + ",\n\nYour application as a "
+        + role.toLowerCase()
+        + " has been approved.\nYou can now log in at: http://localhost:8081/login.html\n\n"
+        + "Welcome to Nidaa!\n— The Nidaa Team"
+    );
+
+    Map<String, Object> res = new LinkedHashMap<>();
+    res.put("success", true);
+    res.put("message", "Approved");
+    res.put("userId", userId);
+
+    return ResponseEntity.ok(res);
+}
 
     @PutMapping("/reject/{userId}")
     public ResponseEntity<Map<String, Object>> rejectUser(@PathVariable Long userId) {

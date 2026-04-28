@@ -1,5 +1,9 @@
 package com.humanitarian.platform.model;
 
+// TODO: Assignment model exists but is currently unused.
+// Future use: track which volunteer/org was assigned to which request, with timestamps.
+// Populate this table whenever HelpRequestService.assignToMe() is called.
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

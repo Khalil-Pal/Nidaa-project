@@ -33,6 +33,12 @@
     <!-- ==================== ЗАВИСИМОСТИ ==================== -->
     <dependencies>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+
         <!-- === SPRING BOOT CORE === -->
 
         <!-- Spring Web - REST контроллеры, HTTP запросы/ответы -->

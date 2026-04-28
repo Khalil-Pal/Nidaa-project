@@ -6,10 +6,15 @@ import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.humanitarian.platform.exception.BusinessException;
+import com.humanitarian.platform.exception.ResourceNotFoundException;
+import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PsychologicalRequestService {
@@ -51,19 +56,49 @@ public class PsychologicalRequestService {
         }
 
         if (psychologistId == null) {
-            throw new RuntimeException("Psychologist profile not found. Contact admin.");
+            throw new ResourceNotFoundException("Psychologist profile not found. Contact admin.");
         }
 
         int updated = repo.assignPsychologist(requestId, psychologistId, "ASSIGNED", "PENDING");
         if (updated == 0) {
-            throw new RuntimeException("Request is no longer available or already assigned.");
+            throw new BusinessException("Request is no longer available or already assigned.");
         }
         return getRequestById(requestId);
     }
 
+    private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.of(
+        "PENDING",   Set.of("ASSIGNED", "CANCELLED"),
+        "ASSIGNED",  Set.of("COMPLETED", "CANCELLED"),
+        "COMPLETED", Set.of(),
+        "CANCELLED", Set.of()
+    );
+
     @Transactional
     public PsychologicalRequest updateStatus(Long id, String status) {
-        repo.updateStatusNative(id, status.toUpperCase());
+        PsychologicalRequest request = getRequestById(id);
+        User currentUser = userService.getCurrentUser();
+        String role = currentUser.getRole().name().toLowerCase();
+
+        // Ownership check
+        boolean canUpdate = role.equals("admin")
+            || (role.equals("beneficiary") && request.getBeneficiaryId().equals(currentUser.getId()))
+            || role.equals("psychologist")
+            || role.equals("volunteer")
+            || role.equals("organization");
+
+        if (!canUpdate) {
+            throw new UnauthorizedException("You do not have permission to update this request.");
+        }
+
+        // Transition validation
+        String current = request.getStatus();
+        String next = status.toUpperCase();
+
+        if (!VALID_TRANSITIONS.getOrDefault(current, Set.of()).contains(next)) {
+            throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
+        }
+
+        repo.updateStatusNative(id, next);
         return getRequestById(id);
     }
 
@@ -93,7 +128,7 @@ public class PsychologicalRequestService {
 
     public PsychologicalRequest getRequestById(Long id) {
         return repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Request not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found: " + id));
     }
 
     private String toCategory(String v) {

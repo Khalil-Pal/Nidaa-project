@@ -1,6 +1,8 @@
 package com.humanitarian.platform.repository;
 
 import com.humanitarian.platform.model.HelpRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +15,7 @@ import java.util.List;
 public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> {
 
     List<HelpRequest> findByBeneficiaryId(Long beneficiaryId);
+    Page<HelpRequest> findByBeneficiaryId(Long beneficiaryId, Pageable pageable);
     List<HelpRequest> findByStatus(String status);
     List<HelpRequest> findByHelpType(String helpType);
     List<HelpRequest> findByUrgencyLevel(String urgencyLevel);

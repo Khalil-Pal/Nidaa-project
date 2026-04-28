@@ -13,7 +13,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/psychological-requests")
-@CrossOrigin(origins = "*")
 public class PsychologicalRequestController {
 
     private final PsychologicalRequestService psychologicalRequestService;

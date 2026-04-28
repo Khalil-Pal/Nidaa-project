@@ -8,6 +8,9 @@ import com.humanitarian.platform.repository.ProfileRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.humanitarian.platform.exception.BusinessException;
+import com.humanitarian.platform.exception.ResourceNotFoundException;
+import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,13 +29,13 @@ public class UserService {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication().getName();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     // Get user by ID
     public User getUserById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
     }
 
     // Get all users (admin only)

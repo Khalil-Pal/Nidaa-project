@@ -18,11 +18,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.humanitarian.platform.exception.BusinessException;
+import com.humanitarian.platform.exception.ResourceNotFoundException;
+import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthService {
@@ -34,6 +39,11 @@ public class AuthService {
             UserRole.PSYCHOLOGIST,
             UserRole.ORGANIZATION
     );
+
+    // Brute force protection — in-memory per-email attempt counter
+    private final Map<String, FailedAttempt> failedAttempts = new ConcurrentHashMap<>();
+    private static final int MAX_ATTEMPTS    = 5;
+    private static final int LOCKOUT_MINUTES = 15;
 
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
@@ -52,7 +62,7 @@ public class AuthService {
         logger.info("Registering user: {}", request.getEmail());
 
         if (userRepository.existsByEmail(request.getEmail().toLowerCase().trim())) {
-            throw new RuntimeException("This email is already registered.");
+            throw new BusinessException("This email is already registered.");
         }
 
         boolean needsApproval = ROLES_REQUIRING_APPROVAL.contains(request.getRole());
@@ -95,27 +105,54 @@ public class AuthService {
         String email = request.getEmail().toLowerCase().trim();
         logger.info("Login attempt: {}", email);
 
+        // Brute force check — before any DB or auth work
+        FailedAttempt attempt = failedAttempts.get(email);
+        if (attempt != null && attempt.count >= MAX_ATTEMPTS) {
+            if (LocalDateTime.now().isBefore(attempt.lockedUntil)) {
+                throw new BusinessException("Too many failed login attempts. Try again in " + LOCKOUT_MINUTES + " minutes.");
+            } else {
+                failedAttempts.remove(email); // lockout expired, reset
+            }
+        }
+
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("No account found with this email."));
+                .orElseThrow(() -> new ResourceNotFoundException("No account found with this email."));
 
         // Block ALL inactive accounts — regardless of role
         if (!user.getIsActive()) {
             if (ROLES_REQUIRING_APPROVAL.contains(user.getRole())) {
-                throw new RuntimeException(
+                throw new BusinessException(
                         "Your account is pending admin approval. " +
                                 "You will be notified at " + email + " once approved."
                 );
             }
-            throw new RuntimeException("Your account has been deactivated. Contact support.");
+            throw new BusinessException("Your account has been deactivated. Contact support.");
         }
 
         if (user.getIsLocked()) {
-            throw new RuntimeException("Your account is locked. Contact support.");
+            throw new BusinessException("Your account is locked. Contact support.");
         }
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, request.getPassword())
-        );
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword())
+            );
+        } catch (org.springframework.security.authentication.BadCredentialsException ex) {
+            // Record failed attempt
+            failedAttempts.merge(email,
+                new FailedAttempt(1, LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES)),
+                (old, n) -> new FailedAttempt(old.count + 1, LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES)));
+            int remaining = MAX_ATTEMPTS - failedAttempts.get(email).count;
+            if (remaining > 0) {
+                throw new BusinessException("Invalid password. " + remaining + " attempt(s) remaining.");
+            } else {
+                throw new BusinessException("Too many failed login attempts. Try again in " + LOCKOUT_MINUTES + " minutes.");
+            }
+        }
+
+        // Success — clear any previous failed attempts
+        failedAttempts.remove(email);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         user.setLastLogin(LocalDateTime.now());
@@ -124,6 +161,16 @@ public class AuthService {
         logger.info("Login successful: {}", email);
         String token = jwtUtils.generateToken(user.getEmail());
         return AuthResponse.of(token, user);
+    }
+
+    // Inner class to track failed login attempts
+    private static class FailedAttempt {
+        final int count;
+        final LocalDateTime lockedUntil;
+        FailedAttempt(int count, LocalDateTime lockedUntil) {
+            this.count = count;
+            this.lockedUntil = lockedUntil;
+        }
     }
 
     private void sendAdminNotification(User applicant) {
