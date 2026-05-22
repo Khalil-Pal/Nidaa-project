@@ -59,8 +59,11 @@ src/
       ├── resources/            # Configuration files
       └── resources/static/     # Frontend pages, CSS, JS
 
+```
 
-
-
+---
 <img width="1408" height="768" alt="nidaa-logo" src="https://github.com/user-attachments/assets/fd713c7c-832f-496a-9245-d7a1013f866b" />
+
+
+
 
