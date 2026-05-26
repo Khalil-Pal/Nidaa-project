@@ -1,5 +1,6 @@
 package com.humanitarian.platform.controller;
 
+import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
@@ -12,7 +13,6 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,8 +21,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
     @Autowired private UserRepository                 userRepository;
     @Autowired private HelpRequestRepository          helpRequestRepository;
     @Autowired private PsychologicalRequestRepository psychRepository;
@@ -67,9 +65,10 @@ public class AdminController {
     }
 
     @DeleteMapping("/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         String name = user.getFullName(), email = user.getEmail();
         userRepository.delete(user);
         sendEmail(email, "[Nidaa] Your account has been removed",
@@ -156,64 +155,63 @@ public class AdminController {
     }
 
     @PutMapping("/approve/{userId}")
-@Transactional
-public ResponseEntity<Map<String, Object>> approveUser(@PathVariable Long userId) {
+    @Transactional
+    public ResponseEntity<Map<String, Object>> approveUser(@PathVariable Long userId) {
 
-    User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-    user.setIsActive(true);
-    user.setIsVerified(true);
-    userRepository.save(user);
+        userRepository.approveUser(userId); // native SQL — avoids Hibernate typing role as VARCHAR
 
-    String role = user.getRole().name();
+        String role = user.getRole().name();
 
-    if (role.equals("VOLUNTEER")) {
+        if (role.equals("VOLUNTEER")) {
 
-        jdbcTemplate.update("""
+            jdbc.update("""
             INSERT INTO volunteers (user_id, is_available)
             VALUES (?, true)
             ON CONFLICT (user_id) DO NOTHING
         """, user.getId());
 
-    } else if (role.equals("PSYCHOLOGIST")) {
+        } else if (role.equals("PSYCHOLOGIST")) {
 
-        jdbcTemplate.update("""
+            jdbc.update("""
             INSERT INTO psychologists (user_id, is_on_duty)
             VALUES (?, true)
             ON CONFLICT (user_id) DO NOTHING
         """, user.getId());
 
-    } else if (role.equals("ORGANIZATION")) {
+        } else if (role.equals("ORGANIZATION")) {
 
-        jdbcTemplate.update("""
+            jdbc.update("""
             INSERT INTO organizations (user_id, official_name, is_verified)
             VALUES (?, ?, false)
             ON CONFLICT (user_id) DO NOTHING
         """, user.getId(), user.getFullName());
+        }
+
+        sendEmail(
+                user.getEmail(),
+                "[Nidaa] Your application has been approved! ✅",
+                "Dear " + user.getFullName() + ",\n\nYour application as a "
+                        + role.toLowerCase()
+                        + " has been approved.\nYou can now log in at: http://localhost:8081/login.html\n\n"
+                        + "Welcome to Nidaa!\n— The Nidaa Team"
+        );
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("success", true);
+        res.put("message", "Approved");
+        res.put("userId", userId);
+
+        return ResponseEntity.ok(res);
     }
 
-    sendEmail(
-        user.getEmail(),
-        "[Nidaa] Your application has been approved! ✅",
-        "Dear " + user.getFullName() + ",\n\nYour application as a "
-        + role.toLowerCase()
-        + " has been approved.\nYou can now log in at: http://localhost:8081/login.html\n\n"
-        + "Welcome to Nidaa!\n— The Nidaa Team"
-    );
-
-    Map<String, Object> res = new LinkedHashMap<>();
-    res.put("success", true);
-    res.put("message", "Approved");
-    res.put("userId", userId);
-
-    return ResponseEntity.ok(res);
-}
-
     @PutMapping("/reject/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> rejectUser(@PathVariable Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         sendEmail(user.getEmail(), "[Nidaa] Update on your application",
                 "Dear " + user.getFullName() + ",\n\nWe are unable to approve your account at this time.\n\n" +
                         "Contact: supp0rtnidaa@yandex.ru\n— The Nidaa Team");
@@ -225,25 +223,44 @@ public ResponseEntity<Map<String, Object>> approveUser(@PathVariable Long userId
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
-        var allRequests = helpRequestRepository.findAll();
-        var allUsers    = userRepository.findAll();
-        var weekAgo     = LocalDateTime.now().minusDays(7);
-        Map<String,Long> byStatus = allRequests.stream().collect(Collectors.groupingBy(
-                r -> r.getStatus() != null ? r.getStatus() : "UNKNOWN", Collectors.counting()));
-        Map<String,Long> byType = allRequests.stream().collect(Collectors.groupingBy(
-                r -> r.getHelpType() != null ? r.getHelpType() : "OTHER", Collectors.counting()));
-        Map<String,Long> byRegion = allRequests.stream()
+        var helpRequests  = helpRequestRepository.findAll();
+        var psychRequests = psychRepository.findAll();
+        var allUsers      = userRepository.findAll();
+        var weekAgo       = LocalDateTime.now().minusDays(7);
+
+        // Combined status counts (help + psychological)
+        Map<String,Long> byStatus = new LinkedHashMap<>();
+        helpRequests.forEach(r -> byStatus.merge(r.getStatus() != null ? r.getStatus() : "UNKNOWN", 1L, Long::sum));
+        psychRequests.forEach(r -> byStatus.merge(r.getStatus() != null ? r.getStatus() : "UNKNOWN", 1L, Long::sum));
+
+        // Type counts: help types + PSYCHOLOGICAL bucket
+        Map<String,Long> byType = new LinkedHashMap<>();
+        helpRequests.forEach(r -> byType.merge(r.getHelpType() != null ? r.getHelpType() : "OTHER", 1L, Long::sum));
+        byType.merge("PSYCHOLOGICAL", (long) psychRequests.size(), Long::sum);
+
+        // Region counts (help requests only — psych requests have no address)
+        Map<String,Long> byRegion = helpRequests.stream()
                 .filter(r -> r.getAddress() != null && !r.getAddress().isBlank())
                 .collect(Collectors.groupingBy(r -> r.getAddress().trim(), Collectors.counting()));
-        long thisWeek = allRequests.stream()
+
+        // This-week counts (both types)
+        long thisWeek = helpRequests.stream()
+                .filter(r -> r.getCreatedAt() != null && r.getCreatedAt().isAfter(weekAgo)).count()
+                + psychRequests.stream()
                 .filter(r -> r.getCreatedAt() != null && r.getCreatedAt().isAfter(weekAgo)).count();
-        long completedThisWeek = allRequests.stream()
+
+        long completedThisWeek = helpRequests.stream()
+                .filter(r -> "COMPLETED".equals(r.getStatus()) && r.getCompletedAt() != null
+                        && r.getCompletedAt().isAfter(weekAgo)).count()
+                + psychRequests.stream()
                 .filter(r -> "COMPLETED".equals(r.getStatus()) && r.getCompletedAt() != null
                         && r.getCompletedAt().isAfter(weekAgo)).count();
+
         Map<String,Long> usersByRole = allUsers.stream().filter(u -> Boolean.TRUE.equals(u.getIsActive()))
                 .collect(Collectors.groupingBy(u -> u.getRole() != null ? u.getRole().name() : "UNKNOWN", Collectors.counting()));
+
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalRequests",     allRequests.size());
+        stats.put("totalRequests",     helpRequests.size() + psychRequests.size());
         stats.put("byStatus",          byStatus);
         stats.put("byType",            byType);
         stats.put("byRegion",          byRegion);

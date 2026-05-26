@@ -121,7 +121,8 @@
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .main { margin-left: 0; }
-      ck; }
+      .menu-toggle { display: block; }
+    }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
 
     @media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr; } }
@@ -244,24 +245,29 @@
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
         { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
         { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+        {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
+        {href:'profile.html',icon:'fa-user',label:'My Profile'},
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       volunteer: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
         { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
         { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        {href:'profile.html',icon:'fa-user',label:'My Profile'},
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       psychologist: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
         { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
         { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+        {href:'profile.html',icon:'fa-user',label:'My Profile'},
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       organization: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
         { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
         { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        {href:'profile.html',icon:'fa-user',label:'My Profile'},
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       admin: [
@@ -407,10 +413,14 @@
   // Load recent requests table
   async function loadRecentRequests() {
     try {
-      const endpoint = (role === 'beneficiary') ? '/help-requests/my' : '/help-requests';
+      const endpoint = (role === 'beneficiary') ? '/help-requests/my' : '/help-requests?page=0&size=10';
       const res = await fetch(`${API}${endpoint}`, { headers: authHeader() });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+
       const data = await res.json();
-      const requests = (data.data || data || []).slice(0, 5);
+      // Unwrap ApiResponse → Page → content (paginated) or plain array
+      const inner = data.data ?? data ?? [];
+      const requests = (Array.isArray(inner) ? inner : (inner?.content ?? [])).slice(0, 5);
       const tbody = document.getElementById('requestsTable');
 
       if (!requests.length) {

@@ -6,6 +6,7 @@ import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
@@ -83,20 +84,28 @@ public class HelpRequestService {
         int updated = 0;
 
         if (role.equals("volunteer")) {
-            Long volunteerId = jdbc.queryForObject(
-                    "SELECT volunteer_id FROM volunteers WHERE user_id = ?",
-                    Long.class, currentUser.getId());
-            if (volunteerId == null) {
+            Long volunteerId;
+            try {
+                volunteerId = jdbc.queryForObject(
+                        "SELECT volunteer_id FROM volunteers WHERE user_id = ?",
+                        Long.class, currentUser.getId());
+            } catch (EmptyResultDataAccessException e) {
                 throw new ResourceNotFoundException("Volunteer profile not found. Contact admin.");
+            } catch (Exception e) {
+                throw new BusinessException("Error retrieving volunteer profile: " + e.getMessage());
             }
             updated = helpRequestRepository.assignVolunteer(requestId, volunteerId, "ASSIGNED", "PENDING");
 
         } else if (role.equals("organization")) {
-            Long organizationId = jdbc.queryForObject(
-                    "SELECT organization_id FROM organizations WHERE user_id = ?",
-                    Long.class, currentUser.getId());
-            if (organizationId == null) {
+            Long organizationId;
+            try {
+                organizationId = jdbc.queryForObject(
+                        "SELECT organization_id FROM organizations WHERE user_id = ?",
+                        Long.class, currentUser.getId());
+            } catch (EmptyResultDataAccessException e) {
                 throw new ResourceNotFoundException("Organization profile not found. Contact admin.");
+            } catch (Exception e) {
+                throw new BusinessException("Error retrieving organization profile: " + e.getMessage());
             }
             updated = helpRequestRepository.assignOrganization(requestId, organizationId, "ASSIGNED", "PENDING");
 
@@ -149,12 +158,12 @@ public class HelpRequestService {
 
     public List<HelpRequest> getAllRequests() {
         return helpRequestRepository.findAll(
-            PageRequest.of(0, 100, Sort.by("createdAt").descending())).getContent();
+                PageRequest.of(0, 100, Sort.by("createdAt").descending())).getContent();
     }
 
     public Page<HelpRequest> getAllRequests(int page, int size) {
         return helpRequestRepository.findAll(
-            PageRequest.of(page, size, Sort.by("createdAt").descending()));
+                PageRequest.of(page, size, Sort.by("createdAt").descending()));
     }
 
     public List<HelpRequest> getRequestsByStatus(String status) {
@@ -164,8 +173,8 @@ public class HelpRequestService {
     public List<HelpRequest> getMyRequests() {
         User currentUser = userService.getCurrentUser();
         return helpRequestRepository.findByBeneficiaryId(
-            currentUser.getId(),
-            PageRequest.of(0, 50, Sort.by("createdAt").descending())).getContent();
+                currentUser.getId(),
+                PageRequest.of(0, 50, Sort.by("createdAt").descending())).getContent();
     }
 
     public HelpRequest getRequestById(Long id) {
@@ -174,10 +183,10 @@ public class HelpRequestService {
     }
 
     private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.of(
-        "PENDING",   Set.of("ASSIGNED", "CANCELLED"),
-        "ASSIGNED",  Set.of("COMPLETED", "CANCELLED"),
-        "COMPLETED", Set.of(),
-        "CANCELLED", Set.of()
+            "PENDING",   Set.of("ASSIGNED", "CANCELLED"),
+            "ASSIGNED",  Set.of("COMPLETED", "CANCELLED"),
+            "COMPLETED", Set.of(),
+            "CANCELLED", Set.of()
     );
 
     @Transactional
@@ -188,10 +197,10 @@ public class HelpRequestService {
 
         // Ownership check — only the right people can touch this request
         boolean canUpdate = role.equals("admin")
-            || (role.equals("beneficiary") && request.getBeneficiaryId().equals(currentUser.getId()))
-            || role.equals("volunteer")
-            || role.equals("organization")
-            || role.equals("psychologist");
+                || (role.equals("beneficiary") && request.getBeneficiaryId().equals(currentUser.getId()))
+                || role.equals("volunteer")
+                || role.equals("organization")
+                || role.equals("psychologist");
 
         if (!canUpdate) {
             throw new UnauthorizedException("You do not have permission to update this request.");
@@ -205,10 +214,16 @@ public class HelpRequestService {
             throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
         }
 
-        request.setStatus(next);
-        if ("COMPLETED".equals(next)) request.setCompletedAt(LocalDateTime.now());
-        if ("CANCELLED".equals(next))  request.setCancelledAt(LocalDateTime.now());
-        return helpRequestRepository.save(request);
+        // Use native SQL to update the PostgreSQL ENUM status column — JPA save() cannot cast VARCHAR to ENUM
+        if ("COMPLETED".equals(next)) {
+            helpRequestRepository.updateStatusCompleted(id, next, LocalDateTime.now());
+        } else if ("CANCELLED".equals(next)) {
+            helpRequestRepository.updateStatusCancelled(id, next, LocalDateTime.now());
+        } else {
+            helpRequestRepository.updateStatusNative(id, next);
+        }
+
+        return getRequestById(id);
     }
 
     @Transactional

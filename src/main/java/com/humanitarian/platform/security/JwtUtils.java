@@ -1,7 +1,6 @@
 package com.humanitarian.platform.security;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtils {
@@ -20,25 +20,33 @@ public class JwtUtils {
     private String jwtSecret;
 
     @Value("${jwt.expiration}")
-    private long jwtExpiration;
+    private long jwtExpiration; // 15 minutes in ms (was 24h — changed below)
 
-    // Get signing key from secret
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpiration; // 7 days in ms
+
     private SecretKey getSigningKey() {
         byte[] keyBytes = jwtSecret.getBytes();
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // Generate JWT token from email
+    // Generate short-lived ACCESS token (15 minutes)
     public String generateToken(String email) {
         return Jwts.builder()
                 .subject(email)
+                .claim("type", "access")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSigningKey())
                 .compact();
     }
 
-    // Get email from JWT token
+    // Generate opaque REFRESH token (random UUID — stored in DB)
+    public String generateRefreshToken() {
+        return UUID.randomUUID().toString() + "-" + UUID.randomUUID().toString();
+    }
+
+    // Get email from ACCESS token
     public String getEmailFromToken(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -48,7 +56,7 @@ public class JwtUtils {
                 .getSubject();
     }
 
-    // Validate JWT token
+    // Validate ACCESS token
     public boolean validateToken(String token) {
         try {
             Jwts.parser()
@@ -66,5 +74,9 @@ public class JwtUtils {
             logger.error("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
+    }
+
+    public long getRefreshExpiration() {
+        return refreshExpiration;
     }
 }

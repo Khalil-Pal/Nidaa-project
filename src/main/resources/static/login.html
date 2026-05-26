@@ -43,7 +43,6 @@
         .btn-full:hover { background: #1e40af; }
         .btn-full:disabled { background: #93c5fd; cursor: not-allowed; }
 
-        /* Fixed divider - lines no longer overlap text */
         .divider {
             text-align: center;
             color: var(--muted);
@@ -159,12 +158,17 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Invalid email or password.');
 
+            // Validate required fields before storing
+            if (!data.token || !data.userId || !data.email || !data.fullName || !data.role) {
+                throw new Error('Server returned incomplete authentication data. Please contact support.');
+            }
+
             // Save ALL user fields correctly so every page shows the right name
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify({
                 id:       data.userId,
                 email:    data.email,
-                fullName: data.fullName,   // ← this is what every page reads
+                fullName: data.fullName,
                 role:     data.role,
                 isActive: data.isActive
             }));

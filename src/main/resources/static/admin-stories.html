@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nidaa Admin — Story Moderation</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#1d4ed8;--green:#059669;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:256px}
+body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200}
+.sidebar-logo{height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo img{height:40px;width:auto}
+.sidebar-nav{padding:12px 10px;flex:1;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:background .15s,color .15s;margin-bottom:2px}
+.nav-item i{width:18px;text-align:center}
+.nav-item:hover{background:#f8fafc;color:var(--dark)}
+.nav-item.active{background:#eff6ff;color:var(--blue)}
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100}
+.topbar-title{font-size:16px;font-weight:600;flex:1}
+.topbar-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+.badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
+.btn-logout{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+.menu-toggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+.content{padding:28px 32px;flex:1}
+
+/* Filter tabs */
+.filter-tabs{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+.ftab{padding:8px 18px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;color:var(--muted);background:#fff;cursor:pointer;font-family:inherit;transition:all .2s}
+.ftab:hover{border-color:var(--blue);color:var(--blue)}
+.ftab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.pending-badge{background:#ef4444;color:#fff;border-radius:100px;padding:1px 7px;font-size:11px;margin-left:6px}
+
+/* Story cards grid */
+.stories-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:20px}
+.story-card{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .2s}
+.story-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.story-card.pending-card{border-left:4px solid #f59e0b}
+.story-card.approved-card{border-left:4px solid var(--green)}
+.story-card.rejected-card{border-left:4px solid #ef4444}
+.story-photo{width:100%;height:200px;object-fit:cover;display:block}
+.story-body{padding:20px;flex:1;display:flex;flex-direction:column}
+.story-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.story-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;color:var(--dark);line-height:1.4}
+.story-status-tag{font-size:11px;font-weight:700;padding:4px 10px;border-radius:100px;white-space:nowrap;flex-shrink:0}
+.tag-pending{background:#fefce8;color:#a16207}
+.tag-approved{background:#f0fdf4;color:#059669}
+.tag-rejected{background:#fef2f2;color:#dc2626}
+.story-meta{font-size:12px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.story-meta span{display:flex;align-items:center;gap:4px}
+.story-text{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:16px;flex:1}
+.story-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.btn-approve{background:var(--green);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s;display:flex;align-items:center;gap:6px}
+.btn-approve:hover{background:#047857}
+.btn-reject{background:#fff;color:#dc2626;border:1.5px solid #fca5a5;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-reject:hover{background:#fef2f2}
+.btn-delete{background:#fff;color:var(--muted);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-delete:hover{color:#dc2626;border-color:#fca5a5}
+.admin-note-wrap{margin-top:10px}
+.admin-note-inp{width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+.admin-note-inp:focus{border-color:var(--blue)}
+.existing-note{background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--muted);margin-top:8px}
+
+/* Empty */
+.empty{text-align:center;padding:60px 20px;color:var(--muted);grid-column:1/-1}
+.empty i{font-size:40px;opacity:.25;margin-bottom:14px;display:block}
+
+/* Stats row */
+.stats-row{display:flex;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+.stat-pill{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 20px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.stat-pill i{font-size:18px}
+
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.content{padding:20px}.stories-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <a href="admin-requests.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="admin-requests.html" class="nav-item"><i class="fa fa-list-check"></i> All Requests</a>
+        <a href="admin.html" class="nav-item"><i class="fa fa-chart-bar"></i> Analytics</a>
+        <a href="admin-approvals.html" class="nav-item"><i class="fa fa-user-check"></i> Approvals</a>
+        <a href="admin-users.html" class="nav-item"><i class="fa fa-users"></i> All Users</a>
+        <a href="admin-stories.html" class="nav-item active"><i class="fa fa-newspaper"></i> Stories</a>
+        <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
+    </nav>
+</aside>
+
+<div class="main">
+    <header class="topbar">
+        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <span class="topbar-title"><i class="fa fa-newspaper" style="color:var(--blue);margin-right:8px"></i>Story Moderation</span>
+        <div class="topbar-actions">
+            <span id="topbarName" style="font-size:14px;font-weight:600">Admin</span>
+            <span class="badge">Admin</span>
+            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- Stats -->
+        <div class="stats-row" id="statsRow"></div>
+
+        <!-- Filter tabs -->
+        <div class="filter-tabs">
+            <button class="ftab active" data-f="all" onclick="setFilter('all',this)">All Stories</button>
+            <button class="ftab" data-f="pending" onclick="setFilter('pending',this)">
+                ⏳ Pending <span class="pending-badge" id="pendingCount">0</span>
+            </button>
+            <button class="ftab" data-f="approved" onclick="setFilter('approved',this)">✅ Approved</button>
+            <button class="ftab" data-f="rejected" onclick="setFilter('rejected',this)">❌ Rejected</button>
+        </div>
+
+        <!-- Cards -->
+        <div class="stories-grid" id="storiesGrid"></div>
+
+    </div>
+</div>
+
+<script>
+const API='http://localhost:8081/api';
+function authHeader(){return{'Authorization':'Bearer '+localStorage.getItem('token'),'Content-Type':'application/json'};}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');window.location.href='login.html';}
+if(!localStorage.getItem('token'))window.location.href='login.html';
+
+const user   =JSON.parse(localStorage.getItem('user')||'{}');
+const role   =(user.role||'').toLowerCase();
+if(role!=='admin')window.location.href='login.html';
+document.getElementById('topbarName').textContent=(user.fullName||'Admin').split(' ')[0];
+
+const STORIES_KEY='nidaa_stories';
+let currentFilter='all';
+
+function getStories(){try{return JSON.parse(localStorage.getItem(STORIES_KEY)||'[]');}catch{return[];}}
+function saveStories(s){localStorage.setItem(STORIES_KEY,JSON.stringify(s));}
+
+function setFilter(f,btn){
+    currentFilter=f;
+    document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+}
+
+function timeAgo(ts){
+    const d=Date.now()-ts,m=Math.floor(d/60000);
+    if(m<1)return'Just now';
+    if(m<60)return m+'m ago';
+    const h=Math.floor(m/60);
+    if(h<24)return h+'h ago';
+    return Math.floor(h/24)+'d ago';
+}
+function escHtml(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function approve(id){
+    const stories=getStories();
+    const s=stories.find(x=>x.id===id);
+    if(!s)return;
+    const note=document.getElementById('note-'+id);
+    s.status='approved';
+    s.adminNote=note?note.value.trim():'';
+    s.reviewedAt=Date.now();
+    saveStories(stories);
+    showToast('✅ Story approved and published on main page!');
+    render();
+}
+
+function reject(id){
+    const stories=getStories();
+    const s=stories.find(x=>x.id===id);
+    if(!s)return;
+    const note=document.getElementById('note-'+id);
+    s.status='rejected';
+    s.adminNote=note?note.value.trim():'';
+    s.reviewedAt=Date.now();
+    saveStories(stories);
+    showToast('Story rejected.','#fef2f2','#dc2626');
+    render();
+}
+
+function deleteStory(id){
+    if(!confirm('Permanently delete this story?'))return;
+    const stories=getStories().filter(x=>x.id!==id);
+    saveStories(stories);
+    render();
+}
+
+function render(){
+    const all=getStories();
+    const pending=all.filter(s=>s.status==='pending');
+    const approved=all.filter(s=>s.status==='approved');
+    const rejected=all.filter(s=>s.status==='rejected');
+
+    // Stats
+    document.getElementById('statsRow').innerHTML=
+        `<div class="stat-pill"><i class="fa fa-inbox" style="color:var(--blue)"></i> ${all.length} Total</div>`+
+        `<div class="stat-pill"><i class="fa fa-clock" style="color:#f59e0b"></i> ${pending.length} Pending</div>`+
+        `<div class="stat-pill"><i class="fa fa-circle-check" style="color:var(--green)"></i> ${approved.length} Approved</div>`+
+        `<div class="stat-pill"><i class="fa fa-circle-xmark" style="color:#dc2626"></i> ${rejected.length} Rejected</div>`;
+    document.getElementById('pendingCount').textContent=pending.length;
+
+    const filtered=currentFilter==='all'?all:all.filter(s=>s.status===currentFilter);
+    const grid=document.getElementById('storiesGrid');
+
+    if(!filtered.length){
+        grid.innerHTML=`<div class="empty"><i class="fa fa-newspaper"></i><p>No stories here yet.</p></div>`;
+        return;
+    }
+
+    grid.innerHTML=filtered.map(s=>{
+        const cardClass=s.status==='approved'?'approved-card':s.status==='rejected'?'rejected-card':'pending-card';
+        const tagClass=s.status==='approved'?'tag-approved':s.status==='rejected'?'tag-rejected':'tag-pending';
+        const tagLabel=s.status==='approved'?'✅ Approved':s.status==='rejected'?'❌ Rejected':'⏳ Pending';
+        const initials=(s.authorName||'U').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+        return`<div class="story-card ${cardClass}" id="card-${s.id}">
+            ${s.photo?`<img class="story-photo" src="${s.photo}" alt="story photo" loading="lazy"/>`:''}
+            <div class="story-body">
+                <div class="story-card-header">
+                    <div class="story-title">${escHtml(s.title||'Untitled')}</div>
+                    <span class="story-status-tag ${tagClass}">${tagLabel}</span>
+                </div>
+                <div class="story-meta">
+                    <span><i class="fa fa-user"></i> ${escHtml(s.authorName||'Unknown')}</span>
+                    ${s.location?`<span><i class="fa fa-location-dot"></i> ${escHtml(s.location)}</span>`:''}
+                    <span><i class="fa fa-clock"></i> ${timeAgo(s.timestamp)}</span>
+                </div>
+                <div class="story-text">${escHtml(s.text).slice(0,320)}${s.text&&s.text.length>320?'…':''}</div>
+                ${s.adminNote?`<div class="existing-note"><b>Admin note:</b> ${escHtml(s.adminNote)}</div>`:''}
+                <div class="admin-note-wrap">
+                    <input class="admin-note-inp" id="note-${s.id}" type="text" placeholder="Add a note to the author (optional)..." value="${escHtml(s.adminNote||'')}"/>
+                </div>
+                <div class="story-actions" style="margin-top:12px">
+                    ${s.status!=='approved'?`<button class="btn-approve" onclick="approve(${s.id})"><i class="fa fa-check"></i> Approve & Publish</button>`:''}
+                    ${s.status!=='rejected'?`<button class="btn-reject" onclick="reject(${s.id})"><i class="fa fa-xmark"></i> Reject</button>`:''}
+                    <button class="btn-delete" onclick="deleteStory(${s.id})" title="Delete permanently"><i class="fa fa-trash"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showToast(msg,bg,col){
+    const t=document.createElement('div');
+    t.style.cssText=`position:fixed;top:20px;right:24px;background:${bg||'#f0fdf4'};border:1px solid #bbf7d0;color:${col||'#059669'};padding:13px 20px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px`;
+    t.textContent=msg;document.body.appendChild(t);
+    setTimeout(()=>t.remove(),3000);
+}
+
+render();
+</script>
+</body>
+</html>

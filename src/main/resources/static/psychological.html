@@ -445,6 +445,7 @@
       if (!res.ok) throw new Error();
       const data = await res.json();
       const req  = data.data || data;
+      buildPsychStatusOptions(req.status || 'ASSIGNED');
       if (req.beneficiaryId) {
         const ures = await fetch(API + '/users/' + req.beneficiaryId, { headers: authHeader() });
         if (ures.ok) {
@@ -494,6 +495,39 @@
     currentPsychRequestId = null;
   }
 
+  function buildPsychStatusOptions(currentStatus) {
+    const VALID_TRANSITIONS = {
+      'PENDING':   ['ASSIGNED', 'CANCELLED'],
+      'ASSIGNED':  ['COMPLETED', 'CANCELLED'],
+      'COMPLETED': [],
+      'CANCELLED': []
+    };
+    const LABELS = {
+      'ASSIGNED':  'Assigned (In Progress)',
+      'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled',
+      'PENDING':   'Pending'
+    };
+    const sel = document.getElementById('psychStatusSelect');
+    const btn = document.querySelector('.btn-psych-update');
+    const transitions = VALID_TRANSITIONS[(currentStatus || '').toUpperCase()] || [];
+    sel.innerHTML = '';
+
+    if (transitions.length === 0) {
+      sel.innerHTML = '<option value="" disabled>No further transitions allowed</option>';
+      if (btn) btn.disabled = true;
+      return;
+    }
+
+    if (btn) btn.disabled = false;
+    transitions.forEach(status => {
+      const opt = document.createElement('option');
+      opt.value = status;
+      opt.textContent = LABELS[status] || status;
+      sel.appendChild(opt);
+    });
+  }
+
   async function submitPsychStatus() {
     if (!currentPsychRequestId) return;
     const status = document.getElementById('psychStatusSelect').value;
@@ -537,24 +571,29 @@
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
         { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
         { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+        {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
+        {href:'profile.html',icon:'fa-user',label:'My Profile'},
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       volunteer: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
         { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
         { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        {href:'profile.html',icon:'fa-user',label:'My Profile'},
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       psychologist: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
         { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
         { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+        {href:'profile.html',icon:'fa-user',label:'My Profile'},
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       organization: [
         { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
         { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
         { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+        { href: 'profile.html',      icon: 'fa-user',               label: 'My Profile' },
         { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
       ],
       admin: [

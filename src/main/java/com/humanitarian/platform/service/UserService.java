@@ -6,6 +6,7 @@ import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.ProfileRepository;
 import com.humanitarian.platform.repository.UserRepository;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.humanitarian.platform.exception.BusinessException;
@@ -71,10 +72,13 @@ public class UserService {
     }
 
     // Block or unblock user (admin only)
+    @Transactional
     public User toggleUserActive(Long userId) {
         User user = getUserById(userId);
-        user.setIsActive(!user.getIsActive());
-        return userRepository.save(user);
+        boolean newActive = !user.getIsActive();
+        userRepository.setActive(userId, newActive); // native SQL — avoids ENUM cast on role field
+        user.setIsActive(newActive);
+        return user;
     }
 
     // Search users by name

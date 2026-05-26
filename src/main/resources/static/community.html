@@ -1,84 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Nidaa — Community</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-    <style>
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :root{--blue:#1d4ed8;--green:#059669;--bg:#f0fdf4;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:256px}
-        body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
-        .sidebar{width:var(--sidebar-w);min-height:100vh;background:white;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;transition:transform .3s}
-        .sidebar-logo{height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border)}
-        .sidebar-logo img{height:40px;width:auto}
-        .sidebar-nav{flex:1;padding:14px 10px}
-        .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;margin-bottom:2px;transition:all .2s}
-        .nav-item i{width:18px;text-align:center;font-size:15px}
-        .nav-item:hover{background:#f8fafc;color:var(--dark)}
-        .nav-item.active{background:#eff6ff;color:var(--blue)}
-        .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
-        .btn-logout-side{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:8px;border:none;background:none;color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s,color .15s}
-        .btn-logout-side:hover{background:#fef2f2;color:#dc2626}
-        .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--green));color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
-        .user-info .name{font-size:14px;font-weight:600}
-        .user-info .role{font-size:12px;color:var(--muted)}
-        .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column}
-        .topbar{height:64px;background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:50}
-        .menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--dark)}
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nidaa — Community</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#1d4ed8;--green:#059669;--bg:#f1f5f9;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:256px}
+body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;transition:transform .25s}
+.sidebar-logo{height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo img{height:40px;width:auto}
+.sidebar-nav{padding:12px 10px;flex:1;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:background .15s,color .15s;margin-bottom:2px}
+.nav-item i{width:18px;text-align:center}
+.nav-item:hover{background:#f8fafc;color:var(--dark)}
+.nav-item.active{background:#eff6ff;color:var(--blue)}
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:14px;position:sticky;top:0;z-index:100}
+.topbar-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+.topbar-user{font-size:14px;font-weight:600}
+.badge-role{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
+.btn-logout{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+.menu-toggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+.content{padding:24px 28px;flex:1}
 
-        .badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
-        .btn-logout{display:flex;align-items:center;gap:6px;padding:7px 14px;background:white;border:1.5px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
-        .btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
-        .content{padding:32px;flex:1}
-        .page-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px}
-        .page-sub{color:var(--muted);font-size:14px;margin-bottom:28px}
-        .community-grid{display:grid;grid-template-columns:1fr 300px;gap:20px}
-        .panel{background:white;border-radius:16px;border:1px solid var(--border);overflow:hidden}
-        .panel-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--border)}
-        .panel-header h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700}
-        .new-post{padding:18px 22px;border-bottom:1px solid var(--border)}
-        .new-post-top{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
-        .post-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--green));color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
-        .post-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;resize:none;outline:none;transition:border-color .2s;line-height:1.5}
-        .post-input:focus{border-color:var(--blue)}
-        .post-bottom{display:flex;justify-content:space-between;align-items:center}
-        .type-btns{display:flex;gap:8px}
-        .type-btn{background:none;border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);font-family:'Inter',sans-serif;transition:all .2s}
-        .type-btn:hover,.type-btn.active{border-color:var(--blue);color:var(--blue);background:#eff6ff}
-        .btn-post{background:var(--blue);color:white;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s}
-        .btn-post:hover{background:#1e40af}
-        .btn-post:disabled{background:#93c5fd;cursor:not-allowed}
-        .post-card{padding:20px 22px;border-bottom:1px solid var(--border);transition:background .15s}
-        .post-card:last-child{border:none}
-        .post-card:hover{background:#fafafa}
-        .post-meta{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-        .post-author-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:white;flex-shrink:0}
-        .post-author-name{font-size:14px;font-weight:600;color:var(--dark)}
-        .post-author-role{font-size:12px;color:var(--muted)}
-        .post-time{font-size:12px;color:var(--muted);margin-left:auto}
-        .type-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px}
-        .t-update{background:#eff6ff;color:var(--blue)}
-        .t-question{background:#fefce8;color:#a16207}
-        .t-gratitude{background:#f0fdf4;color:var(--green)}
-        .t-info{background:#faf5ff;color:#7c3aed}
-        .post-text{font-size:14px;color:var(--dark);line-height:1.65;margin-bottom:12px}
-        .post-footer{display:flex;gap:20px}
-        .post-btn{background:none;border:none;font-size:13px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Inter',sans-serif;transition:color .2s;padding:0}
-        .post-btn:hover{color:var(--blue)}
-        .post-btn.liked{color:#ef4444}
-        .empty-feed{text-align:center;padding:48px 24px;color:var(--muted)}
-        .empty-feed i{font-size:36px;margin-bottom:12px;display:block;opacity:.4}
-        .side-item{display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid var(--border)}
-        .side-item:last-child{border:none}
-        .side-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:white;flex-shrink:0}
-        .side-name{font-size:14px;font-weight:600;color:var(--dark)}
-        .side-role{font-size:12px;color:var(--muted)}
-        .online-dot{width:8px;height:8px;border-radius:50%;background:var(--green);margin-left:auto;flex-shrink:0}
-        @media(max-width:900px){.community-grid{grid-template-columns:1fr}}
-        @media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.mgle{display:block}.content{padding:20px}}
-    </style>
+/* Category Tabs */
+.cat-tabs{background:#fff;border:1px solid var(--border);border-radius:14px;padding:6px;display:flex;gap:4px;margin-bottom:16px;overflow-x:auto}
+.cat-tab{padding:8px 16px;background:none;border:none;border-radius:10px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.cat-tab:hover{background:#f8fafc;color:var(--dark)}
+.cat-tab.active{background:#eff6ff;color:var(--blue)}
+
+/* Search bar */
+.search-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.search-input-wrap{flex:1;min-width:180px;position:relative}
+.search-input-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}
+.search-input{width:100%;padding:10px 12px 10px 36px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;background:#fff}
+.search-input:focus{border-color:var(--blue)}
+.search-select{padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;outline:none;background:#fff;color:var(--dark);cursor:pointer}
+.search-select:focus{border-color:var(--blue)}
+
+/* Layout */
+.community-grid{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start}
+.panel{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden}
+
+.post-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--green));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden}
+.post-input-wrap{flex:1}
+.post-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;resize:none;outline:none;transition:border-color .2s;line-height:1.5}
+.post-input:focus{border-color:var(--blue)}
+.char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
+.char-count.warn{color:#f59e0b}
+.char-count.over{color:#dc2626}
+.post-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:10px}
+.post-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cat-select{padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fff;color:var(--dark);cursor:pointer}
+.cat-select:focus{border-color:var(--blue)}
+.img-upload-label{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .2s;background:#fff}
+.img-upload-label:hover{border-color:var(--blue);color:var(--blue)}
+.btn-post{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s;display:flex;align-items:center;gap:6px}
+.btn-post:hover{background:#1e40af}
+.btn-post:disabled{background:#93c5fd;cursor:not-allowed}
+.img-preview-outer{margin-top:10px;display:none}
+.img-preview-outer.show{display:inline-block;position:relative}
+.img-preview-outer img{max-height:160px;border-radius:10px;border:1px solid var(--border);display:block}
+.img-remove{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+
+/* Post cards */
+.post-card{padding:18px 20px;border-bottom:1px solid var(--border);transition:background .15s}
+.post-card:last-child{border:none}
+.post-card:hover{background:#fafafa}
+.post-meta{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.post-author-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0;overflow:hidden;cursor:pointer}
+.post-author-av img{width:100%;height:100%;object-fit:cover}
+.post-author-info{flex:1;min-width:0}
+.post-author-name{font-size:14px;font-weight:700;color:var(--dark);cursor:pointer}
+.post-author-name:hover{color:var(--blue)}
+.post-author-role{font-size:12px;color:var(--muted)}
+.post-cat-tag{font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px}
+.post-time{font-size:12px;color:var(--muted);white-space:nowrap}
+.post-text{font-size:14px;color:var(--dark);line-height:1.7;margin-bottom:10px}
+.post-image{margin-bottom:12px}
+.post-image img{max-width:100%;border-radius:10px;border:1px solid var(--border)}
+.post-engagement{display:flex;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:10px;font-size:12px;color:var(--muted)}
+.eng-num{display:flex;align-items:center;gap:4px}
+.post-actions{display:flex;gap:6px;flex-wrap:wrap}
+.post-btn{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 13px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:5px}
+.post-btn:hover{border-color:var(--blue);color:var(--blue);background:#eff6ff}
+.post-btn.liked{color:#ef4444;border-color:#fca5a5;background:#fef2f2}
+.post-btn.danger:hover{border-color:#fca5a5;color:#ef4444;background:#fef2f2}
+
+/* Comments */
+.comments-wrap{margin-top:12px;background:#f8fafc;border-radius:10px;padding:12px;display:none}
+.comments-wrap.open{display:block}
+.comment-item{display:flex;gap:8px;margin-bottom:10px}
+.comment-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.comment-body{flex:1;background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+.comment-author{font-size:12px;font-weight:700;color:var(--dark)}
+.comment-text{font-size:13px;color:var(--dark);margin-top:2px;line-height:1.5}
+.comment-input-row{display:flex;gap:8px;margin-top:10px}
+.comment-input{flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+.comment-input:focus{border-color:var(--blue)}
+.comment-submit{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* Empty */
+.empty-feed{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-feed i{font-size:36px;margin-bottom:12px;display:block;opacity:.3}
+
+/* Sidebar */
+.side-panel-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.member-card{padding:14px 18px;border-bottom:1px solid var(--border);transition:background .15s}
+.member-card:last-child{border:none}
+.member-card:hover{background:#fafafa}
+.member-card-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.member-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0;position:relative}
+.member-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.online-dot{width:11px;height:11px;background:var(--green);border-radius:50%;border:2.5px solid #fff;position:absolute;bottom:-1px;right:-2px;z-index:2}
+.member-name{font-size:14px;font-weight:700;color:var(--dark);cursor:pointer}
+.member-name:hover{color:var(--blue)}
+.member-role-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px}
+.member-actions{display:flex;gap:6px}
+.btn-sm{padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid var(--border);background:#fff;color:var(--muted);display:flex;align-items:center;gap:4px;text-decoration:none;transition:all .2s}
+.btn-sm:hover{border-color:var(--blue);color:var(--blue)}
+.trending-item{padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.trending-item:last-child{border:none}
+.trending-item:hover{background:#fafafa}
+.trending-title{font-size:13px;font-weight:600;color:var(--dark);margin-bottom:4px;line-height:1.4}
+.trending-meta{font-size:11px;color:var(--muted);display:flex;gap:10px}
+.guidelines-list{list-style:none;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.guidelines-list li{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:flex-start}
+.guidelines-list i{color:var(--green);flex-shrink:0;margin-top:2px}
+.report-box{margin:0 18px 16px;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:12px;color:#dc2626}
+
+@media(max-width:960px){.community-grid{grid-template-columns:1fr}}
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.content{padding:16px}}
+</style>
 </head>
 <body>
 
@@ -91,48 +149,85 @@
 
 <div class="main">
     <header class="topbar">
-        <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa fa-bars"></i></button>
+        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
         <div class="topbar-actions">
             <span class="topbar-user" id="topbarName">—</span>
-            <span class="badge" id="topbarRole">—</span>
-            <button class="btn-logout" onclick="logout()" title="Logout">
-                <i class="fa fa-right-from-bracket"></i> Logout
-            </button>
+            <span class="badge-role" id="topbarRole">—</span>
+            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
         </div>
     </header>
 
     <div class="content">
-        <div class="page-title">Community Hub 🌍</div>
-        <div class="page-sub">Share updates, ask questions, and support each other</div>
+        <div style="margin-bottom:18px">
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">Community Hub 🌍</div>
+            <div style="color:var(--muted);font-size:14px">Share updates, ask questions, and support each other</div>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="cat-tabs">
+            <button class="cat-tab active" data-cat="ALL" onclick="setCategory('ALL',this)">🌐 All Posts</button>
+            <button class="cat-tab" data-cat="success-stories" onclick="setCategory('success-stories',this)">🌟 Success Stories</button>
+            <button class="cat-tab" data-cat="QUESTION" onclick="setCategory('QUESTION',this)">❓ Questions</button>
+            <button class="cat-tab" data-cat="tips-advice" onclick="setCategory('tips-advice',this)">💡 Tips &amp; Advice</button>
+            <button class="cat-tab" data-cat="events" onclick="setCategory('events',this)">📅 Events</button>
+            <button class="cat-tab" data-cat="resources" onclick="setCategory('resources',this)">📚 Resources</button>
+            <button class="cat-tab" data-cat="UPDATE" onclick="setCategory('UPDATE',this)">📢 Updates</button>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="search-bar">
+            <div class="search-input-wrap">
+                <i class="fa fa-magnifying-glass"></i>
+                <input class="search-input" type="text" id="searchInput" placeholder="Search posts, members, topics..." oninput="renderPosts()"/>
+            </div>
+            <select class="search-select" id="roleFilter" onchange="renderPosts()">
+                <option value="ALL">All Roles</option>
+                <option value="volunteer">Volunteers</option>
+                <option value="psychologist">Psychologists</option>
+                <option value="organization">Organizations</option>
+                <option value="admin">Admins</option>
+            </select>
+            <select class="search-select" id="dateFilter" onchange="renderPosts()">
+                <option value="ALL">Any Time</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+            </select>
+        </div>
 
         <div class="community-grid">
-            <!-- FEED -->
+            <!-- MAIN FEED -->
             <div>
                 <div class="panel">
-                    <div class="panel-header">
-                        <h3><i class="fa fa-newspaper"></i> Community Feed</h3>
-                        <div style="display:flex;gap:8px">
-                            <button class="type-btn active" onclick="setFilter('ALL',this)">All</button>
-                            <button class="type-btn" onclick="setFilter('UPDATE',this)">Updates</button>
-                            <button class="type-btn" onclick="setFilter('QUESTION',this)">Questions</button>
-                        </div>
-                    </div>
-
-                    <!-- New Post Box -->
+                    <!-- Post Creation -->
                     <div class="new-post">
                         <div class="new-post-top">
                             <div class="post-avatar" id="newPostAvatar">?</div>
-                            <textarea class="post-input" id="postText" rows="2" placeholder="Share something with the community..."></textarea>
-                        </div>
-                        <div class="post-bottom">
-                            <div class="type-btns">
-                                <button class="type-btn active" data-type="UPDATE" onclick="selectType(this)">📢 Update</button>
-                                <button class="type-btn" data-type="QUESTION" onclick="selectType(this)">❓ Question</button>
-                                <button class="type-btn" data-type="GRATITUDE" onclick="selectType(this)">🙏 Gratitude</button>
+                            <div class="post-input-wrap">
+                                <textarea class="post-input" id="postText" rows="3" placeholder="Share something with the community..." maxlength="1000" oninput="updateCharCount()"></textarea>
+                                <div class="char-count" id="charCount">0 / 1000</div>
                             </div>
-                            <button class="btn-post" id="postBtn" onclick="submitPost()">
-                                <i class="fa fa-paper-plane"></i> Post
-                            </button>
+                        </div>
+                        <div id="imgPreviewOuter" class="img-preview-outer">
+                            <img id="imgPreview" src="" alt="preview"/>
+                            <button class="img-remove" onclick="removeImage()" title="Remove"><i class="fa fa-xmark"></i></button>
+                        </div>
+                        <div class="post-controls">
+                            <div class="post-left">
+                                <select class="cat-select" id="postCat">
+                                    <option value="UPDATE">📢 Update</option>
+                                    <option value="success-stories">🌟 Success Story</option>
+                                    <option value="QUESTION">❓ Question</option>
+                                    <option value="tips-advice">💡 Tips &amp; Advice</option>
+                                    <option value="events">📅 Event</option>
+                                    <option value="resources">📚 Resource</option>
+                                    <option value="GRATITUDE">🙏 Gratitude</option>
+                                </select>
+                                <label class="img-upload-label">
+                                    <i class="fa fa-image"></i> Photo
+                                    <input type="file" accept="image/*" style="display:none" onchange="handleImageUpload(this)"/>
+                                </label>
+                            </div>
+                            <button class="btn-post" id="postBtn" onclick="submitPost()"><i class="fa fa-paper-plane"></i> Post</button>
                         </div>
                     </div>
 
@@ -143,271 +238,402 @@
 
             <!-- SIDEBAR -->
             <div style="display:flex;flex-direction:column;gap:16px">
+
                 <div class="panel">
-                    <div class="panel-header"><h3><i class="fa fa-users"></i> Members</h3></div>
-                    <div id="membersList">
-                        <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">
-                            <i class="fa fa-spinner fa-spin"></i> Loading...
-                        </div>
-                    </div>
+                    <div class="side-panel-title"><i class="fa fa-users" style="color:var(--blue)"></i> Community Members</div>
+                    <div id="membersList"><div style="padding:20px;text-align:center;color:var(--muted);font-size:13px"><i class="fa fa-spinner fa-spin"></i> Loading...</div></div>
                 </div>
 
                 <div class="panel">
-                    <div class="panel-header"><h3><i class="fa fa-shield-halved"></i> Guidelines</h3></div>
-                    <div style="padding:18px 20px">
-                        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px">
-                            <li style="font-size:13px;color:var(--muted);display:flex;gap:8px"><i class="fa fa-check" style="color:var(--green);flex-shrink:0;margin-top:2px"></i>Be respectful and compassionate</li>
-                            <li style="font-size:13px;color:var(--muted);display:flex;gap:8px"><i class="fa fa-check" style="color:var(--green);flex-shrink:0;margin-top:2px"></i>Protect privacy of beneficiaries</li>
-                            <li style="font-size:13px;color:var(--muted);display:flex;gap:8px"><i class="fa fa-check" style="color:var(--green);flex-shrink:0;margin-top:2px"></i>Share accurate information only</li>
-                        </ul>
-                        <div style="margin-top:14px;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:12px;color:#dc2626">
-                            <i class="fa fa-envelope"></i> Report abuse: supp0rtnidaa@yandex.ru
-                        </div>
-                    </div>
+                    <div class="side-panel-title"><i class="fa fa-fire" style="color:#f97316"></i> Trending Posts</div>
+                    <div id="trendingList"><div style="padding:14px 18px;font-size:13px;color:var(--muted)">No posts yet.</div></div>
                 </div>
+
+                <div class="panel">
+                    <div class="side-panel-title"><i class="fa fa-shield-halved" style="color:var(--green)"></i> Community Guidelines</div>
+                    <ul class="guidelines-list">
+                        <li><i class="fa fa-check"></i>Be respectful and compassionate</li>
+                        <li><i class="fa fa-check"></i>Protect privacy of beneficiaries</li>
+                        <li><i class="fa fa-check"></i>Share accurate information only</li>
+                        <li><i class="fa fa-check"></i>No spam or self-promotion</li>
+                    </ul>
+                    <div class="report-box"><i class="fa fa-envelope"></i> Report abuse: supp0rtnidaa@yandex.ru</div>
+                </div>
+
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    const API = 'http://localhost:8081/api';
-    function authHeader() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' }; }
-    function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = 'login.html'; }
+const API='http://localhost:8081/api';
+function authHeader(){return{'Authorization':'Bearer '+localStorage.getItem('token'),'Content-Type':'application/json'};}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');window.location.href='login.html';}
+if(!localStorage.getItem('token'))window.location.href='login.html';
 
-    if (!localStorage.getItem('token')) window.location.href = 'login.html';
+const user       =JSON.parse(localStorage.getItem('user')||'{}');
+const fullName   =user.fullName||user.name||'User';
+const firstName  =fullName.split(' ')[0];
+const userRole   =(user.role||'volunteer').toLowerCase();
+const roleDisplay=userRole.charAt(0).toUpperCase()+userRole.slice(1);
+const initials   =fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
 
-    const user        = JSON.parse(localStorage.getItem('user') || '{}');
-    const fullName    = user.fullName || user.name || 'User';
-    const firstName   = fullName.split(' ')[0];
-    const userRole    = (user.role || 'volunteer').toLowerCase();
-    const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
-    const initials    = fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+if(userRole==='beneficiary')window.location.href='dashboard.html';
 
-    // Only volunteers, psychologists, organizations, and admins can access community
-    if (userRole === 'beneficiary') {
-        window.location.href = 'dashboard.html';
+document.getElementById('topbarName').textContent=firstName;
+document.getElementById('topbarRole').textContent=roleDisplay;
+(function(){
+    const avatarKey='nidaa_avatar_'+(user.id||user.email||'');
+    const savedPhoto=localStorage.getItem(avatarKey);
+    const av=document.getElementById('newPostAvatar');
+    if(savedPhoto){
+        av.style.background='none';
+        av.innerHTML=`<img src="${savedPhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`;
+    } else {
+        av.textContent=initials;
     }
+})();
 
-    {const _e=document.getElementById('sidebarName'); if(_e) _e.textContent = fullName;}
-    {const _e=document.getElementById('sidebarRole'); if(_e) _e.textContent = roleDisplay;}
-    {const _e=document.getElementById('sidebarAvatar'); if(_e) _e.textContent = initials;}
-    document.getElementById('topbarName').textContent    = firstName;
-    document.getElementById('topbarRole').textContent    = roleDisplay;
-    document.getElementById('newPostAvatar').textContent = initials;
+const POSTS_KEY='nidaa_community_posts';
+const roleColors={volunteer:'#059669',psychologist:'#7c3aed',admin:'#dc2626',beneficiary:'#1d4ed8',organization:'#ea580c'};
+const roleBg={volunteer:'#f0fdf4',psychologist:'#faf5ff',admin:'#fef2f2',organization:'#fff7ed',beneficiary:'#eff6ff'};
+const catMeta={
+    'ALL':             {label:'All',          color:'#1d4ed8',bg:'#eff6ff'},
+    'UPDATE':          {label:'📢 Update',    color:'#1d4ed8',bg:'#eff6ff'},
+    'success-stories': {label:'🌟 Success',   color:'#059669',bg:'#f0fdf4'},
+    'QUESTION':        {label:'❓ Question',  color:'#a16207',bg:'#fefce8'},
+    'tips-advice':     {label:'💡 Tips',      color:'#7c3aed',bg:'#faf5ff'},
+    'events':          {label:'📅 Event',     color:'#0891b2',bg:'#ecfeff'},
+    'resources':       {label:'📚 Resource',  color:'#9d174d',bg:'#fdf2f8'},
+    'GRATITUDE':       {label:'🙏 Gratitude', color:'#059669',bg:'#f0fdf4'},
+    'INFO':            {label:'ℹ️ Info',      color:'#7c3aed',bg:'#faf5ff'},
+};
 
-    // Posts stored in localStorage so they persist across sessions and are shared
-    // Key: 'nidaa_posts' — shared array of post objects
-    const POSTS_KEY = 'nidaa_community_posts';
+let currentCat='ALL';
+let pendingImage=null;
 
-    function getPosts() {
-        try { return JSON.parse(localStorage.getItem(POSTS_KEY) || '[]'); }
-        catch { return []; }
-    }
-    function savePosts(posts) {
-        localStorage.setItem(POSTS_KEY, JSON.stringify(posts));
-    }
+function getPosts(){try{return JSON.parse(localStorage.getItem(POSTS_KEY)||'[]');}catch{return[];}}
+function savePosts(p){localStorage.setItem(POSTS_KEY,JSON.stringify(p));}
 
-    let currentFilter  = 'ALL';
-    let selectedType   = 'UPDATE';
+function setCategory(cat,btn){
+    currentCat=cat;
+    document.querySelectorAll('.cat-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderPosts();
+}
 
-    const roleColors = {
-        volunteer:'#059669', psychologist:'#7c3aed', admin:'#dc2626',
-        beneficiary:'#1d4ed8', organization:'#ea580c'
+function updateCharCount(){
+    const len=document.getElementById('postText').value.length;
+    const el=document.getElementById('charCount');
+    el.textContent=len+' / 1000';
+    el.className='char-count'+(len>900?' over':len>750?' warn':'');
+}
+
+function handleImageUpload(input){
+    const file=input.files[0];
+    if(!file)return;
+    if(file.size>3*1024*1024){showToast('⚠️ Image must be under 3MB','#fef2f2','#dc2626');return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+        pendingImage=e.target.result;
+        document.getElementById('imgPreview').src=pendingImage;
+        document.getElementById('imgPreviewOuter').classList.add('show');
     };
-    const typeTagClass = { UPDATE:'t-update', QUESTION:'t-question', GRATITUDE:'t-gratitude', INFO:'t-info' };
-    const typeLabel    = { UPDATE:'📢 Update', QUESTION:'❓ Question', GRATITUDE:'🙏 Gratitude', INFO:'ℹ️ Info' };
+    reader.readAsDataURL(file);
+}
+function removeImage(){
+    pendingImage=null;
+    document.getElementById('imgPreviewOuter').classList.remove('show');
+    document.getElementById('imgPreview').src='';
+}
 
-    function selectType(btn) {
-        document.querySelectorAll('.new-post .type-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedType = btn.dataset.type;
-    }
+function timeAgo(ts){
+    const d=Date.now()-ts,m=Math.floor(d/60000);
+    if(m<1)return'Just now';
+    if(m<60)return m+'m ago';
+    const h=Math.floor(m/60);
+    if(h<24)return h+'h ago';
+    const dy=Math.floor(h/24);
+    if(dy<30)return dy+'d ago';
+    return Math.floor(dy/30)+'mo ago';
+}
+function escHtml(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-    function setFilter(type, btn) {
-        currentFilter = type;
-        document.querySelectorAll('.panel-header .type-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        renderPosts();
-    }
+function renderPosts(){
+    const posts=getPosts();
+    const search=(document.getElementById('searchInput').value||'').toLowerCase().trim();
+    const roleF=document.getElementById('roleFilter').value;
+    const dateF=document.getElementById('dateFilter').value;
+    const now=Date.now();
+    const weekMs=7*24*60*60*1000,monthMs=30*24*60*60*1000;
 
-    function timeAgo(ts) {
-        const diff = Date.now() - ts;
-        const m = Math.floor(diff / 60000);
-        if (m < 1)  return 'Just now';
-        if (m < 60) return m + 'm ago';
-        const h = Math.floor(m / 60);
-        if (h < 24) return h + 'h ago';
-        return Math.floor(h / 24) + 'd ago';
-    }
-
-    function renderPosts() {
-        const posts    = getPosts();
-        const list     = document.getElementById('postsList');
-        const filtered = currentFilter === 'ALL' ? posts : posts.filter(p => p.type === currentFilter);
-
-        if (!filtered.length) {
-            list.innerHTML = `<div class="empty-feed"><i class="fa fa-comments"></i><p>${currentFilter === 'ALL' ? 'No posts yet. Be the first!' : 'No posts of this type yet.'}</p></div>`;
-            return;
+    const filtered=posts.filter(p=>{
+        const cat=p.category||p.type||'UPDATE';
+        if(currentCat!=='ALL'&&cat!==currentCat)return false;
+        if(roleF!=='ALL'&&(p.role||'').toLowerCase()!==roleF)return false;
+        if(dateF==='week'&&now-p.timestamp>weekMs)return false;
+        if(dateF==='month'&&now-p.timestamp>monthMs)return false;
+        if(search){
+            const hay=(p.text+' '+(p.author||'')+' '+(cat)).toLowerCase();
+            if(!hay.includes(search))return false;
         }
+        return true;
+    });
 
-        list.innerHTML = filtered.map((p, idx) => {
-            const realIdx = posts.indexOf(p);
-            const liked   = p.likedBy && p.likedBy.includes(user.id || user.email);
-            return `
-            <div class="post-card" id="post-${realIdx}">
-                <div class="post-meta">
-                    <div class="post-author-av" style="background:${roleColors[p.role]||'#1d4ed8'}">${p.initials}</div>
-                    <div>
-                        <div class="post-author-name">${p.author}</div>
-                        <div class="post-author-role">${(p.role||'').charAt(0).toUpperCase()+(p.role||'').slice(1)}</div>
-                    </div>
-                    <span class="type-tag ${typeTagClass[p.type]||'t-info'}">${typeLabel[p.type]||p.type}</span>
-                    <span class="post-time">${timeAgo(p.timestamp)}</span>
+    const list=document.getElementById('postsList');
+    if(!filtered.length){
+        list.innerHTML=`<div class="empty-feed"><i class="fa fa-comments"></i><p>${search?'No posts match your search.':currentCat==='ALL'?'No posts yet. Be the first!':'No posts in this category yet.'}</p></div>`;
+        renderTrending(posts);
+        return;
+    }
+
+    const myKey=user.id||user.email;
+    list.innerHTML=filtered.map(p=>{
+        const realIdx=posts.indexOf(p);
+        const cat=p.category||p.type||'UPDATE';
+        const cm=catMeta[cat]||catMeta['UPDATE'];
+        const liked=p.likedBy&&p.likedBy.includes(myKey);
+        const isOwn=p.author===fullName;
+        const roleCol=roleColors[(p.role||'').toLowerCase()]||'#1d4ed8';
+        const photo=localStorage.getItem('nidaa_avatar_'+(p.authorId||''));
+        const avatarInner=photo?`<img src="${photo}" alt=""/>`:(p.initials||'?');
+        const avatarStyle=photo?'':`background:${roleCol}`;
+        const comments=p.comments||[];
+        const views=p.views||Math.floor((p.likes||0)*3+Math.random()*10+1);
+        return`<div class="post-card" id="pc-${realIdx}">
+            <div class="post-meta">
+                <div class="post-author-av" style="${avatarStyle}" onclick="window.location.href='profile.html'">${avatarInner}</div>
+                <div class="post-author-info">
+                    <div class="post-author-name" onclick="window.location.href='profile.html'">${escHtml(p.author)}</div>
+                    <div class="post-author-role">${(p.role||'').charAt(0).toUpperCase()+(p.role||'').slice(1)}</div>
                 </div>
-                <div class="post-text">${escapeHtml(p.text)}</div>
-                <div class="post-footer">
-                    <button class="post-btn ${liked?'liked':''}" onclick="toggleLike(${realIdx})">
-                        <i class="fa fa-heart"></i> ${p.likes || 0}
-                    </button>
-                    <button class="post-btn"><i class="fa fa-comment"></i> Reply</button>
+                <span class="post-cat-tag" style="background:${cm.bg};color:${cm.color}">${cm.label}</span>
+                <span class="post-time">${timeAgo(p.timestamp)}</span>
+            </div>
+            <div class="post-text">${escHtml(p.text)}</div>
+            ${p.image?`<div class="post-image"><img src="${p.image}" alt="post image" loading="lazy"/></div>`:''}
+            <div class="post-engagement">
+                <span class="eng-num"><i class="fa fa-heart" style="color:#ef4444"></i> ${p.likes||0} likes</span>
+                <span class="eng-num"><i class="fa fa-comment" style="color:var(--blue)"></i> ${comments.length} comments</span>
+                <span class="eng-num"><i class="fa fa-eye"></i> ${views} views</span>
+            </div>
+            <div class="post-actions">
+                <button class="post-btn${liked?' liked':''}" onclick="toggleLike(${realIdx})">
+                    <i class="fa fa-heart"></i> ${liked?'Liked':'Like'}
+                </button>
+                <button class="post-btn" onclick="toggleComments(${realIdx})">
+                    <i class="fa fa-comment"></i> Comment${comments.length?` (${comments.length})`:''}
+                </button>
+                <a href="profile.html" style="text-decoration:none"><button class="post-btn"><i class="fa fa-user"></i> Profile</button></a>
+                ${isOwn?`<button class="post-btn danger" onclick="deletePost(${realIdx})"><i class="fa fa-trash"></i> Delete</button>`:''}
+            </div>
+            <div class="comments-wrap" id="cw-${realIdx}">
+                ${comments.map(c=>`<div class="comment-item">
+                    <div class="comment-av" style="background:${roleColors[(c.role||'').toLowerCase()]||'#1d4ed8'}">${c.initials||'?'}</div>
+                    <div class="comment-body"><div class="comment-author">${escHtml(c.author)}</div><div class="comment-text">${escHtml(c.text)}</div></div>
+                </div>`).join('')}
+                <div class="comment-input-row">
+                    <input class="comment-input" id="ci-${realIdx}" type="text" placeholder="Write a comment..." onkeydown="if(event.key==='Enter')submitComment(${realIdx})"/>
+                    <button class="comment-submit" onclick="submitComment(${realIdx})">Send</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+    renderTrending(posts);
+}
+
+function toggleLike(idx){
+    const posts=getPosts();const p=posts[idx];if(!p)return;
+    if(!p.likedBy)p.likedBy=[];
+    const key=user.id||user.email;
+    const i=p.likedBy.indexOf(key);
+    if(i===-1){p.likedBy.push(key);p.likes=(p.likes||0)+1;}
+    else{p.likedBy.splice(i,1);p.likes=Math.max(0,(p.likes||1)-1);}
+    savePosts(posts);renderPosts();
+}
+
+function toggleComments(idx){
+    const el=document.getElementById('cw-'+idx);
+    if(el)el.classList.toggle('open');
+}
+
+function submitComment(idx){
+    const inp=document.getElementById('ci-'+idx);
+    const text=(inp.value||'').trim();if(!text)return;
+    const posts=getPosts();const p=posts[idx];if(!p)return;
+    if(!p.comments)p.comments=[];
+    p.comments.push({author:fullName,initials,role:userRole,text,timestamp:Date.now()});
+    savePosts(posts);inp.value='';
+    renderPosts();
+    const cw=document.getElementById('cw-'+idx);
+    if(cw)cw.classList.add('open');
+}
+
+function deletePost(idx){
+    if(!confirm('Delete this post?'))return;
+    const posts=getPosts();posts.splice(idx,1);savePosts(posts);renderPosts();
+}
+
+function submitPost(){
+    const text=document.getElementById('postText').value.trim();
+    if(!text){showToast('⚠️ Write something first.','#fefce8','#a16207');return;}
+    const btn=document.getElementById('postBtn');btn.disabled=true;
+    const cat=document.getElementById('postCat').value;
+    const posts=getPosts();
+    posts.unshift({
+        id:Date.now(),author:fullName,initials,role:userRole,
+        authorId:user.id||user.email,
+        text,category:cat,type:cat,
+        image:pendingImage||null,
+        timestamp:Date.now(),likes:0,likedBy:[],comments:[],views:0
+    });
+    savePosts(posts);
+    document.getElementById('postText').value='';
+    updateCharCount();removeImage();renderPosts();
+    btn.disabled=false;
+    showToast('✅ Posted successfully!');
+}
+
+function renderTrending(posts){
+    const trending=[...posts].sort((a,b)=>((b.likes||0)+(b.comments||[]).length)-((a.likes||0)+(a.comments||[]).length)).slice(0,5);
+    const el=document.getElementById('trendingList');
+    if(!trending.length){el.innerHTML='<div style="padding:14px 18px;font-size:13px;color:var(--muted)">No posts yet.</div>';return;}
+    el.innerHTML=trending.map(p=>{
+        const cat=p.category||p.type||'UPDATE';
+        const cm=catMeta[cat]||catMeta['UPDATE'];
+        const realIdx=posts.indexOf(p);
+        return`<div class="trending-item" onclick="scrollToPost(${realIdx})">
+            <div class="trending-title">${escHtml(p.text).slice(0,70)}${p.text.length>70?'…':''}</div>
+            <div class="trending-meta">
+                <span style="color:${cm.color}">${cm.label}</span>
+                <span><i class="fa fa-heart" style="color:#ef4444"></i> ${p.likes||0}</span>
+                <span><i class="fa fa-comment" style="color:var(--blue)"></i> ${(p.comments||[]).length}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function scrollToPost(idx){
+    currentCat='ALL';
+    document.querySelectorAll('.cat-tab').forEach(b=>b.classList.toggle('active',b.dataset.cat==='ALL'));
+    document.getElementById('searchInput').value='';
+    renderPosts();
+    setTimeout(()=>{
+        const el=document.getElementById('pc-'+idx);
+        if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.outline='2px solid var(--blue)';setTimeout(()=>el.style.outline='',2000);}
+    },100);
+}
+
+async function loadMembers(){
+    const list=document.getElementById('membersList');
+    try{
+        let members=[];
+        if(userRole==='admin'){
+            const res=await fetch(API+'/admin/users',{headers:authHeader()});
+            if(res.ok){const d=await res.json();const all=d.data||d||[];members=all.filter(m=>{const r=(m.role||'').toLowerCase();return r==='volunteer'||r==='psychologist'||r==='organization';}).slice(0,6);}
+        }
+        if(!members.length){
+            const res=await fetch(API+'/dashboard/stats',{headers:authHeader()});
+            if(res.ok){
+                const d=await res.json();const s=d.data||d||{};
+                const vc=s.totalVolunteers||s.volunteers||0;
+                const pc=s.totalPsychologists||s.psychologists||0;
+                const oc=s.totalOrganizations||s.organizations||0;
+                if(vc||pc||oc){
+                    list.innerHTML=
+                        (vc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#059669">${vc}<div class="online-dot"></div></div><div><div class="member-name">${vc} Volunteer${vc!==1?'s':''}</div><span class="member-role-badge" style="background:#f0fdf4;color:#059669">Volunteer</span></div></div></div>`:'')+
+                        (pc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#7c3aed">${pc}<div class="online-dot"></div></div><div><div class="member-name">${pc} Psychologist${pc!==1?'s':''}</div><span class="member-role-badge" style="background:#faf5ff;color:#7c3aed">Psychologist</span></div></div></div>`:'')+
+                        (oc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#ea580c">${oc}<div class="online-dot"></div></div><div><div class="member-name">${oc} Organization${oc!==1?'s':''}</div><span class="member-role-badge" style="background:#fff7ed;color:#ea580c">Organization</span></div></div></div>`:'');
+                    return;
+                }
+            }
+            members=[{fullName,role:userRole,id:user.id,email:user.email}];
+        }
+        list.innerHTML=members.map(m=>{
+            const mName=m.fullName||m.name||'Member';
+            const mRole=(m.role||'volunteer').toLowerCase();
+            const mInit=mName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+            const col=roleColors[mRole]||'#1d4ed8';
+            const bg=roleBg[mRole]||'#eff6ff';
+            const photo=localStorage.getItem('nidaa_avatar_'+(m.id||m.email||''));
+            const saved=JSON.parse(localStorage.getItem('nidaa_profile_'+(m.id||m.email||'me'))||'{}');
+            return`<div class="member-card">
+                <div class="member-card-top">
+                    <div class="member-av" style="${photo?'':'background:'+col}">
+                        ${photo?`<img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`:`<span>${mInit}</span>`}
+                        <div class="online-dot"></div>
+                    </div>
+                    <div>
+                        <div class="member-name">${escHtml(mName)}</div>
+                        <span class="member-role-badge" style="background:${bg};color:${col}">${mRole.charAt(0).toUpperCase()+mRole.slice(1)}</span>
+                    </div>
+                </div>
+                ${saved.bio?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.4">"${escHtml(saved.bio).slice(0,60)}${saved.bio.length>60?'…':''}"</div>`:''}
+                <div class="member-actions">
+                    <a class="btn-sm" href="profile.html"><i class="fa fa-user"></i> Profile</a>
                 </div>
             </div>`;
         }).join('');
+    }catch{
+        list.innerHTML='<div style="padding:16px 18px;font-size:13px;color:var(--muted)">Could not load members.</div>';
     }
+}
 
-    function escapeHtml(text) {
-        return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+function showToast(msg,bg,col){
+    const t=document.createElement('div');
+    t.style.cssText=`position:fixed;top:20px;right:24px;background:${bg||'#f0fdf4'};border:1px solid #bbf7d0;color:${col||'#059669'};padding:13px 20px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px`;
+    t.textContent=msg;document.body.appendChild(t);
+    setTimeout(()=>t.remove(),2500);
+}
 
-    function toggleLike(idx) {
-        const posts = getPosts();
-        const p = posts[idx];
-        if (!p) return;
-        if (!p.likedBy) p.likedBy = [];
-        const key = user.id || user.email;
-        const i   = p.likedBy.indexOf(key);
-        if (i === -1) { p.likedBy.push(key); p.likes = (p.likes || 0) + 1; }
-        else          { p.likedBy.splice(i, 1); p.likes = Math.max(0, (p.likes || 1) - 1); }
-        savePosts(posts);
-        renderPosts();
-    }
+function buildSidebar(){
+    const nav=document.getElementById('sidebarNav');
+    const pages={
+        beneficiary:[
+            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
+            {href:'psychological.html',icon:'fa-brain',label:'Psychological Support'},
+            {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
+            {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
+            {href:'profile.html',icon:'fa-user',label:'My Profile'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ],
+        volunteer:[
+            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
+            {href:'community.html',icon:'fa-users',label:'Community'},
+            {href:'profile.html',icon:'fa-user',label:'My Profile'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ],
+        psychologist:[
+            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+            {href:'community.html',icon:'fa-users',label:'Community'},
+            {href:'psychological.html',icon:'fa-brain',label:'Psychological Support'},
+            {href:'profile.html',icon:'fa-user',label:'My Profile'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ],
+        organization:[
+            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
+            {href:'community.html',icon:'fa-users',label:'Community'},
+            {href:'profile.html',icon:'fa-user',label:'My Profile'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ],
+        admin:[
+            {href:'admin-requests.html',icon:'fa-list-check',label:'All Requests'},
+            {href:'admin.html',icon:'fa-chart-bar',label:'Analytics'},
+            {href:'admin-approvals.html',icon:'fa-user-check',label:'Approvals'},
+            {href:'admin-users.html',icon:'fa-users',label:'All Users'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ]
+    };
+    const links=pages[userRole]||pages['beneficiary'];
+    nav.innerHTML=links.map(p=>`<a href="${p.href}" class="nav-item${p.href==='community.html'?' active':''}"><i class="fa ${p.icon}"></i> ${p.label}</a>`).join('');
+}
 
-    function submitPost() {
-        const text = document.getElementById('postText').value.trim();
-        if (!text) { alert('Please write something first.'); return; }
-
-        const btn = document.getElementById('postBtn');
-        btn.disabled = true;
-
-        const posts = getPosts();
-        const newPost = {
-            id:        Date.now(),
-            author:    fullName,
-            initials:  initials,
-            role:      userRole,
-            text:      text,
-            type:      selectedType,
-            timestamp: Date.now(),
-            likes:     0,
-            likedBy:   []
-        };
-        posts.unshift(newPost);
-        savePosts(posts);
-
-        document.getElementById('postText').value = '';
-        renderPosts();
-        btn.disabled = false;
-
-        const toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#059669;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px';
-        toast.textContent = '✅ Posted!';
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2500);
-    }
-
-    async function loadMembers() {
-        const list = document.getElementById('membersList');
-        try {
-            // Try to load volunteers
-            const res  = await fetch(API + '/users/role/VOLUNTEER', { headers: authHeader() });
-            const res2 = await fetch(API + '/users/role/PSYCHOLOGIST', { headers: authHeader() });
-            const d1   = res.ok  ? await res.json()  : { data: [] };
-            const d2   = res2.ok ? await res2.json() : { data: [] };
-            const members = [...(d1.data || d1 || []), ...(d2.data || d2 || [])].slice(0, 8);
-
-            if (!members.length) {
-                list.innerHTML = '<div style="padding:16px 20px;font-size:13px;color:var(--muted)">No members yet.</div>';
-                return;
-            }
-            list.innerHTML = members.map(m => {
-                const mName = m.fullName || m.name || 'Member';
-                const mRole = (m.role || 'volunteer').toLowerCase();
-                const mInit = mName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-                const col   = roleColors[mRole] || '#1d4ed8';
-                return `<div class="side-item">
-                    <div class="side-av" style="background:${col}">${mInit}</div>
-                    <div><div class="side-name">${mName}</div><div class="side-role">${mRole.charAt(0).toUpperCase()+mRole.slice(1)}</div></div>
-                    <div class="online-dot"></div>
-                </div>`;
-            }).join('');
-        } catch {
-            list.innerHTML = '<div style="padding:16px 20px;font-size:13px;color:var(--muted)">Could not load members.</div>';
-        }
-    }
-
-    renderPosts();
-    loadMembers();
-
-
-    // ── BUILD SIDEBAR BASED ON ROLE ──
-    function buildSidebar(currentPage) {
-        const nav = document.getElementById('sidebarNav');
-        if (!nav) return;
-        const pages = {
-            beneficiary: [
-                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-                { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
-                { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
-                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
-            ],
-            volunteer: [
-                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-                { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
-                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
-                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
-            ],
-            psychologist: [
-                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
-                { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
-                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
-            ],
-            organization: [
-                { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
-                { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
-                { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
-                { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
-            ],
-            admin: [
-                { href: 'admin-requests.html',  icon: 'fa-list-check',  label: 'All Requests' },
-                { href: 'admin.html',           icon: 'fa-chart-bar',   label: 'Analytics' },
-                { href: 'admin-approvals.html', icon: 'fa-user-check',  label: 'Approvals' },
-                { href: 'admin-users.html',     icon: 'fa-users',       label: 'All Users' },
-                { href: 'settings.html',        icon: 'fa-gear',        label: 'Settings' }
-            ]
-        };
-        const links = pages[userRole] || pages['beneficiary'];
-        nav.innerHTML = links.map(p =>
-            '<a href="' + p.href + '" class="nav-item' + (p.href === currentPage ? ' active' : '') + '">' +
-            '<i class="fa ' + p.icon + '"></i> ' + p.label + '</a>'
-        ).join('');
-    }
-    buildSidebar('community.html');
-
-
-    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+buildSidebar();
+renderPosts();
+loadMembers();
 </script>
-
 </body>
 </html>

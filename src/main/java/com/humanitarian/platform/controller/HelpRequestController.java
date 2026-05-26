@@ -7,6 +7,7 @@ import com.humanitarian.platform.service.HelpRequestService;
 import com.humanitarian.platform.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,6 +61,7 @@ public class HelpRequestController {
     }
 
     @PutMapping("/{id}/status")
+    @Transactional
     public ResponseEntity<ApiResponse<HelpRequest>> updateStatus(
             @PathVariable Long id, @RequestParam String status) {
         return ResponseEntity.ok(ApiResponse.success("Status updated",
@@ -67,6 +69,7 @@ public class HelpRequestController {
     }
 
     @PutMapping("/{id}/assign")
+    @Transactional
     public ResponseEntity<ApiResponse<Map<String, Object>>> assignToMe(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Request assigned",
                 helpRequestService.assignToMe(id)));
@@ -79,6 +82,7 @@ public class HelpRequestController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<ApiResponse<?>> deleteRequest(@PathVariable Long id) {
         helpRequestService.deleteRequest(id);
         return ResponseEntity.ok(ApiResponse.success("Request deleted", null));

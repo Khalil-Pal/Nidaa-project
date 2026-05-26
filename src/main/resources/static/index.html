@@ -106,7 +106,10 @@
     .t-avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--green));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0}
     .t-name{font-weight:700;font-size:15px;color:var(--dark)}
     .t-role{font-size:13px;color:var(--muted)}
-
+     .story-img{width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:16px;display:block}
+    .story-badge{display:inline-block;background:#f0fdf4;color:#059669;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;margin-bottom:10px}
+    .btn-share-story{display:inline-flex;align-items:center;gap:8px;background:var(--green);color:#fff;padding:11px 24px;border-radius:9px;font-size:15px;font-weight:600;text-decoration:none;transition:background .2s;margin-top:16px}
+    .btn-share-story:hover{background:var(--green-dark)}
     /* ── CTA ── */
     .cta-section{background:linear-gradient(135deg,var(--blue),var(--green));padding:88px 40px;text-align:center}
     .cta-section h2{font-size:clamp(1.9rem,3vw,2.5rem);color:white;font-weight:800;margin-bottom:16px}
@@ -277,7 +280,7 @@
     <div class="section-label">Stories</div>
     <h2 class="section-title">Voices From Our Community</h2>
     <p class="section-desc">Real stories from people whose lives were touched through Nidaa.</p>
-    <div class="testimonials-grid">
+    <div class="testimonials-grid" id="storiesGrid">
       <div class="testimonial">
         <div class="t-stars">★★★★★</div>
         <p class="t-text">"After the disaster, I didn't know where to turn. Nidaa connected us with food and shelter within hours. This platform saved my family."</p>
@@ -293,6 +296,9 @@
         <p class="t-text">"Providing psychological support through Nidaa has been deeply meaningful. The platform connects me with those who truly need to be heard."</p>
         <div class="t-author"><div class="t-avatar">MK</div><div><div class="t-name">Dr. Mohammed Khalil</div><div class="t-role">Psychologist — Beirut, Lebanon</div></div></div>
       </div>
+    </div>
+     <div style="text-align:center;margin-top:32px"><a class="btn-share-story" href="submit-story.html"><i class="fa fa-pen-to-square"></i> Share Your Story</a>
+    </div>
     </div>
   </div>
 </section>
@@ -424,7 +430,32 @@
   }
 
   document.getElementById('year').textContent = new Date().getFullYear();
-  loadPublicStats();
+      loadPublicStats();
+
+  // Load approved stories from localStorage and inject into grid
+  (function() {
+    try {
+      const stories = JSON.parse(localStorage.getItem('nidaa_stories') || '[]');
+      const approved = stories.filter(s => s.status === 'approved');
+      if (!approved.length) return;
+      const grid = document.getElementById('storiesGrid');
+      approved.forEach(s => {
+        const initials = (s.authorName || 'U').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+        const card = document.createElement('div');
+        card.className = 'testimonial';
+        card.innerHTML =
+          (s.photo ? '<img class="story-img" src="' + s.photo + '" alt="story photo" loading="lazy"/>' : '') +
+          '<span class="story-badge">✨ Real Story</span>' +
+          '<div class="t-stars">★★★★★</div>' +
+          '<p class="t-text">“' + (s.text || '').slice(0, 220) + ((s.text||'').length > 220 ? '…' : '') + '”</p>' +
+          '<div class="t-author"><div class="t-avatar">' + initials + '</div><div>' +
+          '<div class="t-name">' + (s.authorName || 'Community Member') + '</div>' +
+          '<div class="t-role">Beneficiary' + (s.location ? ' — ' + s.location : '') + '</div>' +
+          '</div></div>';
+        grid.appendChild(card);
+      });
+    } catch(e) {}
+  })();
 </script>
 </body>
 </html>

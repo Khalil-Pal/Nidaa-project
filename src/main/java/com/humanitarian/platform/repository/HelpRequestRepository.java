@@ -46,4 +46,18 @@ public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> 
     @Query(value = "UPDATE help_requests SET status = :newStatus WHERE request_id = :id",
             nativeQuery = true)
     int updateStatusNative(@Param("id") Long id, @Param("newStatus") String newStatus);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE help_requests SET status = :newStatus, completed_at = :completedAt WHERE request_id = :id",
+            nativeQuery = true)
+    int updateStatusCompleted(@Param("id") Long id,
+                              @Param("newStatus") String newStatus,
+                              @Param("completedAt") java.time.LocalDateTime completedAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE help_requests SET status = :newStatus, cancelled_at = :cancelledAt WHERE request_id = :id",
+            nativeQuery = true)
+    int updateStatusCancelled(@Param("id") Long id,
+                              @Param("newStatus") String newStatus,
+                              @Param("cancelledAt") java.time.LocalDateTime cancelledAt);
 }

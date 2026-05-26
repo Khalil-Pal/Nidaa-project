@@ -1,6 +1,8 @@
 package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.dto.AuthResponse;
+import com.humanitarian.platform.dto.RefreshRequest;
+import com.humanitarian.platform.dto.VerifyRegistrationRequest;
 import com.humanitarian.platform.dto.LoginRequest;
 import com.humanitarian.platform.dto.RegisterRequest;
 import com.humanitarian.platform.service.AuthService;
@@ -17,10 +19,17 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
-    // POST /api/auth/register
+    // POST /api/auth/register — Step 1: validate data and send verification code
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        AuthResponse response = authService.register(request);
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request));
+    }
+
+    // POST /api/auth/register/verify — Step 2: submit code and create account
+    @PostMapping("/register/verify")
+    public ResponseEntity<AuthResponse> verifyRegistration(
+            @Valid @RequestBody VerifyRegistrationRequest request) {
+        AuthResponse response = authService.verifyRegistration(request.getEmail(), request.getCode());
         return ResponseEntity.ok(response);
     }
 
@@ -31,9 +40,16 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // GET /api/auth/check - check if server is running
-    @GetMapping("/check")
-    public ResponseEntity<String> check() {
-        return ResponseEntity.ok("Server is running!");
+    // POST /api/auth/refresh — get new access token using refresh token
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request.getRefreshToken()));
+    }
+
+    // POST /api/auth/logout — invalidate refresh token server-side
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@Valid @RequestBody RefreshRequest request) {
+        authService.logout(request.getRefreshToken());
+        return ResponseEntity.ok(java.util.Map.of("message", "Logged out successfully."));
     }
 }

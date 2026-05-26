@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class AuthResponse {
 
     private String token;
+    private String refreshToken;
     private String type;
     private Long userId;
     private String email;
@@ -23,7 +24,7 @@ public class AuthResponse {
     private Boolean isActive;
     private Boolean pendingApproval; // true if waiting for admin to approve
 
-    public static AuthResponse of(String token, User user) {
+    public static AuthResponse of(String token, String refreshToken, User user) {
         boolean needsApproval = !user.getIsActive() &&
                 (user.getRole() == UserRole.VOLUNTEER ||
                         user.getRole() == UserRole.PSYCHOLOGIST ||
@@ -31,6 +32,7 @@ public class AuthResponse {
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .type("Bearer")
                 .userId(user.getId())
                 .email(user.getEmail())

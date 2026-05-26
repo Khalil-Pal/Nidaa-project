@@ -5,9 +5,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "password_reset_tokens")
+@Table(name = "pending_registrations")
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
-public class PasswordResetToken {
+public class PendingRegistration {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,6 +15,18 @@ public class PasswordResetToken {
 
     @Column(nullable = false, unique = true)
     private String email;
+
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
+
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
+    @Column
+    private String phone;
+
+    @Column(nullable = false)
+    private String role;
 
     @Column(nullable = false)
     private String code;

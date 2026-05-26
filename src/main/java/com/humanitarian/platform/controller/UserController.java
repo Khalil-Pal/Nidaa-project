@@ -5,6 +5,7 @@ import com.humanitarian.platform.dto.UserProfileDto;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.UserRepository;
+import com.humanitarian.platform.service.PasswordChangeService;
 import com.humanitarian.platform.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,8 @@ import java.util.Map;
 
 public class UserController {
 
-    @Autowired private UserService userService;
+    @Autowired private UserService           userService;
+    @Autowired private PasswordChangeService passwordChangeService;
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
@@ -56,36 +58,24 @@ public class UserController {
         return updateProfile(dto);
     }
 
-    // POST /api/users/change-password
-    @PostMapping("/change-password")
-    public ResponseEntity<Map<String, Object>> changePassword(@RequestBody Map<String, String> body) {
-        Map<String, Object> res = new LinkedHashMap<>();
-        try {
-            User user = userService.getCurrentUser();
-            String current = body.get("currentPassword");
-            String newPw   = body.get("newPassword");
+    // POST /api/users/change-password/request
+    // Step 1: verify current password and send code to email
+    @PostMapping("/change-password/request")
+    public ResponseEntity<ApiResponse<?>> requestPasswordChange(@RequestBody Map<String, String> body) {
+        String currentPassword = body.get("currentPassword");
+        String newPassword     = body.get("newPassword");
+        String message = passwordChangeService.requestPasswordChange(currentPassword, newPassword);
+        return ResponseEntity.ok(ApiResponse.success(message, null));
+    }
 
-            if (current == null || newPw == null || newPw.length() < 6) {
-                res.put("success", false);
-                res.put("message", "Password must be at least 6 characters.");
-                return ResponseEntity.badRequest().body(res);
-            }
-
-            if (!passwordEncoder.matches(current, user.getPasswordHash())) {
-                res.put("success", false);
-                res.put("message", "Current password is incorrect.");
-                return ResponseEntity.badRequest().body(res);
-            }
-
-            user.setPasswordHash(passwordEncoder.encode(newPw));
-            userRepository.save(user);
-            res.put("success", true);
-            res.put("message", "Password changed successfully.");
-        } catch (Exception e) {
-            res.put("success", false);
-            res.put("message", e.getMessage());
-        }
-        return ResponseEntity.ok(res);
+    // POST /api/users/change-password/confirm
+    // Step 2: submit the verification code received by email — password is applied if correct
+    @PostMapping("/change-password/confirm")
+    public ResponseEntity<ApiResponse<?>> confirmPasswordChange(@RequestBody Map<String, String> body) {
+        String code        = body.get("code");
+        String newPassword = body.get("newPassword");
+        String message = passwordChangeService.confirmPasswordChange(code, newPassword);
+        return ResponseEntity.ok(ApiResponse.success(message, null));
     }
 
     // DELETE /api/users/me — delete own account

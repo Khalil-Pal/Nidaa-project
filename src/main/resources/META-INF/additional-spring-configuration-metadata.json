@@ -1,0 +1,34 @@
+{
+  "properties": [
+    {
+      "name": "jwt.secret",
+      "type": "java.lang.String",
+      "description": "Secret key used to sign JWT access tokens. Must be at least 256 bits in production."
+    },
+    {
+      "name": "jwt.expiration",
+      "type": "java.lang.Long",
+      "description": "JWT access token expiration time in milliseconds. Default: 900000 (15 minutes)."
+    },
+    {
+      "name": "jwt.refresh-expiration",
+      "type": "java.lang.Long",
+      "description": "JWT refresh token expiration time in milliseconds. Default: 604800000 (7 days)."
+    },
+    {
+      "name": "jwt.header",
+      "type": "java.lang.String",
+      "description": "HTTP header name for the JWT token. Default: Authorization."
+    },
+    {
+      "name": "jwt.prefix",
+      "type": "java.lang.String",
+      "description": "Token prefix in the Authorization header. Default: Bearer."
+    },
+    {
+      "name": "nidaa.admin.email",
+      "type": "java.lang.String",
+      "description": "Platform admin email address used for system notifications."
+    }
+  ]
+}

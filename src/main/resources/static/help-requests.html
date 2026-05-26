@@ -364,12 +364,15 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
         grid.innerHTML = '<div style="text-align:center;padding:48px;color:#64748b;grid-column:1/-1"><i class="fa fa-spinner fa-spin" style="font-size:24px;margin-bottom:12px;display:block"></i>Loading...</div>';
         try {
             // Beneficiary sees only their own requests
-            const endpoint = userRole === 'beneficiary' ? '/help-requests/my' : '/help-requests';
+            const endpoint = userRole === 'beneficiary' ? '/help-requests/my' : '/help-requests?page=0&size=100';
             const res  = await fetch(API + endpoint, { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
-            // Backend wraps in ApiResponse{data:[...]}
-            allRequests = Array.isArray(data) ? data : (data.data || data.content || []);
+            // Backend wraps in ApiResponse{ data: Page{ content:[...] } } or ApiResponse{ data: [...] }
+            const inner = data.data ?? data;
+            allRequests = Array.isArray(inner)
+                ? inner
+                : (inner.content ?? inner.data ?? []);
         } catch (e) {
             allRequests = [];
             grid.innerHTML = '<div style="text-align:center;padding:48px;color:#64748b;grid-column:1/-1"><i class="fa fa-triangle-exclamation" style="font-size:28px;margin-bottom:10px;display:block;color:#f59e0b"></i>Could not load requests. Make sure the server is running.</div>';
@@ -423,8 +426,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
         // Set current status in dropdown
         const req = allRequests.find(r => (r.requestId || r.id) == id);
         if (req) {
-            const sel = document.getElementById('contactStatusSelect');
-            if (sel) sel.value = req.status || 'ASSIGNED';
+            buildStatusOptions(req.status || 'ASSIGNED');
         }
         try {
             const res = await fetch(API + '/help-requests/' + id + '/contact', { headers: authHeader() });
@@ -446,13 +448,45 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
         document.getElementById('contactEmail').textContent = email;
         document.getElementById('contactPhone').textContent = phone;
         document.getElementById('contactOverlay').classList.add('open');
-        const sel = document.getElementById('contactStatusSelect');
-        if (sel) sel.value = 'ASSIGNED';
+        buildStatusOptions('ASSIGNED');
     }
 
     function closeContactModal() {
         document.getElementById('contactOverlay').classList.remove('open');
         currentContactRequestId = null;
+    }
+
+    // Build dropdown options based on current status and valid transitions
+    function buildStatusOptions(currentStatus) {
+        const VALID_TRANSITIONS = {
+            'PENDING':   ['ASSIGNED', 'CANCELLED'],
+            'ASSIGNED':  ['COMPLETED', 'CANCELLED'],
+            'COMPLETED': [],
+            'CANCELLED': []
+        };
+        const LABELS = {
+            'ASSIGNED':  'Assigned (In Progress)',
+            'COMPLETED': 'Completed',
+            'CANCELLED': 'Cancelled',
+            'PENDING':   'Pending'
+        };
+        const sel = document.getElementById('contactStatusSelect');
+        const transitions = VALID_TRANSITIONS[currentStatus.toUpperCase()] || [];
+        sel.innerHTML = '';
+
+        if (transitions.length === 0) {
+            sel.innerHTML = '<option value="" disabled>No further transitions allowed</option>';
+            document.querySelector('.btn-update-status').disabled = true;
+            return;
+        }
+
+        document.querySelector('.btn-update-status').disabled = false;
+        transitions.forEach(status => {
+            const opt = document.createElement('option');
+            opt.value = status;
+            opt.textContent = LABELS[status] || status;
+            sel.appendChild(opt);
+        });
     }
 
     async function submitStatusChange() {
@@ -564,24 +598,29 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
                 { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
                 { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+                {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
+                {href:'profile.html',icon:'fa-user',label:'My Profile'},
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             volunteer: [
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
                 { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
                 { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+                {href:'profile.html',icon:'fa-user',label:'My Profile'},
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             psychologist: [
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
                 { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
                 { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+                {href:'profile.html',icon:'fa-user',label:'My Profile'},
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             organization: [
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
                 { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
                 { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+                {href:'profile.html',icon:'fa-user',label:'My Profile'},
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             admin: [
@@ -625,9 +664,6 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
         <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
             <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--dark)">Update Request Status</div>
             <select class="status-select" id="contactStatusSelect">
-                <option value="ASSIGNED">Assigned (In Progress)</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
             </select>
             <button class="btn-update-status" onclick="submitStatusChange()">Update Status</button>
         </div>

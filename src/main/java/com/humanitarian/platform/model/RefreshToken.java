@@ -5,19 +5,19 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "password_reset_tokens")
+@Table(name = "refresh_tokens")
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
-public class PasswordResetToken {
+public class RefreshToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String email;
+    private String token;
 
-    @Column(nullable = false)
-    private String code;
+    @Column(nullable = false, unique = true)
+    private String email;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;

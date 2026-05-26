@@ -26,10 +26,10 @@ public class HelpRequest {
     private String description;
 
     // No columnDefinition needed — stringtype=unspecified in JDBC URL handles enum cast
-    @Column(name = "help_type")
+    @Column(name = "help_type", columnDefinition = "help_type_enum")
     private String helpType;
 
-    @Column(name = "urgency_level")
+    @Column(name = "urgency_level", columnDefinition = "urgency_level_enum")
     private String urgencyLevel;
 
     @Column(name = "priority_score")
@@ -61,7 +61,7 @@ public class HelpRequest {
     @Column(name = "longitude", columnDefinition = "numeric")
     private Double longitude;
 
-    @Column(name = "status")
+    @Column(name = "status", columnDefinition = "help_request_status")
     @Builder.Default
     private String status = "PENDING";
 

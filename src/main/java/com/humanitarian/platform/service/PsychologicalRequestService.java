@@ -5,6 +5,9 @@ import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
@@ -18,6 +21,8 @@ import java.util.Set;
 
 @Service
 public class PsychologicalRequestService {
+
+    private static final Logger logger = LoggerFactory.getLogger(PsychologicalRequestService.class);
 
     @Autowired private PsychologicalRequestRepository repo;
     @Autowired private UserService                    userService;
@@ -51,12 +56,10 @@ public class PsychologicalRequestService {
             psychologistId = jdbc.queryForObject(
                     "SELECT psychologist_id FROM psychologists WHERE user_id = ?",
                     Long.class, currentUser.getId());
-        } catch (Exception e) {
-            psychologistId = null;
-        }
-
-        if (psychologistId == null) {
+        } catch (EmptyResultDataAccessException e) {
             throw new ResourceNotFoundException("Psychologist profile not found. Contact admin.");
+        } catch (Exception e) {
+            throw new BusinessException("Error retrieving psychologist profile: " + e.getMessage());
         }
 
         int updated = repo.assignPsychologist(requestId, psychologistId, "ASSIGNED", "PENDING");
@@ -119,10 +122,11 @@ public class PsychologicalRequestService {
             psychologistId = jdbc.queryForObject(
                     "SELECT psychologist_id FROM psychologists WHERE user_id = ?",
                     Long.class, user.getId());
+        } catch (EmptyResultDataAccessException e) {
+            return List.of();
         } catch (Exception e) {
-            psychologistId = null;
+            return List.of();
         }
-        if (psychologistId == null) return List.of();
         return repo.findByAssignedPsychologistId(psychologistId);
     }
 

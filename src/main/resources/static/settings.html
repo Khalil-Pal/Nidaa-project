@@ -71,6 +71,26 @@
         .topbar-actions{display:flex;align-items:center;gap:14px;margin-left:auto}
         .topbar-user{font-size:14px;font-weight:600;color:var(--dark)}
         .badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
+
+        /* ── Verification Code Modal ── */
+        .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center}
+        .modal-overlay.open{display:flex}
+        .modal-box{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 25px 60px rgba(0,0,0,.18);text-align:center;animation:popIn .25s ease}
+        @keyframes popIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+        .modal-icon{width:64px;height:64px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:28px}
+        .modal-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:var(--dark);margin-bottom:8px}
+        .modal-sub{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.6}
+        .code-input{width:100%;padding:16px;text-align:center;font-size:24px;font-weight:700;letter-spacing:8px;border:2px solid var(--border);border-radius:12px;font-family:'Inter',sans-serif;color:var(--dark);outline:none;transition:border-color .2s;text-transform:uppercase}
+        .code-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.08)}
+        .code-input.error{border-color:#dc2626;animation:shake .4s ease}
+        @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+        .modal-actions{display:flex;gap:10px;margin-top:20px}
+        .modal-actions .btn{flex:1}
+        .modal-hint{font-size:12px;color:var(--muted);margin-top:14px}
+        .modal-hint a{color:var(--blue);cursor:pointer;font-weight:600;text-decoration:none}
+        .modal-hint a:hover{text-decoration:underline}
+        .modal-timer{font-size:13px;color:var(--muted);margin-top:10px}
+        .modal-timer span{font-weight:700;color:var(--dark)}
     </style>
 </head>
 <body>
@@ -147,7 +167,8 @@
                         <input type="password" id="confirmPw" placeholder="Repeat new password"/>
                     </div>
                 </div>
-                <button class="btn btn-primary" onclick="changePassword()"><i class="fa fa-shield-halved"></i> Update Password</button>
+                <div id="pwMsg" style="display:none;padding:10px 14px;border-radius:10px;font-size:14px;margin-bottom:12px"></div>
+                <button class="btn btn-primary" id="pwBtn" onclick="changePassword()"><i class="fa fa-shield-halved"></i> Update Password</button>
             </div>
         </div>
 
@@ -177,6 +198,29 @@
                 <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Deleting your account will permanently remove all your data including requests and history. This cannot be undone.</p>
                 <button class="btn btn-danger" onclick="deleteAccount()"><i class="fa fa-trash"></i> Delete My Account</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Password Verification Modal ── -->
+<div class="modal-overlay" id="codeModal">
+    <div class="modal-box">
+        <div class="modal-icon">📧</div>
+        <div class="modal-title">Check Your Email</div>
+        <div class="modal-sub" id="modalSub">We sent an 8-character verification code to your email address. Enter it below to confirm the password change.</div>
+        <input type="text" class="code-input" id="codeInput" maxlength="8"
+               placeholder="XXXXXXXX" autocomplete="off"
+               oninput="this.value=this.value.toUpperCase()"
+               onkeydown="if(event.key==='Enter') confirmCode()"/>
+        <div class="modal-timer" id="modalTimer"></div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="confirmBtn" onclick="confirmCode()">
+                <i class="fa fa-check"></i> Confirm
+            </button>
+        </div>
+        <div class="modal-hint">
+            Didn't receive it? <a onclick="resendCode()">Resend code</a>
         </div>
     </div>
 </div>
@@ -250,25 +294,171 @@
         }
     }
 
+    // ── Password Change — Two-Step Flow ──────────────────────────────────────
+    let _savedNewPw = '';
+    let _modalTimer = null;
+    let _timerSecs  = 0;
+
+    function pwMsg(type, text) {
+        const el = document.getElementById('pwMsg');
+        el.style.display = 'block';
+        if (type === 'error') {
+            el.style.background = '#fef2f2';
+            el.style.color = '#dc2626';
+            el.style.border = '1px solid #fecaca';
+        } else {
+            el.style.background = '#f0fdf4';
+            el.style.color = '#16a34a';
+            el.style.border = '1px solid #bbf7d0';
+        }
+        el.textContent = text;
+    }
+
     async function changePassword() {
-        const current = document.getElementById('currentPw').value;
-        const newPw = document.getElementById('newPw').value;
-        const confirm = document.getElementById('confirmPw').value;
-        if (!current || !newPw) { showMsg('error', 'Please fill in all password fields.'); return; }
-        if (newPw.length < 6) { showMsg('error', 'New password must be at least 6 characters.'); return; }
-        if (newPw !== confirm) { showMsg('error', 'New passwords do not match.'); return; }
+        const current = document.getElementById('currentPw').value.trim();
+        const newPw   = document.getElementById('newPw').value;
+        const confirmVal = document.getElementById('confirmPw').value;
+
+        if (!current)              { pwMsg('error', 'Please enter your current password.'); return; }
+        if (!newPw)                { pwMsg('error', 'Please enter a new password.'); return; }
+        if (newPw.length < 6)     { pwMsg('error', 'New password must be at least 6 characters.'); return; }
+        if (newPw !== confirmVal)  { pwMsg('error', 'New passwords do not match.'); return; }
+
+        const btn = document.getElementById('pwBtn');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Sending code…';
+
         try {
-            const res = await fetch(`${API}/users/change-password`, {
+            const token = localStorage.getItem('token');
+            const res = await fetch(API + '/users/change-password/request', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ currentPassword: current, newPassword: newPw })
+            });
+
+            let d = {};
+            try { d = await res.json(); } catch(e) {}
+
+            if (!res.ok) {
+                pwMsg('error', d.message || ('Error ' + res.status + ': Could not send code.'));
+                return;
+            }
+
+            _savedNewPw = newPw;
+            pwMsg('success', 'Verification code sent! Check your email.');
+            const emailStr = document.getElementById('email').value || 'your email';
+            openModal(emailStr);
+
+        } catch (err) {
+            pwMsg('error', 'Network error: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-shield-halved"></i> Update Password';
+        }
+    }
+
+    function openModal(email) {
+        document.getElementById('modalSub').textContent =
+            'We sent an 8-character verification code to ' + email + '. Enter it below to confirm the password change.';
+        document.getElementById('codeInput').value = '';
+        document.getElementById('codeInput').classList.remove('error');
+        document.getElementById('codeModal').classList.add('open');
+        document.getElementById('codeInput').focus();
+        startTimer(600); // 10 minutes
+    }
+
+    function closeModal() {
+        document.getElementById('codeModal').classList.remove('open');
+        clearInterval(_modalTimer);
+        document.getElementById('modalTimer').textContent = '';
+        _savedNewPw = '';
+    }
+
+    function startTimer(seconds) {
+        clearInterval(_modalTimer);
+        _timerSecs = seconds;
+        const timerEl = document.getElementById('modalTimer');
+        function tick() {
+            const m = String(Math.floor(_timerSecs / 60)).padStart(2, '0');
+            const s = String(_timerSecs % 60).padStart(2, '0');
+            timerEl.innerHTML = 'Code expires in <span>' + m + ':' + s + '</span>';
+            if (_timerSecs <= 0) {
+                clearInterval(_modalTimer);
+                timerEl.innerHTML = '<span style="color:#dc2626">Code expired. Please request a new one.</span>';
+            }
+            _timerSecs--;
+        }
+        tick();
+        _modalTimer = setInterval(tick, 1000);
+    }
+
+    async function confirmCode() {
+        const code  = document.getElementById('codeInput').value.trim();
+        const input = document.getElementById('codeInput');
+        const btn   = document.getElementById('confirmBtn');
+
+        if (code.length < 6) {
+            input.classList.add('error');
+            setTimeout(() => input.classList.remove('error'), 500);
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>';
+
+        try {
+            const res = await fetch(`${API}/users/change-password/confirm`, {
+                method: 'POST', headers: authHeader(),
+                body: JSON.stringify({ code: code, newPassword: _savedNewPw })
+            });
+            const d = await res.json();
+            if (!res.ok) {
+                // Wrong code — shake and let them try again
+                input.classList.add('error');
+                setTimeout(() => input.classList.remove('error'), 500);
+                input.value = '';
+                input.focus();
+                throw new Error(d.message || 'Incorrect code. Please try again.');
+            }
+            // Success
+            clearInterval(_modalTimer);
+            closeModal();
+            document.getElementById('currentPw').value = '';
+            document.getElementById('newPw').value     = '';
+            document.getElementById('confirmPw').value = '';
+            showMsg('success', 'Password changed successfully!');
+        } catch (err) {
+            showMsg('error', err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-check"></i> Confirm';
+        }
+    }
+
+    async function resendCode() {
+        const current = document.getElementById('currentPw').value.trim();
+        const newPw   = _savedNewPw;
+        if (!current || !newPw) { closeModal(); showMsg('error', 'Please fill the form again.'); return; }
+        try {
+            const res = await fetch(`${API}/users/change-password/request`, {
                 method: 'POST', headers: authHeader(),
                 body: JSON.stringify({ currentPassword: current, newPassword: newPw })
             });
-            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Failed'); }
-            document.getElementById('currentPw').value = '';
-            document.getElementById('newPw').value = '';
-            document.getElementById('confirmPw').value = '';
-            showMsg('success', 'Password changed successfully!');
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.message || 'Failed.');
+            document.getElementById('codeInput').value = '';
+            startTimer(600);
+            showMsg('success', 'New code sent to your email.');
         } catch (err) { showMsg('error', err.message); }
     }
+
+    // Close modal on overlay click
+    document.getElementById('codeModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
 
     function deleteAccount() {
         if (!confirm('Are you absolutely sure you want to delete your account? This cannot be undone.')) return;
@@ -288,24 +478,29 @@
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
                 { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
                 { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+                {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
+                {href:'profile.html',icon:'fa-user',label:'My Profile'},
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             volunteer: [
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
                 { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
                 { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+                {href:'profile.html',icon:'fa-user',label:'My Profile'},
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             psychologist: [
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
                 { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
                 { href: 'psychological.html',icon: 'fa-brain',              label: 'Psychological Support' },
+                {href:'profile.html',icon:'fa-user',label:'My Profile'},
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             organization: [
                 { href: 'dashboard.html',    icon: 'fa-gauge',              label: 'Dashboard' },
                 { href: 'help-requests.html',icon: 'fa-hand-holding-heart', label: 'Help Requests' },
                 { href: 'community.html',    icon: 'fa-users',              label: 'Community' },
+                {href:'profile.html',icon:'fa-user',label:'My Profile'},
                 { href: 'settings.html',     icon: 'fa-gear',               label: 'Settings' }
             ],
             admin: [

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nidaa — My Profile</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#1d4ed8;--green:#059669;--bg:#f1f5f9;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:256px}
+body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;transition:transform .25s}
+.sidebar-logo{height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo img{height:40px;width:auto}
+.sidebar-nav{padding:12px 10px;flex:1;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:background .15s,color .15s;margin-bottom:2px}
+.nav-item i{width:18px;text-align:center}
+.nav-item:hover{background:#f8fafc;color:var(--dark)}
+.nav-item.active{background:#eff6ff;color:var(--blue)}
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:14px;position:sticky;top:0;z-index:100}
+.topbar-title{font-size:16px;font-weight:600;flex:1}
+.topbar-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+.badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
+.btn-logout{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+.menu-toggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+.content{padding:28px 32px;flex:1}
+
+/* Profile Header */
+.profile-header{background:#fff;border:1px solid var(--border);border-radius:20px;overflow:hidden;margin-bottom:24px}
+.profile-cover{height:140px;background:linear-gradient(135deg,#1d4ed8 0%,#059669 100%)}
+.profile-header-body{padding:0 28px 24px;position:relative}
+.avatar-wrap{position:relative;display:inline-block;margin-top:-44px;margin-bottom:12px}
+.profile-avatar{width:88px;height:88px;border-radius:50%;border:4px solid #fff;background:linear-gradient(135deg,var(--blue),var(--green));color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:28px;font-weight:800;overflow:hidden}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.avatar-upload-btn{position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:var(--blue);border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:#fff;transition:all .2s;opacity:0;z-index:5}
+.avatar-upload-btn:hover{background:#1e40af}
+.avatar-wrap:hover .avatar-upload-btn{opacity:1}
+.online-dot{position:absolute;bottom:4px;right:-5px;width:14px;height:14px;background:#22c55e;border-radius:50%;border:3px solid #fff;z-index:3;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.profile-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.profile-name{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:var(--dark)}
+.profile-role-badge{display:inline-block;padding:4px 14px;border-radius:100px;font-size:12px;font-weight:700;margin-left:10px}
+.profile-sub{color:var(--muted);font-size:14px;margin-top:4px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.profile-sub span{display:flex;align-items:center;gap:5px}
+.stars{color:#f59e0b;font-size:13px}
+.profile-actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn-edit{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s;display:flex;align-items:center;gap:6px}
+.btn-edit:hover{background:#1e40af}
+.btn-settings{background:#fff;color:var(--dark);border:1.5px solid var(--border);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-settings:hover{border-color:var(--blue);color:var(--blue)}
+
+/* Tabs */
+.tabs-bar{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:24px;overflow-x:auto}
+.tab-btn{padding:10px 18px;background:none;border:none;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:color .2s}
+.tab-btn:hover{color:var(--dark)}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+
+/* Cards */
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px}
+.card-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.section-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.field-row{margin-bottom:18px}
+.field-value{font-size:15px;color:var(--dark);min-height:22px}
+.field-edit{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;color:var(--dark)}
+.field-edit:focus{border-color:var(--blue)}
+textarea.field-edit{resize:vertical;min-height:80px;line-height:1.6}
+
+/* Skills tags */
+.tags-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.skill-tag{background:#eff6ff;color:var(--blue);border-radius:100px;padding:5px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.skill-tag .rm{cursor:pointer;opacity:.6;font-size:11px}
+.skill-tag .rm:hover{opacity:1}
+.tag-add-wrap{display:flex;gap:8px;margin-top:10px}
+.tag-input{flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+.tag-input:focus{border-color:var(--blue)}
+.btn-add-tag{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}
+.stat-box{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.stat-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:28px;font-weight:800;color:var(--blue)}
+.stat-lbl{font-size:12px;color:var(--muted);margin-top:4px;font-weight:500}
+
+/* Achievements */
+.badges-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.badge-card{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:18px 14px;text-align:center;transition:box-shadow .2s}
+.badge-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.badge-icon{font-size:32px;margin-bottom:10px}
+.badge-name{font-size:13px;font-weight:700;color:var(--dark);margin-bottom:4px}
+.badge-desc{font-size:11px;color:var(--muted)}
+.badge-card.locked{opacity:.4}
+
+/* Posts */
+.post-item{border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;transition:box-shadow .2s}
+.post-item:hover{box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.post-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.post-type-tag{font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px}
+.post-text-preview{font-size:14px;color:var(--dark);line-height:1.6;margin-bottom:10px}
+.post-item-footer{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted)}
+.post-item-footer span{display:flex;align-items:center;gap:4px}
+.btn-del{background:none;border:none;color:#ef4444;font-size:12px;cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:6px;transition:background .2s}
+.btn-del:hover{background:#fef2f2}
+
+/* Activity */
+.activity-list{display:flex;flex-direction:column;gap:0}
+.activity-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.activity-item:last-child{border:none}
+.act-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.act-text{font-size:14px;color:var(--dark);line-height:1.5}
+.act-time{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* Settings panel */
+.settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center}
+.settings-overlay.open{display:flex}
+.settings-panel{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.settings-panel h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;margin-bottom:20px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-of-type{border:none}
+.settings-label{font-size:14px;font-weight:600;color:var(--dark)}
+.settings-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.toggle{width:44px;height:24px;background:var(--border);border-radius:100px;position:relative;cursor:pointer;transition:background .2s;border:none}
+.toggle.on{background:var(--blue)}
+.toggle::after{content:'';width:18px;height:18px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:left .2s}
+.toggle.on::after{left:23px}
+.btn-save-settings{width:100%;margin-top:18px;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-save-settings:hover{background:#1e40af}
+.btn-close-settings{float:right;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+
+/* Save bar */
+.save-bar{display:none;position:fixed;bottom:24px;right:32px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 20px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:300;display:flex;align-items:center;gap:12px}
+.btn-save{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-save:hover{background:#1e40af}
+.btn-cancel{background:none;border:1.5px solid var(--border);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--muted);transition:all .2s}
+.btn-cancel:hover{border-color:var(--dark);color:var(--dark)}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-state i{font-size:32px;opacity:.3;margin-bottom:12px;display:block}
+
+@media(max-width:900px){.content{padding:20px 16px}}
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <a href="dashboard.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+</aside>
+
+<div class="main">
+    <header class="topbar">
+        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <span class="topbar-title"><i class="fa fa-user" style="color:var(--blue);margin-right:8px"></i>My Profile</span>
+        <div class="topbar-actions">
+            <span id="topbarName" style="font-size:14px;font-weight:600">—</span>
+            <span class="badge" id="topbarRole">—</span>
+            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <div class="profile-cover"></div>
+            <div class="profile-header-body">
+                <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div>
+                        <div class="avatar-wrap">
+                            <div class="profile-avatar" id="profileAvatar"></div>
+                            <span class="online-dot" title="Online"></span>
+                            <div class="avatar-upload-btn" onclick="document.getElementById('avatarInput').click()" title="Change photo">
+                                <i class="fa fa-camera"></i>
+                            </div>
+                            <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif" style="display:none" onchange="handleAvatarUpload(this)"/>
+                        </div>
+                        <div class="profile-name" id="profileName">—</div>
+                        <div class="profile-sub" id="profileSub">
+                            <span><i class="fa fa-envelope"></i> <span id="profileEmail">—</span></span>
+                            <span><i class="fa fa-calendar"></i> Member since <span id="profileSince">—</span></span>
+                            <span class="stars">★★★★★</span><span id="profileRating" style="font-size:13px;color:var(--muted)">New member</span>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-edit" onclick="toggleEditMode()"><i class="fa fa-pen"></i> <span id="editBtnLabel">Edit Profile</span></button>
+                        <button class="btn-settings" onclick="openSettings()"><i class="fa fa-gear"></i> Settings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-bar">
+            <button class="tab-btn active" onclick="switchTab('about',this)"><i class="fa fa-user"></i> About</button>
+            <button class="tab-btn" id="tabBtnPosts" onclick="switchTab('posts',this)"><i class="fa fa-newspaper"></i> Posts</button>
+            <button class="tab-btn" id="tabBtnActivity" onclick="switchTab('activity',this)"><i class="fa fa-clock-rotate-left"></i> Activity</button>
+            <button class="tab-btn" id="tabBtnStories" style="display:none" onclick="switchTab('stories',this)"><i class="fa fa-pen-to-square"></i> My Stories</button>
+        </div>
+
+        <!-- ABOUT TAB -->
+        <div class="tab-pane active" id="tab-about">
+            <div class="card">
+                <div class="card-title">About Me <span id="editHint" style="font-size:12px;font-weight:500;color:var(--muted)"></span></div>
+                <div class="field-row" id="rowBio">
+                    <div class="section-label">Bio</div>
+                    <div class="field-value" id="bioView">No bio added yet.</div>
+                    <textarea class="field-edit" id="bioEdit" rows="3" placeholder="Tell the community about yourself..." style="display:none"></textarea>
+                </div>
+                <div class="field-row">
+                    <div class="section-label">Location</div>
+                    <div class="field-value" id="locationView">Not set</div>
+                    <input class="field-edit" id="locationEdit" type="text" placeholder="City, Country" style="display:none"/>
+                </div>
+                <div class="field-row" id="rowAvailability">
+                    <div class="section-label">Availability</div>
+                    <div class="field-value" id="availView">Not specified</div>
+                    <input class="field-edit" id="availEdit" type="text" placeholder="e.g. Weekdays 9am–5pm" style="display:none"/>
+                </div>
+                <div class="field-row" id="rowSkills">
+                    <div class="section-label">Skills</div>
+                    <div class="tags-wrap" id="skillsView"></div>
+                    <div id="skillsEditWrap" style="display:none">
+                        <div class="tags-wrap" id="skillsEditTags"></div>
+                        <div class="tag-add-wrap">
+                            <input class="tag-input" id="skillInput" type="text" placeholder="Add a skill..." onkeydown="if(event.key==='Enter')addSkill()"/>
+                            <button class="btn-add-tag" onclick="addSkill()"><i class="fa fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- POSTS TAB -->
+        <div class="tab-pane" id="tab-posts">
+            <div class="card">
+                <div class="card-title">My Community Posts</div>
+                <div id="myPostsList"></div>
+            </div>
+        </div>
+
+        <!-- ACTIVITY TAB -->
+        <div class="tab-pane" id="tab-activity">
+            <div class="card">
+                <div class="card-title">Recent Activity</div>
+                <div class="activity-list" id="activityList"></div>
+            </div>
+        </div>
+
+        <!-- STORIES TAB (beneficiary only) -->
+        <div class="tab-pane" id="tab-stories">
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-title">Share a New Story</div>
+                <p style="font-size:14px;color:var(--muted);margin-bottom:16px;line-height:1.6">Tell us how Nidaa made a difference in your life. Once approved by an admin, your story will appear on the main page for everyone to see.</p>
+                <a href="submit-story.html" style="display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;transition:background .2s" onmouseover="this.style.background='#1e40af'" onmouseout="this.style.background='var(--blue)'"><i class="fa fa-pen-to-square"></i> Write My Story</a>
+            </div>
+            <div class="card">
+                <div class="card-title">My Submitted Stories</div>
+                <div id="profileStoriesList"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Save bar -->
+<div class="save-bar" id="saveBar" style="display:none">
+    <span style="font-size:13px;color:var(--muted)">Unsaved changes</span>
+    <button class="btn-cancel" onclick="cancelEdit()">Cancel</button>
+    <button class="btn-save" onclick="saveProfile()">Save Changes</button>
+</div>
+
+<!-- Settings overlay -->
+<div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+    <div class="settings-panel">
+        <button class="btn-close-settings" onclick="closeSettings()"><i class="fa fa-xmark"></i></button>
+        <h2>Account Settings</h2>
+        <div class="settings-row">
+            <div><div class="settings-label">Public Profile</div><div class="settings-sub">Let others view your profile</div></div>
+            <button class="toggle on" id="togglePublic" onclick="this.classList.toggle('on')"></button>
+        </div>
+        <div class="settings-row">
+            <div><div class="settings-label">Email Notifications</div><div class="settings-sub">Receive email updates</div></div>
+            <button class="toggle on" id="toggleEmail" onclick="this.classList.toggle('on')"></button>
+        </div>
+        <div class="settings-row">
+            <div><div class="settings-label">Community Posts</div><div class="settings-sub">Show my posts publicly</div></div>
+            <button class="toggle on" id="togglePosts" onclick="this.classList.toggle('on')"></button>
+        </div>
+        <div class="settings-row">
+            <div><div class="settings-label">Activity Visibility</div><div class="settings-sub">Show my activity to members</div></div>
+            <button class="toggle" id="toggleActivity" onclick="this.classList.toggle('on')"></button>
+        </div>
+        <button class="btn-save-settings" onclick="saveSettings()"><i class="fa fa-floppy-disk"></i> Save Settings</button>
+    </div>
+</div>
+
+<script>
+const API = 'http://localhost:8081/api';
+function authHeader(){return{'Authorization':'Bearer '+localStorage.getItem('token'),'Content-Type':'application/json'};}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');window.location.href='login.html';}
+if(!localStorage.getItem('token')) window.location.href='login.html';
+
+const user       = JSON.parse(localStorage.getItem('user')||'{}');
+const fullName   = user.fullName||user.name||'User';
+const firstName  = fullName.split(' ')[0];
+const userRole   = (user.role||'volunteer').toLowerCase();
+const roleDisplay= userRole.charAt(0).toUpperCase()+userRole.slice(1);
+const initials   = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+const PROF_KEY   = 'nidaa_profile_'+( user.id||user.email||'me');
+const POSTS_KEY  = 'nidaa_community_posts';
+
+const roleColors={volunteer:'#059669',psychologist:'#7c3aed',admin:'#dc2626',beneficiary:'#1d4ed8',organization:'#ea580c'};
+const roleBg    ={volunteer:'#f0fdf4',psychologist:'#faf5ff',admin:'#fef2f2',beneficiary:'#eff6ff',organization:'#fff7ed'};
+
+document.getElementById('topbarName').textContent=firstName;
+document.getElementById('topbarRole').textContent=roleDisplay;
+
+function loadProfileData(){
+    const saved=JSON.parse(localStorage.getItem(PROF_KEY)||'{}');
+    const roleCol=roleColors[userRole]||'#1d4ed8';
+
+    // Avatar
+    const avatarEl=document.getElementById('profileAvatar');
+    const savedPhoto=localStorage.getItem('nidaa_avatar_'+(user.id||user.email));
+    if(savedPhoto){
+        avatarEl.innerHTML=`<img src="${savedPhoto}" alt="avatar"/>`;
+    } else {
+        avatarEl.style.background=`linear-gradient(135deg,${roleCol},#059669)`;
+        avatarEl.textContent=initials;
+    }
+
+    document.getElementById('profileName').textContent=fullName;
+    document.getElementById('profileEmail').textContent=user.email||'';
+    document.getElementById('profileSince').textContent=saved.since||new Date().getFullYear();
+    document.getElementById('topbarRole').textContent=roleDisplay;
+
+    // Bio / location / avail
+    document.getElementById('bioView').textContent=saved.bio||'No bio added yet.';
+    document.getElementById('bioEdit').value=saved.bio||'';
+    document.getElementById('locationView').textContent=saved.location||'Not set';
+    document.getElementById('locationEdit').value=saved.location||'';
+    document.getElementById('availView').textContent=saved.availability||'Not specified';
+    document.getElementById('availEdit').value=saved.availability||'';
+
+    // Skills
+    renderSkillsView(saved.skills||[]);
+
+    // Stats from community posts
+    const allPosts=JSON.parse(localStorage.getItem(POSTS_KEY)||'[]');
+    const myPosts=allPosts.filter(p=>p.author===fullName||(p.authorId&&p.authorId===(user.id||user.email)));
+    const totalLikes=myPosts.reduce((s,p)=>s+(p.likes||0),0);
+
+
+     // Fetch real people-helped count from completed help requests
+
+
+
+
+    document.getElementById('profileRating').textContent=saved.rating?`⭐ ${saved.rating} rating`:'New member';
+    renderMyPosts(myPosts);
+    renderActivity(myPosts,saved);
+}
+
+function renderSkillsView(skills){
+    const wrap=document.getElementById('skillsView');
+    if(!skills.length){wrap.innerHTML='<span style="color:var(--muted);font-size:14px">No skills added yet.</span>';return;}
+    wrap.innerHTML=skills.map(s=>`<span class="skill-tag">${s}</span>`).join('');
+}
+
+let editSkills=[];
+function renderSkillsEditTags(){
+    const wrap=document.getElementById('skillsEditTags');
+    wrap.innerHTML=editSkills.map((s,i)=>`<span class="skill-tag">${s}<span class="rm" onclick="removeSkill(${i})">✕</span></span>`).join('');
+}
+function removeSkill(i){editSkills.splice(i,1);renderSkillsEditTags();}
+function addSkill(){
+    const inp=document.getElementById('skillInput');
+    const val=inp.value.trim();
+    if(!val)return;
+    if(!editSkills.includes(val))editSkills.push(val);
+    inp.value='';
+    renderSkillsEditTags();
+}
+
+const ALL_BADGES=[
+    {icon:'💬',name:'Communicator',desc:'Posted 10+ times',check:p=>p.length>=10},
+    {icon:'🤝',name:'Helper',desc:'Engaged with community',check:(p,s)=>(s.helped||0)>=5},
+    {icon:'⭐',name:'Expert',desc:'Earned 450+ contribution pts',check:(p,s)=>(s.points||0)>=450},
+    {icon:'🔥',name:'Active',desc:'10-day streak',check:(p,s)=>(s.streak||1)>=10},
+    {icon:'🎓',name:'Mentor',desc:'Mentored 3+ people',check:(p,s)=>(s.mentees||0)>=3},
+    {icon:'🏆',name:'Top Rated',desc:'Rating 4.8+',check:(p,s)=>parseFloat(s.rating||0)>=4.8},
+    {icon:'✅',name:'Verified',desc:'Verified platform member',check:()=>true},
+    {icon:'👑',name:'Community Leader',desc:'50+ posts created',check:p=>p.length>=50},
+];
+
+
+const typeLabel={UPDATE:'📢 Update',QUESTION:'❓ Question',GRATITUDE:'🙏 Gratitude',INFO:'ℹ️ Info',
+    'success-stories':'🌟 Success Story','tips-advice':'💡 Tips','events':'📅 Event','resources':'📚 Resource'};
+const typeTagStyle={UPDATE:'background:#eff6ff;color:#1d4ed8',QUESTION:'background:#fefce8;color:#a16207',
+    GRATITUDE:'background:#f0fdf4;color:#059669',INFO:'background:#faf5ff;color:#7c3aed',
+    'success-stories':'background:#f0fdf4;color:#059669','tips-advice':'background:#faf5ff;color:#7c3aed',
+    'events':'background:#ecfeff;color:#0891b2','resources':'background:#fdf2f8;color:#9d174d'};
+function renderMyPosts(myPosts){
+    const el=document.getElementById('myPostsList');
+    if(!myPosts.length){el.innerHTML='<div class="empty-state"><i class="fa fa-newspaper"></i><p>No posts yet. Share something in the Community!</p></div>';return;}
+    el.innerHTML=myPosts.map((p,i)=>{
+        const type=p.type||p.category||'UPDATE';
+        const style=typeTagStyle[type]||'background:#eff6ff;color:#1d4ed8';
+        const label=typeLabel[type]||type;
+        return`<div class="post-item">
+            <div class="post-item-header">
+                <span class="post-type-tag" style="${style}">${label}</span>
+                <span style="font-size:12px;color:var(--muted)">${timeAgo(p.timestamp)}</span>
+            </div>
+            <div class="post-text-preview">${escHtml(p.text).slice(0,200)}${p.text.length>200?'…':''}</div>
+            <div class="post-item-footer">
+                <span><i class="fa fa-heart" style="color:#ef4444"></i> ${p.likes||0}</span>
+                <span><i class="fa fa-comment" style="color:var(--blue)"></i> ${(p.comments||[]).length||0}</span>
+                <span style="margin-left:auto"><button class="btn-del" onclick="deletePost(${i},event)"><i class="fa fa-trash"></i> Delete</button></span>
+            </div>
+        </div>`;
+    }).join('');
+}
+function deletePost(localIdx,e){
+    e.stopPropagation();
+    if(!confirm('Delete this post?'))return;
+    const all=JSON.parse(localStorage.getItem(POSTS_KEY)||'[]');
+    const myPosts=all.filter(p=>p.author===fullName);
+    const post=myPosts[localIdx];
+    const realIdx=all.indexOf(post);
+    if(realIdx>-1)all.splice(realIdx,1);
+    localStorage.setItem(POSTS_KEY,JSON.stringify(all));
+    loadProfileData();
+}
+
+function renderActivity(myPosts,saved){
+    const el=document.getElementById('activityList');
+    const items=[];
+    myPosts.slice(0,5).forEach(p=>items.push({icon:'<i class="fa fa-pen" style="color:var(--blue)"></i>',bg:'#eff6ff',text:`Posted a ${(p.type||'update').toLowerCase()}`,time:p.timestamp}));
+    if(saved.joined)items.push({icon:'<i class="fa fa-star" style="color:#f59e0b"></i>',bg:'#fefce8',text:'Joined the Nidaa community',time:saved.joinedTs||Date.now()});
+    items.sort((a,b)=>b.time-a.time);
+    if(!items.length){el.innerHTML='<div class="empty-state"><i class="fa fa-clock-rotate-left"></i><p>No activity yet.</p></div>';return;}
+    el.innerHTML=items.map(it=>`<div class="activity-item">
+        <div class="act-icon" style="background:${it.bg}">${it.icon}</div>
+        <div><div class="act-text">${it.text}</div><div class="act-time">${timeAgo(it.time)}</div></div>
+    </div>`).join('');
+}
+
+function timeAgo(ts){
+    const d=Date.now()-ts,m=Math.floor(d/60000);
+    if(m<1)return'Just now';
+    if(m<60)return m+'m ago';
+    const h=Math.floor(m/60);
+    if(h<24)return h+'h ago';
+    const dy=Math.floor(h/24);
+    if(dy<30)return dy+'d ago';
+    return Math.floor(dy/30)+'mo ago';
+}
+function escHtml(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// Edit mode
+let isEditing=false;
+function toggleEditMode(){
+    isEditing=!isEditing;
+    const views=['bioView','locationView','availView','skillsView'];
+    const edits=['bioEdit','locationEdit','availEdit'];
+    if(isEditing){
+        document.getElementById('editBtnLabel').textContent='Cancel Edit';
+        views.forEach(id=>document.getElementById(id).style.display='none');
+        edits.forEach(id=>document.getElementById(id).style.display='');
+        document.getElementById('skillsView').style.display='none';
+        document.getElementById('skillsEditWrap').style.display='';
+        const saved=JSON.parse(localStorage.getItem(PROF_KEY)||'{}');
+        editSkills=[...(saved.skills||[])];
+        renderSkillsEditTags();
+        document.getElementById('saveBar').style.display='flex';
+        document.getElementById('editHint').textContent='— editing';
+    } else {
+        cancelEdit();
+    }
+}
+function cancelEdit(){
+    isEditing=false;
+    document.getElementById('editBtnLabel').textContent='Edit Profile';
+    ['bioView','locationView','availView','skillsView'].forEach(id=>document.getElementById(id).style.display='');
+    ['bioEdit','locationEdit','availEdit'].forEach(id=>document.getElementById(id).style.display='none');
+    document.getElementById('skillsEditWrap').style.display='none';
+    document.getElementById('saveBar').style.display='none';
+    document.getElementById('editHint').textContent='';
+    loadProfileData();
+}
+function saveProfile(){
+    const saved=JSON.parse(localStorage.getItem(PROF_KEY)||'{}');
+    saved.bio=document.getElementById('bioEdit').value.trim();
+    saved.location=document.getElementById('locationEdit').value.trim();
+    saved.availability=document.getElementById('availEdit').value.trim();
+    saved.skills=editSkills;
+    saved.joined=true;
+    saved.joinedTs=saved.joinedTs||Date.now();
+    if(!saved.since)saved.since=new Date().getFullYear();
+    localStorage.setItem(PROF_KEY,JSON.stringify(saved));
+    isEditing=false;
+    document.getElementById('editBtnLabel').textContent='Edit Profile';
+    ['bioView','locationView','availView','skillsView'].forEach(id=>document.getElementById(id).style.display='');
+    ['bioEdit','locationEdit','availEdit'].forEach(id=>document.getElementById(id).style.display='none');
+    document.getElementById('skillsEditWrap').style.display='none';
+    document.getElementById('saveBar').style.display='none';
+    document.getElementById('editHint').textContent='';
+    loadProfileData();
+    showToast('✅ Profile saved!');
+}
+
+// Avatar upload
+function handleAvatarUpload(input){
+    const file=input.files[0];
+    if(!file)return;
+    if(file.size>2*1024*1024){showToast('⚠️ Image must be under 2MB','#fef2f2','#dc2626');return;}
+    const allowed=['image/jpeg','image/png','image/gif'];
+    if(!allowed.includes(file.type)){showToast('⚠️ Only JPG, PNG, GIF allowed','#fef2f2','#dc2626');return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+        const b64=e.target.result;
+        localStorage.setItem('nidaa_avatar_'+(user.id||user.email),b64);
+        document.getElementById('profileAvatar').innerHTML=`<img src="${b64}" alt="avatar"/>`;
+        showToast('✅ Photo updated!');
+    };
+    reader.readAsDataURL(file);
+}
+
+// Settings
+function openSettings(){document.getElementById('settingsOverlay').classList.add('open');}
+function closeSettings(){document.getElementById('settingsOverlay').classList.remove('open');}
+function saveSettings(){closeSettings();showToast('✅ Settings saved!');}
+
+function switchTab(name,btn){
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    btn.classList.add('active');
+}
+
+function showToast(msg,bg,col){
+    const t=document.createElement('div');
+    t.style.cssText=`position:fixed;top:20px;right:24px;background:${bg||'#f0fdf4'};border:1px solid #bbf7d0;color:${col||'#059669'};padding:13px 20px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px`;
+    t.textContent=msg;
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(),2500);
+}
+
+// Sidebar
+function buildSidebar(){
+    const nav=document.getElementById('sidebarNav');
+    const pages={
+        beneficiary:[
+            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
+            {href:'psychological.html',icon:'fa-brain',label:'Psychological Support'},
+            {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
+            {href:'profile.html',icon:'fa-user',label:'My Profile'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ],
+        volunteer:[
+            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
+            {href:'community.html',icon:'fa-users',label:'Community'},
+            {href:'profile.html',icon:'fa-user',label:'My Profile'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ],
+        psychologist:[
+            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+            {href:'community.html',icon:'fa-users',label:'Community'},
+            {href:'psychological.html',icon:'fa-brain',label:'Psychological Support'},
+            {href:'profile.html',icon:'fa-user',label:'My Profile'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ],
+        organization:[
+            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
+            {href:'community.html',icon:'fa-users',label:'Community'},
+            {href:'profile.html',icon:'fa-user',label:'My Profile'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ],
+        admin:[
+            {href:'admin-requests.html',icon:'fa-list-check',label:'All Requests'},
+            {href:'admin.html',icon:'fa-chart-bar',label:'Analytics'},
+            {href:'admin-approvals.html',icon:'fa-user-check',label:'Approvals'},
+            {href:'admin-users.html',icon:'fa-users',label:'All Users'},
+            {href:'settings.html',icon:'fa-gear',label:'Settings'}
+        ]
+    };
+    const links=pages[userRole]||pages['beneficiary'];
+    nav.innerHTML=links.map(p=>`<a href="${p.href}" class="nav-item${p.href==='profile.html'?' active':''}"><i class="fa ${p.icon}"></i> ${p.label}</a>`).join('');
+}
+buildSidebar();
+loadProfileData();
+
+// ── Beneficiary role UI customization ──────────────────────────
+function setupBeneficiaryUI() {
+        if (userRole === 'beneficiary') {
+        // Hide non-relevant tabs; show Stories tab instead
+        ['tabBtnPosts','tabBtnActivity'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        const storiesBtn = document.getElementById('tabBtnStories');
+        if (storiesBtn) storiesBtn.style.display = '';
+
+        // Hide Bio, Availability, Skills rows — keep only Location
+        ['rowBio','rowAvailability','rowSkills'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+
+        // Load beneficiary's submitted stories into the Stories tab
+        renderProfileStories();
+
+    } else {
+        // Non-beneficiary: hide the Stories tab button (not relevant for them)
+        const storiesBtn = document.getElementById('tabBtnStories');
+        if (storiesBtn) storiesBtn.style.display = 'none';
+
+    }
+}
+
+function renderProfileStories() {
+    const el = document.getElementById('profileStoriesList');
+    if (!el) return;
+    let stories = [];
+    try { stories = JSON.parse(localStorage.getItem('nidaa_stories') || '[]'); } catch {}
+    const mine = stories.filter(s => s.authorId === (user.id || user.email) || s.authorName === fullName);
+    if (!mine.length) {
+    el.innerHTML = '<div class="empty-state"><i class="fa fa-pen-to-square"></i><p>You haven\'t submitted any stories yet. Click "Write My Story" above to get started!</p></div>';        return;
+    }
+    el.innerHTML = mine.map(s => {
+        const sc = s.status === 'approved' ? '#059669' : s.status === 'rejected' ? '#dc2626' : '#a16207';
+        const sb = s.status === 'approved' ? '#f0fdf4' : s.status === 'rejected' ? '#fef2f2' : '#fefce8';
+        const sl = s.status === 'approved' ? '✅ Approved & Published' : s.status === 'rejected' ? '❌ Not Approved' : '⏳ Pending Review';
+        return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+                <span style="font-size:15px;font-weight:700">${s.title || 'Untitled'}</span>
+                <span style="font-size:11px;font-weight:700;padding:3px 12px;border-radius:100px;background:${sb};color:${sc}">${sl}</span>
+            </div>
+            ${s.photo ? `<img src="${s.photo}" style="width:100%;max-height:130px;object-fit:cover;border-radius:9px;margin-bottom:10px"/>` : ''}
+            <p style="font-size:13px;color:var(--muted);line-height:1.6">${(s.text||'').slice(0,200)}${(s.text||'').length > 200 ? '…' : ''}</p>
+            ${s.adminNote ? `<div style="margin-top:8px;font-size:12px;background:#f8fafc;border-radius:8px;padding:8px 12px;color:var(--muted)"><b>Admin note:</b> ${s.adminNote}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+setupBeneficiaryUI();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 package com.humanitarian.platform.repository;
 
-import com.humanitarian.platform.model.PasswordResetToken;
+import com.humanitarian.platform.model.RefreshToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -12,17 +12,19 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
-public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
-    Optional<PasswordResetToken> findByEmail(String email);
+    Optional<RefreshToken> findByToken(String token);
+
+    Optional<RefreshToken> findByEmail(String email);
 
     @Modifying
     @Transactional
-    @Query(value = "DELETE FROM password_reset_tokens WHERE email = :email", nativeQuery = true)
+    @Query(value = "DELETE FROM refresh_tokens WHERE email = :email", nativeQuery = true)
     void deleteByEmail(@Param("email") String email);
 
     @Modifying
     @Transactional
-    @Query(value = "DELETE FROM password_reset_tokens WHERE expires_at < :now", nativeQuery = true)
+    @Query(value = "DELETE FROM refresh_tokens WHERE expires_at < :now", nativeQuery = true)
     void deleteByExpiresAtBefore(@Param("now") LocalDateTime now);
 }

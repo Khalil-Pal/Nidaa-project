@@ -6,15 +6,20 @@ import com.humanitarian.platform.repository.PasswordResetTokenRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.mail.internet.MimeMessage;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -37,6 +42,9 @@ public class PasswordResetService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
@@ -44,6 +52,7 @@ public class PasswordResetService {
     private String senderEmail;
 
     // Step 1: Send reset code to email
+    @Transactional
     public String sendResetCode(String email) {
         String normalizedEmail = email.toLowerCase().trim();
 
@@ -59,6 +68,7 @@ public class PasswordResetService {
 
         // Delete any existing token for this email (user is requesting again)
         tokenRepository.deleteByEmail(normalizedEmail);
+        entityManager.flush(); // ensure deletes are committed before insert
 
         // Generate new code and persist it in DB
         String code = generateCode();
@@ -90,6 +100,7 @@ public class PasswordResetService {
     }
 
     // Step 3: Reset the password
+    @Transactional
     public void resetPassword(String email, String code, String newPassword) {
         if (!verifyCode(email, code)) {
             throw new BusinessException("Invalid or expired reset code.");
@@ -103,8 +114,7 @@ public class PasswordResetService {
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
+        userRepository.updatePassword(user.getId(), passwordEncoder.encode(newPassword)); // native SQL
 
         // Remove the used token
         tokenRepository.deleteByEmail(normalizedEmail);
@@ -128,28 +138,31 @@ public class PasswordResetService {
     }
 
     private void sendResetEmail(User user, String code) {
-        if (mailSender == null || senderEmail == null || senderEmail.isBlank()) {
-            log.warn("Mail not configured — reset code NOT logged for security reasons.");
-            return;
-        }
-        try {
-            SimpleMailMessage msg = new SimpleMailMessage();
-            msg.setTo(user.getEmail());
-            msg.setSubject("[Nidaa] Your Password Reset Code");
-            msg.setText(
-                    "Hello " + user.getFullName() + ",\n\n" +
-                    "You requested a password reset for your Nidaa account.\n\n" +
-                    "Your reset code is:\n\n" +
-                    "    " + code + "\n\n" +
-                    "This code expires in " + CODE_EXPIRY_MINUTES + " minutes.\n\n" +
-                    "If you did not request this, please ignore this email.\n\n" +
-                    "— The Nidaa Team\n" +
-                    "supp0rtnidaa@yandex.ru"
-            );
-            mailSender.send(msg);
-            log.info("Reset email sent to: {}", user.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send reset email: {}", e.getMessage());
-        }
+    if (mailSender == null || senderEmail == null || senderEmail.isBlank()) {
+        log.warn("Mail not configured — reset code NOT logged for security reasons.");
+        return;
     }
+    try {
+        // Get HTML template from service
+        EmailTemplateService templateService = new EmailTemplateService();
+        String htmlContent = templateService.generatePasswordResetEmail(
+                user.getFullName(),
+                user.getEmail(),
+                code
+        );
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        helper.setFrom(senderEmail);
+        helper.setTo(user.getEmail());
+        helper.setSubject("[Nidaa] Your Password Reset Code 🔐");
+        helper.setText(htmlContent, true); // true = isHtml
+
+        mailSender.send(message);
+        log.info("HTML reset email sent to: {}", user.getEmail());
+    } catch (Exception e) {
+        log.error("Failed to send reset email: {}", e.getMessage());
+    }
+}
 }

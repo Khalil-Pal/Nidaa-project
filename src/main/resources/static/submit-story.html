@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nidaa — Share Your Story</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#1d4ed8;--green:#059669;--bg:#f1f5f9;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:256px}
+body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;transition:transform .25s}
+.sidebar-logo{height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo img{height:40px;width:auto}
+.sidebar-nav{padding:12px 10px;flex:1;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:background .15s,color .15s;margin-bottom:2px}
+.nav-item i{width:18px;text-align:center}
+.nav-item:hover{background:#f8fafc;color:var(--dark)}
+.nav-item.active{background:#eff6ff;color:var(--blue)}
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:14px;position:sticky;top:0;z-index:100}
+.topbar-title{font-size:16px;font-weight:600;flex:1}
+.topbar-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+.badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
+.btn-logout{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+.menu-toggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+.content{padding:32px;flex:1;max-width:760px}
+
+/* Hero banner */
+.story-hero{background:linear-gradient(135deg,#1d4ed8,#059669);border-radius:20px;padding:36px 40px;margin-bottom:32px;color:#fff;position:relative;overflow:hidden}
+.story-hero::before{content:'✨';position:absolute;right:40px;top:50%;transform:translateY(-50%);font-size:80px;opacity:.15}
+.story-hero h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;margin-bottom:8px}
+.story-hero p{font-size:15px;opacity:.9;line-height:1.6;max-width:480px}
+
+/* Form card */
+.form-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:32px}
+.form-section{margin-bottom:28px}
+.form-section-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.field{margin-bottom:20px}
+label.fl{display:block;font-size:14px;font-weight:600;color:var(--dark);margin-bottom:7px}
+label.fl span{color:#ef4444;margin-left:2px}
+.inp{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;color:var(--dark)}
+.inp:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.08)}
+textarea.inp{resize:vertical;min-height:140px;line-height:1.65}
+.char-bar{display:flex;justify-content:flex-end;font-size:11px;color:var(--muted);margin-top:4px}
+.char-bar.warn{color:#f59e0b}
+.char-bar.over{color:#dc2626}
+
+/* Photo upload */
+.photo-zone{border:2px dashed var(--border);border-radius:14px;padding:32px 24px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+.photo-zone:hover{border-color:var(--blue);background:#eff6ff}
+.photo-zone i{font-size:32px;color:var(--muted);margin-bottom:10px;display:block}
+.photo-zone p{font-size:14px;color:var(--muted);margin-bottom:4px}
+.photo-zone small{font-size:12px;color:var(--muted)}
+.photo-preview{display:none;margin-top:16px;position:relative}
+
+.photo-preview img{max-height:240px;border-radius:12px;border:1px solid var(--border);display:block}
+.photo-remove{position:absolute;top:8px;right:8px;width:28px;height:28px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+
+/* Tips */
+.tips-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;margin-bottom:24px}
+.tips-box h4{font-size:14px;font-weight:700;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.tips-box ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+.tips-box li{font-size:13px;color:#065f46;display:flex;align-items:flex-start;gap:8px}
+.tips-box li i{color:var(--green);flex-shrink:0;margin-top:2px}
+
+/* Status banner */
+.status-banner{border-radius:12px;padding:16px 20px;display:none;align-items:center;gap:14px;margin-bottom:20px}
+.status-banner.show{display:flex}
+.status-banner.pending{background:#fefce8;border:1px solid #fde68a}
+.status-banner.success{background:#f0fdf4;border:1px solid #bbf7d0}
+
+/* Submit btn */
+.btn-submit{width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-submit:hover{background:#1e40af}
+.btn-submit:disabled{background:#93c5fd;cursor:not-allowed}
+
+/* My stories */
+.my-story-card{background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+.my-story-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.story-status{font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px}
+.s-pending{background:#fefce8;color:#a16207}
+.s-approved{background:#f0fdf4;color:#059669}
+.s-rejected{background:#fef2f2;color:#dc2626}
+
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.content{padding:20px}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <a href="dashboard.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+</aside>
+
+<div class="main">
+    <header class="topbar">
+        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <span class="topbar-title"><i class="fa fa-pen-to-square" style="color:var(--blue);margin-right:8px"></i>Share Your Story</span>
+        <div class="topbar-actions">
+            <span id="topbarName" style="font-size:14px;font-weight:600">—</span>
+            <span class="badge" id="topbarRole">—</span>
+            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- Hero -->
+        <div class="story-hero">
+            <h1>Your Voice Matters 💙</h1>
+            <p>Share how Nidaa made a difference in your life. Your story — once approved — will inspire others on the main page and show the real impact of our community.</p>
+        </div>
+
+        <!-- Status banners -->
+        <div class="status-banner pending" id="pendingBanner">
+            <i class="fa fa-clock" style="font-size:20px;color:#a16207;flex-shrink:0"></i>
+            <div>
+                <div style="font-weight:700;color:#a16207;font-size:14px">Story Submitted — Pending Review</div>
+                <div style="font-size:13px;color:#92400e;margin-top:2px">Our admin team will review your story and publish it on the main page shortly.</div>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="tips-box">
+            <h4><i class="fa fa-lightbulb"></i> Tips for a great story</h4>
+            <ul>
+                <li><i class="fa fa-check"></i>Be specific — what happened, when, and how did Nidaa help?</li>
+                <li><i class="fa fa-check"></i>Share the emotional impact — how did it change your life?</li>
+                <li><i class="fa fa-check"></i>Add a real photo to make your story more powerful.</li>
+                <li><i class="fa fa-check"></i>Keep it authentic — your own words are the most powerful.</li>
+            </ul>
+        </div>
+
+        <!-- Form -->
+        <div class="form-card" id="storyForm">
+            <div class="form-section">
+                <div class="form-section-title"><i class="fa fa-user"></i> Your Story</div>
+
+                <div class="field">
+                    <label class="fl">Story Title <span>*</span></label>
+                    <input class="inp" type="text" id="storyTitle" placeholder="e.g. How Nidaa helped my family find shelter" maxlength="100"/>
+                </div>
+
+                <div class="field">
+                    <label class="fl">Your Story <span>*</span></label>
+                    <textarea class="inp" id="storyText" maxlength="1200" oninput="updateCount()" placeholder="Write your experience in your own words. Tell us what happened, how Nidaa helped, and the difference it made in your life..."></textarea>
+                    <div class="char-bar" id="charBar">0 / 1200</div>
+                </div>
+
+                <div class="field">
+                    <label class="fl">Your Location <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+                    <input class="inp" type="text" id="storyLocation" placeholder="e.g. Amman, Jordan"/>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title"><i class="fa fa-image"></i> Add a Photo <span style="font-size:11px;font-weight:400;text-transform:none;color:var(--muted)">(optional but recommended)</span></div>
+                <label>
+                    <div class="photo-zone" id="photoZone">
+                        <i class="fa fa-cloud-arrow-up"></i>
+                        <p><strong>Click to upload a photo</strong></p>
+                        <small>JPG, PNG or WEBP — max 3MB</small>
+                    </div>
+                    <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handlePhoto(this)"/>
+                </label>
+                <div class="photo-preview" id="photoPreview">
+                    <img id="photoImg" src="" alt="preview"/>
+                    <button class="photo-remove" onclick="removePhoto(event)" title="Remove photo"><i class="fa fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <button class="btn-submit" id="submitBtn" onclick="submitStory()">
+                <i class="fa fa-paper-plane"></i> Submit Story for Review
+            </button>
+        </div>
+
+        <!-- My submitted stories -->
+        <div id="myStoriesSection" style="margin-top:32px;display:none">
+            <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:800;margin-bottom:16px">My Submitted Stories</h3>
+            <div id="myStoriesList"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const API='http://localhost:8081/api';
+function authHeader(){return{'Authorization':'Bearer '+localStorage.getItem('token'),'Content-Type':'application/json'};}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');window.location.href='login.html';}
+if(!localStorage.getItem('token'))window.location.href='login.html';
+
+const user      =JSON.parse(localStorage.getItem('user')||'{}');
+const fullName  =user.fullName||user.name||'User';
+const firstName =fullName.split(' ')[0];
+const userRole  =(user.role||'beneficiary').toLowerCase();
+const roleDisplay=userRole.charAt(0).toUpperCase()+userRole.slice(1);
+
+if(userRole!=='beneficiary')window.location.href='dashboard.html';
+
+document.getElementById('topbarName').textContent=firstName;
+document.getElementById('topbarRole').textContent=roleDisplay;
+
+const STORIES_KEY='nidaa_stories';
+let pendingPhoto=null;
+
+function getStories(){try{return JSON.parse(localStorage.getItem(STORIES_KEY)||'[]');}catch{return[];}}
+function saveStories(s){localStorage.setItem(STORIES_KEY,JSON.stringify(s));}
+
+function updateCount(){
+    const len=document.getElementById('storyText').value.length;
+    const el=document.getElementById('charBar');
+    el.textContent=len+' / 1200';
+    el.className='char-bar'+(len>1000?' over':len>800?' warn':'');
+}
+
+function handlePhoto(input){
+    const file=input.files[0];
+    if(!file)return;
+    if(file.size>3*1024*1024){alert('Photo must be under 3MB.');return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+        pendingPhoto=e.target.result;
+        document.getElementById('photoImg').src=pendingPhoto;
+        document.getElementById('photoPreview').style.display='inline-block';
+        document.getElementById('photoZone').style.display='none';
+    };
+    reader.readAsDataURL(file);
+}
+function removePhoto(e){
+    e.preventDefault();
+    pendingPhoto=null;
+    document.getElementById('photoPreview').style.display='none';
+    document.getElementById('photoZone').style.display='';
+    document.getElementById('photoInput').value='';
+}
+
+function submitStory(){
+    const title=document.getElementById('storyTitle').value.trim();
+    const text=document.getElementById('storyText').value.trim();
+    const location=document.getElementById('storyLocation').value.trim();
+    if(!title){alert('Please enter a story title.');return;}
+    if(text.length<50){alert('Please write at least 50 characters for your story.');return;}
+
+    const btn=document.getElementById('submitBtn');
+    btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Submitting...';
+
+    const stories=getStories();
+    stories.unshift({
+        id:Date.now(),
+        authorId:user.id||user.email,
+        authorName:fullName,
+        title,text,location,
+        photo:pendingPhoto||null,
+        status:'pending',
+        timestamp:Date.now(),
+        adminNote:''
+    });
+    saveStories(stories);
+
+    setTimeout(()=>{
+        document.getElementById('pendingBanner').classList.add('show');
+        document.getElementById('storyTitle').value='';
+        document.getElementById('storyText').value='';
+        document.getElementById('storyLocation').value='';
+        updateCount();
+        removePhoto({preventDefault:()=>{}});
+        btn.disabled=false;
+        btn.innerHTML='<i class="fa fa-paper-plane"></i> Submit Another Story';
+        loadMyStories();
+        document.getElementById('pendingBanner').scrollIntoView({behavior:'smooth',block:'start'});
+    },600);
+}
+
+function loadMyStories(){
+    const all=getStories();
+    const mine=all.filter(s=>s.authorId===(user.id||user.email)||s.authorName===fullName);
+    const section=document.getElementById('myStoriesSection');
+    const list=document.getElementById('myStoriesList');
+    if(!mine.length){section.style.display='none';return;}
+    section.style.display='block';
+    list.innerHTML=mine.map(s=>{
+        const statusClass=s.status==='approved'?'s-approved':s.status==='rejected'?'s-rejected':'s-pending';
+        const statusLabel=s.status==='approved'?'✅ Approved & Published':s.status==='rejected'?'❌ Not Approved':'⏳ Pending Review';
+        return`<div class="my-story-card">
+            <div class="my-story-header">
+                <span style="font-size:15px;font-weight:700">${s.title||'Untitled'}</span>
+                <span class="story-status ${statusClass}">${statusLabel}</span>
+            </div>
+            ${s.photo?`<img src="${s.photo}" style="width:100%;max-height:140px;object-fit:cover;border-radius:10px;margin-bottom:10px"/>`:''}
+            <p style="font-size:13px;color:var(--muted);line-height:1.6">${s.text.slice(0,200)}${s.text.length>200?'…':''}</p>
+            ${s.adminNote?`<div style="margin-top:10px;font-size:12px;background:#f8fafc;border-radius:8px;padding:8px 12px;color:var(--muted)"><b>Admin note:</b> ${s.adminNote}</div>`:''}
+        </div>`;
+    }).join('');
+}
+
+function buildSidebar(){
+    const nav=document.getElementById('sidebarNav');
+    const links=[
+        {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
+        {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
+        {href:'psychological.html',icon:'fa-brain',label:'Psychological Support'},
+        {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
+        {href:'profile.html',icon:'fa-user',label:'My Profile'},
+        {href:'settings.html',icon:'fa-gear',label:'Settings'}
+    ];
+    nav.innerHTML=links.map(p=>`<a href="${p.href}" class="nav-item${p.href==='submit-story.html'?' active':''}"><i class="fa ${p.icon}"></i> ${p.label}</a>`).join('');
+}
+
+buildSidebar();
+loadMyStories();
+</script>
+</body>
+</html>

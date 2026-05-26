@@ -120,7 +120,6 @@
         <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
     </nav>
     <div class="sidebar-footer">
-        <button class="btn-logout-side" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
     </div>
 </aside>
 
@@ -151,7 +150,8 @@
             <div class="stat-card"><div class="stat-icon amber"><i class="fa fa-clock"></i></div><div><div class="stat-num" id="statPending">—</div><div class="stat-label">Pending</div></div></div>
             <div class="stat-card"><div class="stat-icon green"><i class="fa fa-circle-check"></i></div><div><div class="stat-num" id="statCompleted">—</div><div class="stat-label">Completed</div></div></div>
             <div class="stat-card"><div class="stat-icon purple"><i class="fa fa-calendar-week"></i></div><div><div class="stat-num" id="statThisWeek">—</div><div class="stat-label">This Week</div></div></div>
-            <div class="stat-card"><div class="stat-icon blue"><i class="fa fa-users"></i></div><div><div class="stat-num" id="statActiveUsers">—</div><div class="stat-label">Active Users</div></div></div>
+            <div class="stat-card"><div class="stat-icon blue"><i class="fa fa-users"></i></div><div><div class="stat-num" id="statTotalUsers">—</div><div class="stat-label">Total Users</div></div></div>
+            <div class="stat-card"><div class="stat-icon green"><i class="fa fa-user-check"></i></div><div><div class="stat-num" id="statActiveUsers">—</div><div class="stat-label">Active Users</div></div></div>
         </div>
 
         <!-- CHARTS ROW -->
@@ -231,6 +231,7 @@
             document.getElementById('statPending').textContent    = byStatus['PENDING'] ?? 0;
             document.getElementById('statCompleted').textContent  = byStatus['COMPLETED'] ?? 0;
             document.getElementById('statThisWeek').textContent   = stats.thisWeek ?? '—';
+            document.getElementById('statTotalUsers').textContent  = stats.totalUsers  ?? '—';
             document.getElementById('statActiveUsers').textContent = stats.activeUsers ?? '—';
 
             // Status detail
