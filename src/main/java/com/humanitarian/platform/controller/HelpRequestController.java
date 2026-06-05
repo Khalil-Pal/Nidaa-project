@@ -9,12 +9,14 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.LinkedHashMap;
 
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/help-requests")
@@ -22,6 +24,7 @@ public class HelpRequestController {
 
     @Autowired private HelpRequestService helpRequestService;
     @Autowired private UserService        userService;
+    @Autowired private JdbcTemplate       jdbc;
 
     @PostMapping
     public ResponseEntity<ApiResponse<HelpRequest>> createRequest(
@@ -43,9 +46,24 @@ public class HelpRequestController {
     }
 
     @GetMapping("/my")
-    public ResponseEntity<ApiResponse<List<HelpRequest>>> getMyRequests() {
-        return ResponseEntity.ok(ApiResponse.success("My requests",
-                helpRequestService.getMyRequests()));
+     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyRequests() {
+        com.humanitarian.platform.model.User me = userService.getCurrentUser();
+        // Use raw SQL with explicit ::text casts to bypass PostgreSQL enum-to-String
+        // mapping issues that cause 500 errors when Hibernate reads enum columns.
+        List<Map<String, Object>> rows = jdbc.queryForList(
+            "SELECT request_id AS id," +
+            "       request_id AS \"requestId\"," +
+            "       title, description," +
+            "       help_type::text    AS \"helpType\"," +
+            "       urgency_level::text AS \"urgencyLevel\"," +
+            "       status, address, people_count AS \"peopleCount\"," +
+            "       has_children AS \"hasChildren\"," +
+            "       created_at   AS \"createdAt\"" +
+            " FROM help_requests" +
+            " WHERE beneficiary_id = ?" +
+            " ORDER BY created_at DESC LIMIT 50",
+            me.getId());
+        return ResponseEntity.ok(ApiResponse.success("My requests", rows));
     }
 
     @GetMapping("/pending")
