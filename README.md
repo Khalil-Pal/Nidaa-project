@@ -64,7 +64,7 @@ src/
 ---
 
 ## Nidaa main logo
-<img alt="nidaa-logo" src="https://github.com/user-attachments/assets/fd713c7c-832f-496a-9245-d7a1013f866b" />
+<img width="600" height="300" alt="nidaa-logo" src="https://github.com/user-attachments/assets/fd713c7c-832f-496a-9245-d7a1013f866b" />
 
 
 
