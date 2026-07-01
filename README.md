@@ -71,7 +71,7 @@ src/
 
 
 ## Nidaa tech support logo
-<img width="300" height="300" alt="techsupport" src="https://github.com/user-attachments/assets/d84d310f-a620-4c26-a9c3-fd2ee37fbb60" />
+<img width="300" height="500" alt="techsupport" src="https://github.com/user-attachments/assets/d84d310f-a620-4c26-a9c3-fd2ee37fbb60" />
 
 
 
