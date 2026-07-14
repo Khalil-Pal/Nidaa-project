@@ -1,9 +1,5 @@
 package com.humanitarian.platform.model;
 
-// TODO: Assignment model exists but is currently unused.
-// Future use: track which volunteer/org was assigned to which request, with timestamps.
-// Populate this table whenever HelpRequestService.assignToMe() is called.
-
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -22,7 +18,7 @@ public class Assignment {
     @Column(name = "request_id", nullable = false)
     private Long requestId;
 
-    @Column(name = "volunteer_id", nullable = false)
+    @Column(name = "volunteer_id")
     private Long volunteerId;
 
     @Column(name = "organization_id")

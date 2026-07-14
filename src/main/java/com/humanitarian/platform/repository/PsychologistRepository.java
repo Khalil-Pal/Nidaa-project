@@ -12,6 +12,7 @@ public interface PsychologistRepository extends JpaRepository<Psychologist, Long
     List<Psychologist> findByIsVerifiedTrue();
     List<Psychologist> findByIsVerifiedFalse();
     List<Psychologist> findByIsVerifiedTrueAndIsOnDutyTrue();
+    List<Psychologist> findByIsOnDutyTrue();
 
     @Query("SELECT p FROM Psychologist p WHERE LOWER(p.specialization) LIKE LOWER(CONCAT('%', :spec, '%')) AND p.isVerified = true")
     List<Psychologist> findBySpecialization(@Param("spec") String specialization);
