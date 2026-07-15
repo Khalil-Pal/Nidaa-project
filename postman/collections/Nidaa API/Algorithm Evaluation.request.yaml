@@ -1,0 +1,10 @@
+$kind: http-request
+name: Algorithm Evaluation
+description: ""
+url: http://localhost:8081/api/v1/admin/evaluation
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+order: 4412021522311253

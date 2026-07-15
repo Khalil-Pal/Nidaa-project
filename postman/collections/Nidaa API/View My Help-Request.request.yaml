@@ -1,0 +1,10 @@
+$kind: http-request
+name: View My Help-Request
+description: ""
+url: http://localhost:8081/api/help-requests/my
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{beneficiaryToken}}"
+order: 4456863003897966

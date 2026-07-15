@@ -1,0 +1,10 @@
+$kind: http-request
+name: Admin Dashboard
+description: ""
+url: http://localhost:8081/api/v1/admin/dashboard/ranked
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+order: 4476417046808645

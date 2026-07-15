@@ -1,0 +1,10 @@
+$kind: http-request
+name: Get Ranked Queue
+description: ""
+url: http://localhost:8081/api/v1/help-requests/ranked
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+order: 4495938814132499
