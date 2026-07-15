@@ -5,6 +5,7 @@ import com.humanitarian.platform.security.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -62,6 +63,9 @@ public class SecurityConfig {
                                 "/js/**", "/css/**", "/images/**").permitAll()
                         // Auth endpoints — no auth needed
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/help-requests/ranked")
+                        .hasAnyRole("ADMIN", "VOLUNTEER", "ORGANIZATION")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // Everything else — just needs a valid JWT token
                         // Method-level @PreAuthorize handles finer-grained role checks
                         .anyRequest().authenticated()

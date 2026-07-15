@@ -1,8 +1,12 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.PsychologicalRequestDto;
+import com.humanitarian.platform.model.Assignment;
+import com.humanitarian.platform.model.Psychologist;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.model.User;
+import com.humanitarian.platform.repository.AssignmentRepository;
+import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -15,6 +19,7 @@ import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,20 +32,30 @@ public class PsychologicalRequestService {
     @Autowired private PsychologicalRequestRepository repo;
     @Autowired private UserService                    userService;
     @Autowired private JdbcTemplate                   jdbc;
+    @Autowired private CrisisDetectorService          crisisDetectorService;
+    @Autowired private AssignmentRepository           assignmentRepository;
+    @Autowired private PsychologistRepository         psychologistRepository;
 
     @Transactional
     public PsychologicalRequest createRequest(PsychologicalRequestDto dto) {
         User user = userService.getCurrentUser();
+        String rawCategory = dto.getCategory();
+        String category = toCategory(rawCategory);
+        String description = dto.getDescription() != null ? dto.getDescription() : "";
+        boolean crisis = crisisDetectorService.detect(rawCategory, description)
+                || crisisDetectorService.detect(dto.getSupportType(), description);
+
         PsychologicalRequest r = PsychologicalRequest.builder()
                 .beneficiaryId(user.getId())
                 .supportType(toSupportType(dto.getSupportType()))
-                .category(toCategory(dto.getCategory()))
+                .category(category)
                 .urgencyLevel(toUrgency(dto.getUrgencyLevel()))
                 .preferredFormat(toFormat(dto.getPreferredFormat()))
-                .description(dto.getDescription() != null ? dto.getDescription() : "")
+                .description(description)
                 .isAnonymous(dto.getIsAnonymous() != null ? dto.getIsAnonymous() : false)
                 .status("PENDING")
-                .isCrisis(false)
+                .isCrisis(crisis)
+                .crisisDetectedAt(crisis ? LocalDateTime.now() : null)
                 .build();
         return repo.save(r);
     }
@@ -48,6 +63,7 @@ public class PsychologicalRequestService {
     @Transactional
     public PsychologicalRequest acceptRequest(Long requestId) {
         User currentUser = userService.getCurrentUser();
+        PsychologicalRequest request = getRequestById(requestId);
 
         // Must store psychologist_id (PK of psychologists table), not user_id
         // psychological_requests.assigned_psychologist_id → FK to psychologists.psychologist_id
@@ -62,10 +78,27 @@ public class PsychologicalRequestService {
             throw new BusinessException("Error retrieving psychologist profile: " + e.getMessage());
         }
 
+        Psychologist psychologist = psychologistRepository.findById(psychologistId)
+                .orElseThrow(() -> new ResourceNotFoundException("Psychologist profile not found. Contact admin."));
+        if (Boolean.TRUE.equals(request.getIsCrisis()) && !Boolean.TRUE.equals(psychologist.getIsOnDuty())) {
+            throw new BusinessException("Crisis requests require an on-duty psychologist");
+        }
+
         int updated = repo.assignPsychologist(requestId, psychologistId, "ASSIGNED", "PENDING");
         if (updated == 0) {
             throw new BusinessException("Request is no longer available or already assigned.");
         }
+
+        Assignment assignment = Assignment.builder()
+                .requestId(requestId)
+                .volunteerId(psychologistId)
+                .assignedBy(currentUser.getId())
+                .status("ASSIGNED")
+                .assignedAt(LocalDateTime.now())
+                .notes("PSYCHOLOGICAL_REQUEST")
+                .build();
+        assignmentRepository.save(assignment);
+
         return getRequestById(requestId);
     }
 
@@ -102,6 +135,9 @@ public class PsychologicalRequestService {
         }
 
         repo.updateStatusNative(id, next);
+        if ("COMPLETED".equals(next) || "CANCELLED".equals(next)) {
+            updateAssignmentStatus(id, next, LocalDateTime.now());
+        }
         return getRequestById(id);
     }
 
@@ -144,7 +180,7 @@ public class PsychologicalRequestService {
             case "PTSD"                                -> "PTSD";
             case "GRIEF_AND_LOSS","GRIEF_LOSS","GRIEF" -> "GRIEF_AND_LOSS";
             case "DOMESTIC_VIOLENCE","VIOLENCE"        -> "DOMESTIC_VIOLENCE";
-            case "CRISIS_SUPPORT","CRISIS"             -> "CRISIS_SUPPORT";
+            case "CRISIS_SUPPORT","CRISIS"             -> "ANXIETY";
             default                                    -> "ANXIETY";
         };
     }
@@ -172,5 +208,16 @@ public class PsychologicalRequestService {
             case "VIDEO","VIDEO_SESSION" -> "VIDEO";
             default                      -> "CHAT";
         };
+    }
+
+    private void updateAssignmentStatus(Long requestId, String newStatus, LocalDateTime completedAt) {
+        assignmentRepository
+                .findFirstByRequestIdAndStatusOrderByAssignedAtDesc(requestId, "ASSIGNED")
+                .or(() -> assignmentRepository.findFirstByRequestIdOrderByAssignedAtDesc(requestId))
+                .ifPresent(assignment -> {
+                    assignment.setStatus(newStatus);
+                    assignment.setCompletedAt(completedAt);
+                    assignmentRepository.save(assignment);
+                });
     }
 }

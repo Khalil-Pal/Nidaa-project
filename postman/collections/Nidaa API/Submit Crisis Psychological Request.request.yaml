@@ -1,0 +1,21 @@
+$kind: http-request
+name: Submit Crisis Psychological Request
+url: "http://localhost:8081/api/psychological-requests"
+method: POST
+headers:
+  - name: Authorization
+    value: "Bearer {{token}}"
+  - name: Content-Type
+    value: "application/json"
+body:
+  contentType: application/json
+  text: |
+    {
+      "supportType": "CRISIS",
+      "category": "Crisis Support",
+      "urgencyLevel": "CRITICAL",
+      "preferredFormat": "CHAT",
+      "description": "I need urgent psychological support. This is an emergency and I do not feel safe.",
+      "isAnonymous": false
+    }
+order: 2306441414553343

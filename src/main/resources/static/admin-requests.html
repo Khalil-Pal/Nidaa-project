@@ -63,6 +63,12 @@
         .status-assigned{background:#eff6ff;color:var(--blue)}
         .status-completed{background:#f0fdf4;color:var(--green)}
         .status-cancelled{background:#fef2f2;color:#dc2626}
+        .priority-score{font-weight:700;color:#0f172a}
+        .priority-score.high{color:#dc2626}
+        .crisis-icon{color:#dc2626;font-size:16px}
+        .suggestion-cell{display:flex;flex-direction:column;gap:2px}
+        .suggestion-name{font-size:13px;font-weight:600}
+        .suggestion-distance{font-size:12px;color:var(--muted)}
 
         .user-cell{display:flex;flex-direction:column}
         .u-name{font-size:13px;font-weight:600}
@@ -144,6 +150,7 @@
                 <option value="SHELTER">Shelter</option>
                 <option value="WATER">Water</option>
                 <option value="CLOTHING">Clothing</option>
+                <option value="PSYCHOLOGICAL">Psychological</option>
             </select>
         </div>
 
@@ -153,15 +160,18 @@
                 <tr>
                     <th>#</th>
                     <th>Title</th>
+                    <th></th>
                     <th>Type</th>
+                    <th>Priority</th>
                     <th>Status</th>
                     <th>Submitted By</th>
                     <th>Worker</th>
+                    <th>Suggested Volunteer</th>
                     <th>Date</th>
                 </tr>
                 </thead>
                 <tbody id="requestsBody">
-                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">
+                <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted)">
                     <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>Loading...
                 </td></tr>
                 </tbody>
@@ -191,6 +201,14 @@
                 <div class="info-row">
                     <div class="info-icon"><i class="fa fa-circle-dot"></i></div>
                     <div><div class="info-lbl">Status</div><div class="info-val" id="mStatus">—</div></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-sort-amount-down"></i></div>
+                    <div><div class="info-lbl">Priority Score</div><div class="info-val" id="mPriority">вЂ”</div></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-triangle-exclamation"></i></div>
+                    <div><div class="info-lbl">Crisis</div><div class="info-val" id="mCrisis">No</div></div>
                 </div>
                 <div class="info-row">
                     <div class="info-icon"><i class="fa fa-location-dot"></i></div>
@@ -245,7 +263,7 @@
     if ((user.role || '').toLowerCase() !== 'admin') window.location.href = 'dashboard.html';
     document.getElementById('topbarName').textContent = (user.fullName || user.name || 'Admin').split(' ')[0];
 
-    const typeTagClass = {MEDICAL:'tag-medical',FOOD:'tag-food',SHELTER:'tag-shelter',WATER:'tag-water',CLOTHING:'tag-clothing',OTHER:'tag-other'};
+    const typeTagClass = {MEDICAL:'tag-medical',FOOD:'tag-food',SHELTER:'tag-shelter',WATER:'tag-water',CLOTHING:'tag-clothing',PSYCHOLOGICAL:'tag-other',OTHER:'tag-other'};
     const statusClass  = {PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
 
     let allRequests = [];
@@ -255,20 +273,29 @@
         return new Date(d).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
     }
 
+    function fmtDistance(km) {
+        return Number.isFinite(km) ? km.toFixed(1) + ' km' : '';
+    }
+
     function renderTable(list) {
         const tbody = document.getElementById('requestsBody');
         document.getElementById('totalCount').textContent = list.length + ' request' + (list.length !== 1 ? 's' : '');
         if (!list.length) {
-            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa fa-inbox"></i><p>No requests found.</p></div></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i class="fa fa-inbox"></i><p>No requests found.</p></div></td></tr>`;
             return;
         }
         tbody.innerHTML = list.map(r => {
             const type   = (r.helpType   || 'OTHER').toUpperCase();
             const status = (r.status     || 'PENDING').toUpperCase();
+            const priority = Number.isFinite(r.priorityScore) ? r.priorityScore : null;
+            const priorityClass = priority !== null && priority >= 70 ? 'priority-score high' : 'priority-score';
+            const suggestionDistance = fmtDistance(r.distanceKm);
             return `<tr onclick="openModal(${allRequests.indexOf(r)})">
                 <td style="color:var(--muted);font-size:12px">#${r.id||'—'}</td>
                 <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title||'—'}</td>
+                <td>${r.isCrisis ? '<i class="fa fa-triangle-exclamation crisis-icon" title="Crisis case"></i>' : ''}</td>
                 <td><span class="tag ${typeTagClass[type]||'tag-other'}">${type}</span></td>
+                <td><span class="${priorityClass}">${priority !== null ? priority : 'вЂ”'}</span></td>
                 <td><span class="tag ${statusClass[status]||'status-pending'}">${status}</span></td>
                 <td>
                     <div class="user-cell">
@@ -280,6 +307,12 @@
                     <div class="user-cell">
                         <span class="u-name">${r.workerName||'—'}</span>
                         <span class="u-email" style="color:${r.workerRole&&r.workerRole!=='—'?'var(--blue)':'var(--muted)'}">${r.workerRole&&r.workerRole!=='—'?r.workerRole:''}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="suggestion-cell">
+                        <span class="suggestion-name">${r.suggestedVolunteerName||'N/A'}</span>
+                        <span class="suggestion-distance">${suggestionDistance}</span>
                     </div>
                 </td>
                 <td style="font-size:13px;color:var(--muted)">${fmtDate(r.createdAt)}</td>
@@ -296,7 +329,9 @@
             (!type   || (r.helpType||'').toUpperCase() === type) &&
             (!search || (r.title||'').toLowerCase().includes(search) ||
                 (r.requesterName||'').toLowerCase().includes(search) ||
-                (r.requesterEmail||'').toLowerCase().includes(search))
+                (r.requesterEmail||'').toLowerCase().includes(search) ||
+                (r.description||'').toLowerCase().includes(search) ||
+                (r.suggestedVolunteerName||'').toLowerCase().includes(search))
         ));
     }
 
@@ -307,6 +342,8 @@
         document.getElementById('mType').textContent           = r.helpType    || '—';
         document.getElementById('mUrgency').textContent        = r.urgencyLevel|| '—';
         document.getElementById('mStatus').textContent         = r.status      || '—';
+        document.getElementById('mPriority').textContent       = Number.isFinite(r.priorityScore) ? r.priorityScore : 'вЂ”';
+        document.getElementById('mCrisis').textContent         = r.isCrisis ? 'Yes' : 'No';
         document.getElementById('mAddress').textContent        = r.address     || 'Not specified';
         document.getElementById('mDesc').textContent           = r.description || '—';
         document.getElementById('mDate').textContent           = fmtDate(r.createdAt);
@@ -314,22 +351,77 @@
         document.getElementById('mRequesterEmail').textContent = r.requesterEmail || '—';
         document.getElementById('mRequesterPhone').textContent = r.requesterPhone || '—';
         document.getElementById('mWorkerName').textContent = r.workerName || 'Not assigned yet';
+        const suggested = r.suggestedVolunteerName ? r.suggestedVolunteerName + (fmtDistance(r.distanceKm) ? ' (' + fmtDistance(r.distanceKm) + ')' : '') : 'N/A';
+        const suggestedEl = document.getElementById('mSuggested');
+        if (suggestedEl) suggestedEl.textContent = suggested;
         document.getElementById('detailModal').classList.add('open');
     }
 
     function closeModal() { document.getElementById('detailModal').classList.remove('open'); }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
+    function normalizeRankedDashboard(payload) {
+        const material = (payload.rankedMaterialRequests || []).map(item => {
+            const request = item.request || {};
+            const workerName = request.assignedVolunteerId || request.assignedOrganizationId
+                ? 'Assigned'
+                : 'Not assigned yet';
+            return {
+                id: request.id,
+                requestType: 'HELP',
+                title: request.title || 'Help Request #' + (request.id || ''),
+                helpType: request.helpType || 'OTHER',
+                urgencyLevel: request.urgencyLevel || '',
+                priorityScore: Number.isFinite(item.priorityScore) ? item.priorityScore : request.priorityScore,
+                isCrisis: false,
+                status: request.status || 'PENDING',
+                address: request.address,
+                createdAt: request.createdAt,
+                description: request.description,
+                requesterName: request.beneficiaryId ? 'Beneficiary #' + request.beneficiaryId : 'Beneficiary',
+                requesterEmail: '',
+                requesterPhone: '',
+                workerName,
+                workerRole: '',
+                suggestedVolunteerName: item.suggestedVolunteerName || 'N/A',
+                distanceKm: item.distanceKm
+            };
+        });
+
+        const crisis = (payload.crisisPsychologicalCases || []).map(request => ({
+            id: request.id,
+            requestType: 'PSYCHOLOGICAL',
+            title: (request.category || 'Psychological Support') + ' - ' + (request.preferredFormat || 'CHAT'),
+            helpType: 'PSYCHOLOGICAL',
+            urgencyLevel: request.urgencyLevel || '',
+            priorityScore: null,
+            isCrisis: Boolean(request.isCrisis),
+            status: request.status || 'PENDING',
+            address: null,
+            createdAt: request.createdAt,
+            description: request.description,
+            requesterName: request.beneficiaryId ? 'Beneficiary #' + request.beneficiaryId : 'Beneficiary',
+            requesterEmail: '',
+            requesterPhone: '',
+            workerName: request.assignedPsychologistId ? 'Assigned' : 'Not assigned yet',
+            workerRole: 'Psychologist',
+            suggestedVolunteerName: 'On-duty psychologist required',
+            distanceKm: null
+        }));
+
+        return [...material, ...crisis];
+    }
+
     async function loadRequests() {
         try {
-            const res  = await fetch(API + '/admin/requests', { headers: authHeader() });
+            const res  = await fetch(API + '/v1/admin/dashboard/ranked', { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
-            allRequests = Array.isArray(data) ? data : (data.data || []);
+            allRequests = normalizeRankedDashboard(data.data || data || {});
             renderTable(allRequests);
         } catch (e) {
             document.getElementById('requestsBody').innerHTML =
-                `<tr><td colspan="7" style="text-align:center;padding:40px;color:#dc2626">
+                `<tr><td colspan="10" style="text-align:center;padding:40px;color:#dc2626">
                     <i class="fa fa-triangle-exclamation" style="font-size:24px;margin-bottom:8px;display:block"></i>
                     Could not load: ${e.message}
                 </td></tr>`;

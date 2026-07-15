@@ -1,0 +1,4 @@
+$kind: collection
+name: Nidaa API
+variables:
+  token: ""

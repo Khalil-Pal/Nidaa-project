@@ -1,8 +1,12 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.HelpRequestDto;
+import com.humanitarian.platform.dto.RankedRequestDTO;
+import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.User;
+import com.humanitarian.platform.model.Volunteer;
+import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +42,15 @@ public class HelpRequestService {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private PriorityScoreService priorityScoreService;
+
+    @Autowired
+    private GeoMatchingService geoMatchingService;
+
+    @Autowired
+    private AssignmentRepository assignmentRepository;
+
     @Transactional
     public HelpRequest createRequest(HelpRequestDto dto) {
         User currentUser = userService.getCurrentUser();
@@ -67,9 +80,12 @@ public class HelpRequestService {
                 .hasElderly(dto.getHasElderly() != null ? dto.getHasElderly() : false)
                 .hasDisabled(dto.getHasDisabled() != null ? dto.getHasDisabled() : false)
                 .address(dto.getAddress())
+                .latitude(dto.getLatitude())
+                .longitude(dto.getLongitude())
                 .status("PENDING")
                 .build();
 
+        request.setPriorityScore(priorityScoreService.calculate(request));
         return helpRequestRepository.save(request);
     }
 
@@ -82,6 +98,8 @@ public class HelpRequestService {
         User currentUser = userService.getCurrentUser();
         String role = currentUser.getRole().name().toLowerCase();
         int updated = 0;
+        Long assignedVolunteerId = null;
+        Long assignedOrganizationId = null;
 
         if (role.equals("volunteer")) {
             Long volunteerId;
@@ -95,6 +113,7 @@ public class HelpRequestService {
                 throw new BusinessException("Error retrieving volunteer profile: " + e.getMessage());
             }
             updated = helpRequestRepository.assignVolunteer(requestId, volunteerId, "ASSIGNED", "PENDING");
+            assignedVolunteerId = volunteerId;
 
         } else if (role.equals("organization")) {
             Long organizationId;
@@ -108,6 +127,7 @@ public class HelpRequestService {
                 throw new BusinessException("Error retrieving organization profile: " + e.getMessage());
             }
             updated = helpRequestRepository.assignOrganization(requestId, organizationId, "ASSIGNED", "PENDING");
+            assignedOrganizationId = organizationId;
 
         } else {
             helpRequestRepository.updateStatusNative(requestId, "ASSIGNED");
@@ -116,6 +136,18 @@ public class HelpRequestService {
 
         if (updated == 0) {
             throw new BusinessException("Request is no longer available or already assigned.");
+        }
+
+        if (assignedVolunteerId != null || assignedOrganizationId != null) {
+            Assignment assignment = Assignment.builder()
+                    .requestId(requestId)
+                    .volunteerId(assignedVolunteerId)
+                    .organizationId(assignedOrganizationId)
+                    .assignedBy(currentUser.getId())
+                    .status("ASSIGNED")
+                    .assignedAt(LocalDateTime.now())
+                    .build();
+            assignmentRepository.save(assignment);
         }
 
         HelpRequest saved = getRequestById(requestId);
@@ -215,10 +247,13 @@ public class HelpRequestService {
         }
 
         // Use native SQL to update the PostgreSQL ENUM status column — JPA save() cannot cast VARCHAR to ENUM
+        LocalDateTime statusChangedAt = LocalDateTime.now();
         if ("COMPLETED".equals(next)) {
-            helpRequestRepository.updateStatusCompleted(id, next, LocalDateTime.now());
+            helpRequestRepository.updateStatusCompleted(id, next, statusChangedAt);
+            updateAssignmentStatus(id, next, statusChangedAt);
         } else if ("CANCELLED".equals(next)) {
-            helpRequestRepository.updateStatusCancelled(id, next, LocalDateTime.now());
+            helpRequestRepository.updateStatusCancelled(id, next, statusChangedAt);
+            updateAssignmentStatus(id, next, statusChangedAt);
         } else {
             helpRequestRepository.updateStatusNative(id, next);
         }
@@ -240,6 +275,33 @@ public class HelpRequestService {
         return helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING");
     }
 
+    @Transactional(readOnly = true)
+    public List<RankedRequestDTO> getRankedWithSuggestions(List<Volunteer> availableVolunteers) {
+        return helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING").stream()
+                .map(request -> {
+                    int score = request.getPriorityScore() != null
+                            ? request.getPriorityScore()
+                            : priorityScoreService.calculate(request);
+                    var nearest = geoMatchingService.findNearestVolunteer(request, availableVolunteers);
+                    return RankedRequestDTO.builder()
+                            .request(request)
+                            .priorityScore(score)
+                            .suggestedVolunteerName(nearest.map(this::volunteerName).orElse("N/A"))
+                            .distanceKm(nearest
+                                    .filter(volunteer -> hasCoordinates(request)
+                                            && volunteer.getLatitude() != null
+                                            && volunteer.getLongitude() != null)
+                                    .map(volunteer -> geoMatchingService.haversine(
+                                            request.getLatitude(),
+                                            request.getLongitude(),
+                                            volunteer.getLatitude(),
+                                            volunteer.getLongitude()))
+                                    .orElse(null))
+                            .build();
+                })
+                .toList();
+    }
+
     public List<HelpRequest> getRequestsByType(String helpType) {
         return helpRequestRepository.findByHelpType(mapHelpType(helpType));
     }
@@ -253,5 +315,27 @@ public class HelpRequestService {
             contact.put("phone", b.getPhone() != null ? b.getPhone() : "Not provided");
         });
         return contact;
+    }
+
+    private void updateAssignmentStatus(Long requestId, String newStatus, LocalDateTime completedAt) {
+        assignmentRepository
+                .findFirstByRequestIdAndStatusOrderByAssignedAtDesc(requestId, "ASSIGNED")
+                .or(() -> assignmentRepository.findFirstByRequestIdOrderByAssignedAtDesc(requestId))
+                .ifPresent(assignment -> {
+                    assignment.setStatus(newStatus);
+                    assignment.setCompletedAt(completedAt);
+                    assignmentRepository.save(assignment);
+                });
+    }
+
+    private boolean hasCoordinates(HelpRequest request) {
+        return request.getLatitude() != null && request.getLongitude() != null;
+    }
+
+    private String volunteerName(Volunteer volunteer) {
+        if (volunteer.getUser() != null && volunteer.getUser().getFullName() != null) {
+            return volunteer.getUser().getFullName();
+        }
+        return volunteer.getId() != null ? "Volunteer #" + volunteer.getId() : "Volunteer";
     }
 }
