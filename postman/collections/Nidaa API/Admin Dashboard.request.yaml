@@ -1,0 +1,10 @@
+$kind: http-request
+name: Admin Dashboard
+description: ""
+url: http://localhost:8081/api/v1/admin/dashboard/ranked
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJzdXBwMHJ0bmlkYWFAeWFuZGV4LnJ1IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc4NDA5ODEwMiwiZXhwIjoxNzg0MDk5MDAyfQ.0ZD_mE8Cyw7xbRzjFZDp5xtaE7T_6TYr_kd9ZUsO7wPQzP0TFrEnlww1RMm0NrXVj7dT3DJeS11Hrp8TtrmBvA
+order: 4476417046808645

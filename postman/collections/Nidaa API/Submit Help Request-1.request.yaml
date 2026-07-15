@@ -1,5 +1,36 @@
 $kind: http-request
 name: Submit Help Request
-url: ""
-method: GET
+url: http://localhost:8081/api/help-requests
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"title\": \"Need urgent food support\",\r
+
+    \  \"description\": \"Family of 5 needs food supplies for the next few days.\",\r
+
+    \  \"helpType\": \"FOOD\",\r
+
+    \  \"urgencyLevel\": \"HIGH\",\r
+
+    \  \"peopleCount\": 5,\r
+
+    \  \"hasChildren\": true,\r
+
+    \  \"hasElderly\": false,\r
+
+    \  \"hasDisabled\": false,\r
+
+    \  \"address\": \"Moscow, Russia\",\r
+
+    \  \"latitude\": 55.7558,\r
+
+    \  \"longitude\": 37.6173\r
+
+    }"
+auth:
+  type: bearer
+  credentials:
+    token: eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJraGFsaWxheWVkNzc3QGdtYWlsLmNvbSIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3ODQwOTczNDQsImV4cCI6MTc4NDA5ODI0NH0.gBAkwj3c3nPsoEtPnBYLPULyRFpzK4pGCzrRJB9YhotIMkoQttkjH1SZjdHhhIm5SurdOMkq64oSll0g5zWkug
 order: 564574527464009
