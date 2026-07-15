@@ -8,7 +8,7 @@ body:
 
     \  \"supportType\": \"CRISIS\",\r
 
-    \  \"category\": \"CRISIS_SUPPORT\",\r
+    \  \"category\": \"Crisis Support\",\r
 
     \  \"urgencyLevel\": \"CRITICAL\",\r
 
@@ -22,5 +22,5 @@ body:
 auth:
   type: bearer
   credentials:
-    token: eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJraGFsaWxheWVkNzc3QGdtYWlsLmNvbSIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3ODQwOTczNDQsImV4cCI6MTc4NDA5ODI0NH0.gBAkwj3c3nPsoEtPnBYLPULyRFpzK4pGCzrRJB9YhotIMkoQttkjH1SZjdHhhIm5SurdOMkq64oSll0g5zWkug
+    token: "{{beneficiaryToken}}"
 order: 2306441414553343
