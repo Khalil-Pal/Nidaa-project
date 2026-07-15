@@ -15,6 +15,11 @@ class CrisisDetectorServiceTest {
     }
 
     @Test
+    void crisisCategoryWithSpacesDetected() {
+        assertTrue(service.detect("Crisis Support", "I need help"));
+    }
+
+    @Test
     void crisisKeywordInDescriptionDetected() {
         assertTrue(service.detect("INDIVIDUAL", "I feel suicide risk"));
     }

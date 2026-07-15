@@ -25,7 +25,10 @@ public class CrisisDetectorService {
     );
 
     public boolean detect(String category, String description) {
-        if ("CRISIS_SUPPORT".equalsIgnoreCase(category)) {
+        String normalizedCategory = category == null
+                ? ""
+                : category.toUpperCase().trim().replace(" ", "_").replace("-", "_");
+        if ("CRISIS_SUPPORT".equals(normalizedCategory) || "CRISIS".equals(normalizedCategory)) {
             return true;
         }
         if (description == null) {

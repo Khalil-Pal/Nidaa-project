@@ -39,9 +39,11 @@ public class PsychologicalRequestService {
     @Transactional
     public PsychologicalRequest createRequest(PsychologicalRequestDto dto) {
         User user = userService.getCurrentUser();
-        String category = toCategory(dto.getCategory());
+        String rawCategory = dto.getCategory();
+        String category = toCategory(rawCategory);
         String description = dto.getDescription() != null ? dto.getDescription() : "";
-        boolean crisis = crisisDetectorService.detect(category, description);
+        boolean crisis = crisisDetectorService.detect(rawCategory, description)
+                || crisisDetectorService.detect(dto.getSupportType(), description);
 
         PsychologicalRequest r = PsychologicalRequest.builder()
                 .beneficiaryId(user.getId())
@@ -178,7 +180,7 @@ public class PsychologicalRequestService {
             case "PTSD"                                -> "PTSD";
             case "GRIEF_AND_LOSS","GRIEF_LOSS","GRIEF" -> "GRIEF_AND_LOSS";
             case "DOMESTIC_VIOLENCE","VIOLENCE"        -> "DOMESTIC_VIOLENCE";
-            case "CRISIS_SUPPORT","CRISIS"             -> "CRISIS_SUPPORT";
+            case "CRISIS_SUPPORT","CRISIS"             -> "ANXIETY";
             default                                    -> "ANXIETY";
         };
     }
