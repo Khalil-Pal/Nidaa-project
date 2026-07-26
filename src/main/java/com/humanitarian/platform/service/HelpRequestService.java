@@ -9,6 +9,7 @@ import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.UserRepository;
+import com.humanitarian.platform.repository.VolunteerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -51,6 +52,12 @@ public class HelpRequestService {
     @Autowired
     private AssignmentRepository assignmentRepository;
 
+    @Autowired
+    private VolunteerRepository volunteerRepository;
+
+    @Autowired
+    private AutomaticAssignmentService automaticAssignmentService;
+
     @Transactional
     public HelpRequest createRequest(HelpRequestDto dto) {
         User currentUser = userService.getCurrentUser();
@@ -86,7 +93,9 @@ public class HelpRequestService {
                 .build();
 
         request.setPriorityScore(priorityScoreService.calculate(request));
-        return helpRequestRepository.save(request);
+        HelpRequest saved = helpRequestRepository.save(request);
+        automaticAssignmentService.assignNearestVolunteer(saved);
+        return helpRequestRepository.findById(saved.getId()).orElse(saved);
     }
 
     /**
@@ -112,6 +121,9 @@ public class HelpRequestService {
             } catch (Exception e) {
                 throw new BusinessException("Error retrieving volunteer profile: " + e.getMessage());
             }
+            if (volunteerRepository.claimIfAvailable(volunteerId) == 0) {
+                throw new BusinessException("Your volunteer profile is not currently available.");
+            }
             updated = helpRequestRepository.assignVolunteer(requestId, volunteerId, "ASSIGNED", "PENDING");
             assignedVolunteerId = volunteerId;
 
@@ -130,8 +142,7 @@ public class HelpRequestService {
             assignedOrganizationId = organizationId;
 
         } else {
-            helpRequestRepository.updateStatusNative(requestId, "ASSIGNED");
-            updated = 1;
+            throw new UnauthorizedException("Only volunteers and organizations can accept help requests.");
         }
 
         if (updated == 0) {
@@ -144,6 +155,8 @@ public class HelpRequestService {
                     .volunteerId(assignedVolunteerId)
                     .organizationId(assignedOrganizationId)
                     .assignedBy(currentUser.getId())
+                    .requestType("HELP_REQUEST")
+                    .assignmentSource("MANUAL")
                     .status("ASSIGNED")
                     .assignedAt(LocalDateTime.now())
                     .build();
@@ -325,7 +338,15 @@ public class HelpRequestService {
                     assignment.setStatus(newStatus);
                     assignment.setCompletedAt(completedAt);
                     assignmentRepository.save(assignment);
+                    releaseVolunteerIfIdle(assignment.getVolunteerId());
                 });
+    }
+
+    private void releaseVolunteerIfIdle(Long volunteerId) {
+        if (volunteerId != null
+                && assignmentRepository.countByVolunteerIdAndStatus(volunteerId, "ASSIGNED") == 0) {
+            volunteerRepository.release(volunteerId);
+        }
     }
 
     private boolean hasCoordinates(HelpRequest request) {

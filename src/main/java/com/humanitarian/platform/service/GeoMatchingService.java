@@ -24,22 +24,24 @@ public class GeoMatchingService {
     }
 
     public Optional<Volunteer> findNearestVolunteer(HelpRequest request, List<Volunteer> availableVolunteers) {
-        if (availableVolunteers == null || availableVolunteers.isEmpty()) {
-            return Optional.empty();
-        }
+        return rankByDistance(request, availableVolunteers).stream().findFirst();
+    }
 
-        List<Volunteer> filtered = availableVolunteers.stream()
-                .filter(volunteer -> Boolean.TRUE.equals(volunteer.getIsAvailable()))
-                .toList();
+    public List<Volunteer> rankByDistance(HelpRequest request, List<Volunteer> availableVolunteers) {
+        if (availableVolunteers == null || availableVolunteers.isEmpty()) {
+            return List.of();
+        }
 
         if (request.getLatitude() == null || request.getLongitude() == null) {
-            return filtered.stream().findFirst();
+            return List.of();
         }
 
-        return filtered.stream()
+        return availableVolunteers.stream()
+                .filter(volunteer -> Boolean.TRUE.equals(volunteer.getIsAvailable()))
                 .filter(volunteer -> volunteer.getLatitude() != null && volunteer.getLongitude() != null)
-                .min(Comparator.comparingDouble(volunteer ->
+                .sorted(Comparator.comparingDouble(volunteer ->
                         haversine(request.getLatitude(), request.getLongitude(),
-                                volunteer.getLatitude(), volunteer.getLongitude())));
+                                volunteer.getLatitude(), volunteer.getLongitude())))
+                .toList();
     }
 }

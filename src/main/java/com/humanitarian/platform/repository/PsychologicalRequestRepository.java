@@ -19,6 +19,7 @@ public interface PsychologicalRequestRepository extends JpaRepository<Psychologi
     List<PsychologicalRequest> findByCategory(String category);
     List<PsychologicalRequest> findByPreferredFormat(String format);
     List<PsychologicalRequest> findByIsCrisisTrue();
+    long countByAssignedPsychologistIdAndStatus(Long psychologistId, String status);
 
     // Native SQL — assigns using psychologist_id (FK to psychologists table)
     @Modifying(clearAutomatically = true, flushAutomatically = true)

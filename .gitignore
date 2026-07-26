@@ -24,6 +24,9 @@ logs/
 *.db
 *.sql
 *.sqlite
+*.backup
+database/backups/
+!database/migrations/*.sql
 
 # OS files
 .DS_Store

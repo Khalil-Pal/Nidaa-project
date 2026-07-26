@@ -1,12 +1,15 @@
 package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.dto.RankedRequestDTO;
+import com.humanitarian.platform.dto.AssignmentHistoryDTO;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.repository.HelpRequestRepository;
+import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
 import com.humanitarian.platform.service.HelpRequestService;
+import com.humanitarian.platform.service.AssignmentHistoryService;
 import com.humanitarian.platform.service.MatchingEvaluationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,23 +31,36 @@ public class AdminV1Controller {
     private final VolunteerRepository volunteerRepository;
     private final PsychologicalRequestRepository psychologicalRequestRepository;
     private final MatchingEvaluationService matchingEvaluationService;
+    private final AssignmentHistoryService assignmentHistoryService;
+    private final AssignmentRepository assignmentRepository;
 
     public AdminV1Controller(HelpRequestService helpRequestService,
                              HelpRequestRepository helpRequestRepository,
                              VolunteerRepository volunteerRepository,
                              PsychologicalRequestRepository psychologicalRequestRepository,
-                             MatchingEvaluationService matchingEvaluationService) {
+                             MatchingEvaluationService matchingEvaluationService,
+                             AssignmentHistoryService assignmentHistoryService,
+                             AssignmentRepository assignmentRepository) {
         this.helpRequestService = helpRequestService;
         this.helpRequestRepository = helpRequestRepository;
         this.volunteerRepository = volunteerRepository;
         this.psychologicalRequestRepository = psychologicalRequestRepository;
         this.matchingEvaluationService = matchingEvaluationService;
+        this.assignmentHistoryService = assignmentHistoryService;
+        this.assignmentRepository = assignmentRepository;
+    }
+
+    @GetMapping("/assignments")
+    public ResponseEntity<List<AssignmentHistoryDTO>> getAssignmentHistory() {
+        return ResponseEntity.ok(assignmentHistoryService.getAllHistory());
     }
 
     @GetMapping("/evaluation")
     public ResponseEntity<Map<String, Object>> runEvaluation() {
-        List<HelpRequest> pending = helpRequestRepository.findByStatus("PENDING");
-        return ResponseEntity.ok(matchingEvaluationService.evaluate(pending));
+        return ResponseEntity.ok(matchingEvaluationService.evaluate(
+                helpRequestRepository.findAll(),
+                volunteerRepository.findAll(),
+                assignmentRepository.findAll()));
     }
 
     @GetMapping("/dashboard/ranked")
