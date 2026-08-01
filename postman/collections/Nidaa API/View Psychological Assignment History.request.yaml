@@ -1,0 +1,13 @@
+$kind: http-request
+name: View Psychological Assignment History
+description: >-
+  Returns the full assignment history for one psychological request. Set
+  psychologicalRequestId to a request owned by the logged-in beneficiary,
+  assigned psychologist, or use an admin token.
+url: http://localhost:8081/api/v1/assignments/psychological-requests/{{psychologicalRequestId}}
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{beneficiaryToken}}"
+order: 4520000000000003

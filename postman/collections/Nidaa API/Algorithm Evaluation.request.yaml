@@ -1,6 +1,10 @@
 $kind: http-request
 name: Algorithm Evaluation
-description: ""
+description: >-
+  Compares FIFO, weighted scoring, and multi-objective optimization. Returns
+  simulated urgent waiting time, volunteer utilization, regional fairness,
+  urgent coverage, travel distance, plus metrics calculated from persisted
+  assignment history. Requires an admin token.
 url: http://localhost:8081/api/v1/admin/evaluation
 method: GET
 auth:

@@ -35,6 +35,7 @@ public class PsychologicalRequestService {
     @Autowired private CrisisDetectorService          crisisDetectorService;
     @Autowired private AssignmentRepository           assignmentRepository;
     @Autowired private PsychologistRepository         psychologistRepository;
+    @Autowired private AutomaticAssignmentService     automaticAssignmentService;
 
     @Transactional
     public PsychologicalRequest createRequest(PsychologicalRequestDto dto) {
@@ -57,7 +58,11 @@ public class PsychologicalRequestService {
                 .isCrisis(crisis)
                 .crisisDetectedAt(crisis ? LocalDateTime.now() : null)
                 .build();
-        return repo.save(r);
+        PsychologicalRequest saved = repo.save(r);
+        if (crisis) {
+            automaticAssignmentService.routeCrisisRequest(saved);
+        }
+        return repo.findById(saved.getId()).orElse(saved);
     }
 
     @Transactional
@@ -90,12 +95,14 @@ public class PsychologicalRequestService {
         }
 
         Assignment assignment = Assignment.builder()
-                .requestId(requestId)
-                .volunteerId(psychologistId)
+                .psychologicalRequestId(requestId)
+                .psychologistId(psychologistId)
                 .assignedBy(currentUser.getId())
+                .requestType("PSYCHOLOGICAL_REQUEST")
+                .assignmentSource("MANUAL")
                 .status("ASSIGNED")
                 .assignedAt(LocalDateTime.now())
-                .notes("PSYCHOLOGICAL_REQUEST")
+                .notes("Accepted manually by psychologist")
                 .build();
         assignmentRepository.save(assignment);
 
@@ -212,8 +219,8 @@ public class PsychologicalRequestService {
 
     private void updateAssignmentStatus(Long requestId, String newStatus, LocalDateTime completedAt) {
         assignmentRepository
-                .findFirstByRequestIdAndStatusOrderByAssignedAtDesc(requestId, "ASSIGNED")
-                .or(() -> assignmentRepository.findFirstByRequestIdOrderByAssignedAtDesc(requestId))
+                .findFirstByPsychologicalRequestIdAndStatusOrderByAssignedAtDesc(requestId, "ASSIGNED")
+                .or(() -> assignmentRepository.findFirstByPsychologicalRequestIdOrderByAssignedAtDesc(requestId))
                 .ifPresent(assignment -> {
                     assignment.setStatus(newStatus);
                     assignment.setCompletedAt(completedAt);

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -87,6 +88,7 @@ public class HelpRequestController {
     }
 
     @PutMapping("/{id}/assign")
+    @PreAuthorize("hasAnyRole('VOLUNTEER', 'ORGANIZATION')")
     @Transactional
     public ResponseEntity<ApiResponse<Map<String, Object>>> assignToMe(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Request assigned",

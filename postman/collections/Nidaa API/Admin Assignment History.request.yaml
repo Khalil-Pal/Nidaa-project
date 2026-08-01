@@ -1,0 +1,12 @@
+$kind: http-request
+name: Admin Assignment History
+description: >-
+  Returns all humanitarian and psychological assignment records, including
+  assignment source, assignee, wait time, completion duration, and status.
+url: http://localhost:8081/api/v1/admin/assignments
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+order: 4520000000000004

@@ -28,4 +28,14 @@ class CrisisDetectorServiceTest {
     void normalCaseNotDetected() {
         assertFalse(service.detect("INDIVIDUAL", "I feel anxious sometimes"));
     }
+
+    @Test
+    void arabicCrisisPhraseDetected() {
+        assertTrue(service.detect("INDIVIDUAL", "لا أريد أن أعيش"));
+    }
+
+    @Test
+    void russianCrisisPhraseDetected() {
+        assertTrue(service.detect("INDIVIDUAL", "не хочу жить"));
+    }
 }

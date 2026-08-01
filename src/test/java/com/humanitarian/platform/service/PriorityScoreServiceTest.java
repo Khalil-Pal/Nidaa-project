@@ -1,10 +1,12 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.model.HelpRequest;
+import com.humanitarian.platform.model.PsychologicalRequest;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PriorityScoreServiceTest {
@@ -60,6 +62,48 @@ class PriorityScoreServiceTest {
                 .hasChildren(false)
                 .hasElderly(false)
                 .hasDisabled(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        assertTrue(service.calculate(oldRequest) > service.calculate(freshRequest));
+    }
+
+    @Test
+    void crisisPsychologicalRequestGetsUrgencyAndCrisisPriority() {
+        PsychologicalRequest request = PsychologicalRequest.builder()
+                .urgencyLevel("CRITICAL")
+                .isCrisis(true)
+                .build();
+
+        assertEquals(75, service.calculate(request));
+    }
+
+    @Test
+    void crisisPsychologicalRequestOutranksEquivalentNonCrisisRequest() {
+        PsychologicalRequest crisis = PsychologicalRequest.builder()
+                .urgencyLevel("HIGH")
+                .isCrisis(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+        PsychologicalRequest nonCrisis = PsychologicalRequest.builder()
+                .urgencyLevel("HIGH")
+                .isCrisis(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        assertTrue(service.calculate(crisis) > service.calculate(nonCrisis));
+    }
+
+    @Test
+    void psychologicalWaitingTimeIncreasesScore() {
+        PsychologicalRequest oldRequest = PsychologicalRequest.builder()
+                .urgencyLevel("MEDIUM")
+                .isCrisis(false)
+                .createdAt(LocalDateTime.now().minusHours(48))
+                .build();
+        PsychologicalRequest freshRequest = PsychologicalRequest.builder()
+                .urgencyLevel("MEDIUM")
+                .isCrisis(false)
                 .createdAt(LocalDateTime.now())
                 .build();
 

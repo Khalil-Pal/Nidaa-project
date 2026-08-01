@@ -50,4 +50,17 @@ class GeoMatchingServiceTest {
                 request,
                 List.of(unavailableNearby, availableFarther)).orElseThrow().getId());
     }
+
+    @Test
+    void requestWithoutCoordinatesIsNotGeoMatched() {
+        HelpRequest request = HelpRequest.builder().build();
+        Volunteer available = Volunteer.builder()
+                .id(1L)
+                .isAvailable(true)
+                .latitude(55.75)
+                .longitude(37.62)
+                .build();
+
+        assertTrue(service.findNearestVolunteer(request, List.of(available)).isEmpty());
+    }
 }

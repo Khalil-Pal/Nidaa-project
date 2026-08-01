@@ -8,24 +8,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--blue:#1d4ed8;--green:#059669;--bg:#f1f5f9;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0;--sidebar-w:256px}
+:root{--blue:#1d4ed8;--green:#059669;--bg:#f1f5f9;--dark:#1e293b;--muted:#64748b}
 body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);display:flex;min-height:100vh}
-.sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;transition:transform .25s}
-.sidebar-logo{height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border)}
-.sidebar-logo img{height:40px;width:auto}
-.sidebar-nav{padding:12px 10px;flex:1;overflow-y:auto}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:var(--muted);font-size:14px;font-weight:500;text-decoration:none;transition:background .15s,color .15s;margin-bottom:2px}
-.nav-item i{width:18px;text-align:center}
-.nav-item:hover{background:#f8fafc;color:var(--dark)}
-.nav-item.active{background:#eff6ff;color:var(--blue)}
-.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
-.topbar{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:14px;position:sticky;top:0;z-index:100}
-.topbar-title{font-size:16px;font-weight:600;flex:1}
-.topbar-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
-.badge{display:inline-block;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:700;background:#eff6ff;color:var(--blue)}
-.btn-logout{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
-.btn-logout:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
-.menu-toggle{display:none;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
 .content{padding:32px;flex:1;max-width:760px}
 
 /* Hero banner */
@@ -81,8 +65,9 @@ textarea.inp{resize:vertical;min-height:140px;line-height:1.65}
 .s-approved{background:#f0fdf4;color:#059669}
 .s-rejected{background:#fef2f2;color:#dc2626}
 
-@media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.menu-toggle{display:block}.content{padding:20px}}
+@media(max-width:768px){.content{padding:20px}}
 </style>
+<link rel="stylesheet" href="css/shared-layout.css"/>
 </head>
 <body>
 
@@ -98,7 +83,7 @@ textarea.inp{resize:vertical;min-height:140px;line-height:1.65}
         <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
         <span class="topbar-title"><i class="fa fa-pen-to-square" style="color:var(--blue);margin-right:8px"></i>Share Your Story</span>
         <div class="topbar-actions">
-            <span id="topbarName" style="font-size:14px;font-weight:600">—</span>
+            <span class="topbar-user" id="topbarName">—</span>
             <span class="badge" id="topbarRole">—</span>
             <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
         </div>

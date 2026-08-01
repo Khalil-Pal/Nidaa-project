@@ -15,8 +15,11 @@ public class Assignment {
     @Column(name = "assignment_id")
     private Long id;
 
-    @Column(name = "request_id", nullable = false)
+    @Column(name = "request_id")
     private Long requestId;
+
+    @Column(name = "psychological_request_id")
+    private Long psychologicalRequestId;
 
     @Column(name = "volunteer_id")
     private Long volunteerId;
@@ -24,8 +27,19 @@ public class Assignment {
     @Column(name = "organization_id")
     private Long organizationId;
 
+    @Column(name = "psychologist_id")
+    private Long psychologistId;
+
     @Column(name = "assigned_by")
     private Long assignedBy;
+
+    @Column(name = "request_type", nullable = false)
+    @Builder.Default
+    private String requestType = "HELP_REQUEST";
+
+    @Column(name = "assignment_source", nullable = false)
+    @Builder.Default
+    private String assignmentSource = "MANUAL";
 
     @CreationTimestamp
     @Column(name = "assigned_at", updatable = false)

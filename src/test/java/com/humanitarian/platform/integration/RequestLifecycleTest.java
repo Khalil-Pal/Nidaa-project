@@ -8,6 +8,8 @@ import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.UserRepository;
+import com.humanitarian.platform.repository.VolunteerRepository;
+import com.humanitarian.platform.service.AutomaticAssignmentService;
 import com.humanitarian.platform.service.GeoMatchingService;
 import com.humanitarian.platform.service.HelpRequestService;
 import com.humanitarian.platform.service.PriorityScoreService;
@@ -39,6 +41,8 @@ class RequestLifecycleTest {
     @Mock private UserService userService;
     @Mock private JdbcTemplate jdbc;
     @Mock private AssignmentRepository assignmentRepository;
+    @Mock private VolunteerRepository volunteerRepository;
+    @Mock private AutomaticAssignmentService automaticAssignmentService;
     @Mock private GeoMatchingService geoMatchingService;
     @Spy private PriorityScoreService priorityScoreService = new PriorityScoreService();
 
@@ -66,9 +70,17 @@ class RequestLifecycleTest {
             return request;
         });
         when(jdbc.queryForObject(anyString(), eq(Long.class), eq(volunteer.getId()))).thenReturn(20L);
+        when(volunteerRepository.claimIfAvailable(20L)).thenReturn(1);
         when(helpRequestRepository.assignVolunteer(10L, 20L, "ASSIGNED", "PENDING")).thenReturn(1);
         when(userRepository.findById(beneficiary.getId())).thenReturn(Optional.of(beneficiary));
 
+        HelpRequest pending = HelpRequest.builder()
+                .id(10L)
+                .beneficiaryId(beneficiary.getId())
+                .title("Need food")
+                .priorityScore(36)
+                .status("PENDING")
+                .build();
         HelpRequest assigned = HelpRequest.builder()
                 .id(10L)
                 .beneficiaryId(beneficiary.getId())
@@ -82,6 +94,7 @@ class RequestLifecycleTest {
                 .status("COMPLETED")
                 .build();
         when(helpRequestRepository.findById(10L))
+                .thenReturn(Optional.of(pending))
                 .thenReturn(Optional.of(assigned))
                 .thenReturn(Optional.of(assigned))
                 .thenReturn(Optional.of(completed));

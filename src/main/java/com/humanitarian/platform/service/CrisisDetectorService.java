@@ -2,6 +2,7 @@ package com.humanitarian.platform.service;
 
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -15,11 +16,21 @@ public class CrisisDetectorService {
             "опасность",
             "срочно",
             "помогите",
-            "СЃСѓРёС†РёРґ",
-            "СЃР°РјРѕСѓР±РёР№СЃС‚РІРѕ",
-            "РЅРµ С…РѕС‡Сѓ Р¶РёС‚СЊ",
+            "انتحار",
+            "أريد أن أموت",
+            "لا أريد أن أعيش",
+            "أؤذي نفسي",
+            "حالة طارئة",
+            "أزمة",
+            "ساعدني",
             "crisis",
             "suicide",
+            "suicidal",
+            "kill myself",
+            "end my life",
+            "don't want to live",
+            "self harm",
+            "self-harm",
             "emergency",
             "urgent"
     );
@@ -34,7 +45,8 @@ public class CrisisDetectorService {
         if (description == null) {
             return false;
         }
-        String lower = description.toLowerCase();
-        return CRISIS_KEYWORDS.stream().anyMatch(keyword -> lower.contains(keyword.toLowerCase()));
+        String lower = description.toLowerCase(Locale.ROOT);
+        return CRISIS_KEYWORDS.stream()
+                .anyMatch(keyword -> lower.contains(keyword.toLowerCase(Locale.ROOT)));
     }
 }

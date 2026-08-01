@@ -1,19 +1,25 @@
 package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.dto.RankedRequestDTO;
+import com.humanitarian.platform.dto.RankedPsychologicalRequestDTO;
+import com.humanitarian.platform.dto.AssignmentHistoryDTO;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.repository.HelpRequestRepository;
+import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
 import com.humanitarian.platform.service.HelpRequestService;
+import com.humanitarian.platform.service.AssignmentHistoryService;
 import com.humanitarian.platform.service.MatchingEvaluationService;
+import com.humanitarian.platform.service.PriorityScoreService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,35 +34,63 @@ public class AdminV1Controller {
     private final VolunteerRepository volunteerRepository;
     private final PsychologicalRequestRepository psychologicalRequestRepository;
     private final MatchingEvaluationService matchingEvaluationService;
+    private final AssignmentHistoryService assignmentHistoryService;
+    private final AssignmentRepository assignmentRepository;
+    private final PriorityScoreService priorityScoreService;
 
     public AdminV1Controller(HelpRequestService helpRequestService,
                              HelpRequestRepository helpRequestRepository,
                              VolunteerRepository volunteerRepository,
                              PsychologicalRequestRepository psychologicalRequestRepository,
-                             MatchingEvaluationService matchingEvaluationService) {
+                             MatchingEvaluationService matchingEvaluationService,
+                             AssignmentHistoryService assignmentHistoryService,
+                             AssignmentRepository assignmentRepository,
+                             PriorityScoreService priorityScoreService) {
         this.helpRequestService = helpRequestService;
         this.helpRequestRepository = helpRequestRepository;
         this.volunteerRepository = volunteerRepository;
         this.psychologicalRequestRepository = psychologicalRequestRepository;
         this.matchingEvaluationService = matchingEvaluationService;
+        this.assignmentHistoryService = assignmentHistoryService;
+        this.assignmentRepository = assignmentRepository;
+        this.priorityScoreService = priorityScoreService;
+    }
+
+    @GetMapping("/assignments")
+    public ResponseEntity<List<AssignmentHistoryDTO>> getAssignmentHistory() {
+        return ResponseEntity.ok(assignmentHistoryService.getAllHistory());
     }
 
     @GetMapping("/evaluation")
     public ResponseEntity<Map<String, Object>> runEvaluation() {
-        List<HelpRequest> pending = helpRequestRepository.findByStatus("PENDING");
-        return ResponseEntity.ok(matchingEvaluationService.evaluate(pending));
+        return ResponseEntity.ok(matchingEvaluationService.evaluate(
+                helpRequestRepository.findAll(),
+                volunteerRepository.findAll(),
+                assignmentRepository.findAll()));
     }
 
     @GetMapping("/dashboard/ranked")
     public ResponseEntity<Map<String, Object>> getRankedDashboard() {
         List<RankedRequestDTO> ranked = helpRequestService
                 .getRankedWithSuggestions(volunteerRepository.findByIsAvailableTrue());
-        List<PsychologicalRequest> crisisCases = psychologicalRequestRepository.findByIsCrisisTrue();
+        List<PsychologicalRequest> allPsychologicalRequests = psychologicalRequestRepository.findAll();
+        List<RankedPsychologicalRequestDTO> psychologicalRequests = allPsychologicalRequests.stream()
+                .map(request -> RankedPsychologicalRequestDTO.builder()
+                        .request(request)
+                        .priorityScore(priorityScoreService.calculate(request))
+                        .build())
+                .sorted(Comparator.comparingInt(RankedPsychologicalRequestDTO::getPriorityScore).reversed())
+                .toList();
+        List<PsychologicalRequest> crisisCases = allPsychologicalRequests.stream()
+                .filter(request -> Boolean.TRUE.equals(request.getIsCrisis()))
+                .toList();
 
         Map<String, Object> dashboard = new LinkedHashMap<>();
         dashboard.put("rankedMaterialRequests", ranked);
+        dashboard.put("psychologicalRequests", psychologicalRequests);
         dashboard.put("crisisPsychologicalCases", crisisCases);
         dashboard.put("totalPending", ranked.size());
+        dashboard.put("totalPsychological", psychologicalRequests.size());
         dashboard.put("totalCrisis", crisisCases.size());
         return ResponseEntity.ok(dashboard);
     }
