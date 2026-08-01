@@ -81,7 +81,7 @@
     .types-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
     .type-card{background:white;border-radius:18px;padding:30px 26px;border:1px solid var(--border);transition:all .25s;display:flex;flex-direction:column;align-items:flex-start;cursor:default}
     .type-card:hover{transform:translateY(-5px);box-shadow:0 14px 36px rgba(29,78,216,.1);border-color:var(--blue)}
-    .type-icon{font-size:34px;margin-bottom:16px;display:block}
+    .type-icon-img{display:block;width:220px;height:165px;max-width:100%;max-height:165px;object-fit:cover;border-radius:12px;margin-bottom:16px}
     .type-card h3{font-size:17px;font-weight:700;color:var(--dark);margin-bottom:9px}
     .type-card p{font-size:14px;color:var(--muted);line-height:1.65}
 
@@ -251,12 +251,12 @@
     <h2 class="section-title">Types of Assistance</h2>
     <p class="section-desc">We coordinate a wide range of humanitarian support to meet diverse needs across communities.</p>
     <div class="types-grid">
-      <div class="type-card"><span class="type-icon">⚕️</span><h3>Medical Aid</h3><p>Access to medical supplies, emergency care referrals, and health professional consultations.</p></div>
-      <div class="type-card"><span class="type-icon">🍞</span><h3>Food Assistance</h3><p>Emergency food packages, meal delivery, and nutritional support for families in need.</p></div>
-      <div class="type-card"><span class="type-icon">👕</span><h3>Clothing</h3><p>Dignified clothing donations for all ages, distributed through our verified partner network.</p></div>
-      <div class="type-card"><span class="type-icon">🏠</span><h3>Shelter</h3><p>Temporary housing arrangements and emergency accommodation support for displaced families.</p></div>
-      <div class="type-card"><span class="type-icon">💧</span><h3>Clean Water</h3><p>Safe drinking water access and sanitation support for communities facing water scarcity.</p></div>
-      <div class="type-card"><span class="type-icon">🧠</span><h3>Psychological Support</h3><p>Confidential mental health support from licensed psychologists via chat, audio, or video.</p></div>
+      <div class="type-card"><img class="type-icon-img" src="images/help-types/medical-help.png" alt="Medical Aid"><h3>Medical Aid</h3><p>Access to medical supplies, emergency care referrals, and health professional consultations.</p></div>
+      <div class="type-card"><img class="type-icon-img" src="images/help-types/food-help.png" alt="Food Assistance"><h3>Food Assistance</h3><p>Emergency food packages, meal delivery, and nutritional support for families in need.</p></div>
+      <div class="type-card"><img class="type-icon-img" src="images/help-types/clothing-help.png" alt="Clothing"><h3>Clothing</h3><p>Dignified clothing donations for all ages, distributed through our verified partner network.</p></div>
+      <div class="type-card"><img class="type-icon-img" src="images/help-types/shelter-help.png" alt="Shelter"><h3>Shelter</h3><p>Temporary housing arrangements and emergency accommodation support for displaced families.</p></div>
+      <div class="type-card"><img class="type-icon-img" src="images/help-types/cleanWater-help.png" alt="Clean Water"><h3>Clean Water</h3><p>Safe drinking water access and sanitation support for communities facing water scarcity.</p></div>
+      <div class="type-card"><img class="type-icon-img" src="images/help-types/psychological-help.png" alt="Psychological Support"><h3>Psychological Support</h3><p>Confidential mental health support from licensed psychologists via chat, audio, or video.</p></div>
     </div>
   </div>
 </section>

@@ -9,37 +9,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        :root { --blue: #1d4ed8; --green: #059669; --bg: #f0fdf4; --dark: #1e293b; --muted: #64748b; --border: #e2e8f0; --sidebar-w: 256px; }
+        :root { --blue: #1d4ed8; --green: #059669; --bg: #f0fdf4; --dark: #1e293b; --muted: #64748b; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', sans-serif; color: var(--dark); background: #f1f5f9; display: flex; min-height: 100vh; }
 
         /* ── SIDEBAR ── */
-        .sidebar { width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 200; transition: transform .25s; }
-        .sidebar-logo { height: 64px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); }
-        .sidebar-logo img { height: 40px; width: auto; }
-        .sidebar-nav { padding: 12px 10px; flex: 1; overflow-y: auto; }
-        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; color: var(--muted); font-size: 14px; font-weight: 500; text-decoration: none; transition: background .15s, color .15s; margin-bottom: 2px; }
-        .nav-item i { width: 18px; text-align: center; }
-        .nav-item:hover { background: #f8fafc; color: var(--dark); }
-        .nav-item.active { background: #eff6ff; color: var(--blue); }
-        .sidebar-footer { padding: 12px 10px; border-top: 1px solid var(--border); }
-        .btn-logout-side { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border-radius: 8px; border: none; background: none; color: var(--muted); font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s; }
-        .btn-logout-side:hover { background: #fef2f2; color: #dc2626; }
-        @media(max-width:768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } }
 
         /* ── MAIN ── */
-        .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
 
         /* ── TOPBAR ── */
-        .topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; }
-        .menu-toggle { display: none; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--muted); }
-        @media(max-width:768px) { .menu-toggle { display: block; } }
-        .topbar-title { font-size: 16px; font-weight: 600; flex: 1; }
-        .topbar-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-        .topbar-actions span { font-size: 14px; font-weight: 500; }
-        .badge { background: #eff6ff; color: var(--blue); border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600; }
-        .btn-logout { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 7px 12px; cursor: pointer; color: var(--muted); font-size: 14px; transition: all .15s; }
-        .btn-logout:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
 
         /* ── CONTENT ── */
         .content { padding: 28px; flex: 1; }
@@ -105,6 +83,7 @@
         .loading-msg { color: var(--muted); font-size: 14px; padding: 40px; text-align: center; }
         .error-banner { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 10px; padding: 14px 18px; color: #dc2626; font-size: 14px; margin-bottom: 20px; display: none; }
     </style>
+    <link rel="stylesheet" href="css/shared-layout.css"/>
 </head>
 <body>
 
@@ -112,15 +91,14 @@
     <div class="sidebar-logo">
         <a href="admin.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
     </div>
-    <nav class="sidebar-nav">
+    <nav class="sidebar-nav" id="sidebarNav">
         <a href="admin-requests.html" class="nav-item"><i class="fa fa-list-check"></i> All Requests</a>
         <a href="admin.html" class="nav-item active"><i class="fa fa-chart-bar"></i> Analytics</a>
         <a href="admin-approvals.html" class="nav-item"><i class="fa fa-user-check"></i> Approvals</a>
         <a href="admin-users.html" class="nav-item"><i class="fa fa-users"></i> All Users</a>
+        <a href="admin-stories.html" class="nav-item"><i class="fa fa-newspaper"></i> Stories</a>
         <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
     </nav>
-    <div class="sidebar-footer">
-    </div>
 </aside>
 
 <div class="main">
@@ -128,7 +106,7 @@
         <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
         <span class="topbar-title">Analytics Dashboard</span>
         <div class="topbar-actions">
-            <span id="topbarName">—</span>
+            <span class="topbar-user" id="topbarName">—</span>
             <span class="badge" id="topbarRole">—</span>
             <button class="btn-logout" onclick="logout()" title="Logout"><i class="fa fa-right-from-bracket"></i></button>
         </div>
