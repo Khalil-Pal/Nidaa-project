@@ -1,5 +1,6 @@
 package com.humanitarian.platform.service;
 
+import com.humanitarian.platform.dto.ProviderCapacityAssessment;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.Organization;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class AutomaticAssignmentService {
@@ -62,8 +64,10 @@ public class AutomaticAssignmentService {
             return false;
         }
 
-        var eligibleUserIds = providerResourceService
-                .findEligibleProviderUserIds(request.getHelpType());
+        Map<Long, ProviderCapacityAssessment> eligibleProviders = providerResourceService
+                .findEligibleProviderCapacityAssessments(
+                        request.getHelpType(), request.getPeopleCount());
+        var eligibleUserIds = eligibleProviders.keySet();
         List<Volunteer> resourceMatchedVolunteers = volunteerRepository.findByIsAvailableTrue()
                 .stream()
                 .filter(volunteer -> volunteer.getUser() != null)

@@ -50,6 +50,10 @@
         .suggestion-cell{display:flex;flex-direction:column;gap:2px}
         .suggestion-name{font-size:13px;font-weight:600}
         .suggestion-distance{font-size:12px;color:var(--muted)}
+        .capacity-badge{width:max-content;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;white-space:nowrap}
+        .capacity-sufficient{background:#ecfdf5;color:#047857}
+        .capacity-insufficient{background:#fef2f2;color:#b91c1c}
+        .capacity-unknown{background:#f1f5f9;color:#475569}
 
         .user-cell{display:flex;flex-direction:column}
         .u-name{font-size:13px;font-weight:600}
@@ -231,6 +235,19 @@
                     <div><div class="info-lbl">Worker Name</div><div class="info-val" id="mWorkerName">—</div></div>
                 </div>
             </div>
+
+            <div class="divider"></div>
+            <div class="section-title">Suggested Match</div>
+            <div class="info-grid">
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-location-dot"></i></div>
+                    <div><div class="info-lbl">Provider</div><div class="info-val" id="mSuggested">—</div></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon"><i class="fa fa-boxes-stacked"></i></div>
+                    <div><div class="info-lbl">Capacity</div><div class="info-val" id="mCapacity">—</div></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -259,6 +276,30 @@
         return Number.isFinite(km) ? km.toFixed(1) + ' km' : '';
     }
 
+    function capacityIndicator(request) {
+        if (request.requestType !== 'HELP' || !request.suggestedVolunteerName || request.suggestedVolunteerName === 'N/A') return null;
+        if (request.capacitySufficient === true) {
+            return { className: 'capacity-sufficient', text: 'Capacity sufficient' };
+        }
+        if (request.capacitySufficient === false) {
+            return { className: 'capacity-insufficient', text: 'Capacity insufficient' };
+        }
+        return { className: 'capacity-unknown', text: 'Capacity unknown' };
+    }
+
+    function capacityDetail(request) {
+        const indicator = capacityIndicator(request);
+        if (!indicator) return 'N/A';
+        if (request.capacityMode === 'NUMERIC' && Number.isFinite(request.capacityAmount)) {
+            return Number.isInteger(request.peopleCount) && request.peopleCount > 0
+                ? `${indicator.text}: ${request.capacityAmount} for ${request.peopleCount} people`
+                : `${indicator.text}: numeric amount ${request.capacityAmount}, request count not set`;
+        }
+        return request.capacityMode === 'QUALITATIVE'
+            ? 'Capacity unknown (qualitative resource)'
+            : indicator.text;
+    }
+
     function renderTable(list) {
         const tbody = document.getElementById('requestsBody');
         document.getElementById('totalCount').textContent = list.length + ' request' + (list.length !== 1 ? 's' : '');
@@ -272,6 +313,7 @@
             const priority = Number.isFinite(r.priorityScore) ? r.priorityScore : null;
             const priorityClass = priority !== null && priority >= 70 ? 'priority-score high' : 'priority-score';
             const suggestionDistance = fmtDistance(r.distanceKm);
+            const capacity = capacityIndicator(r);
             return `<tr onclick="openModal(${allRequests.indexOf(r)})">
                 <td style="color:var(--muted);font-size:12px">#${r.id||'—'}</td>
                 <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title||'—'}</td>
@@ -295,6 +337,7 @@
                     <div class="suggestion-cell">
                         <span class="suggestion-name">${r.suggestedVolunteerName||'N/A'}</span>
                         <span class="suggestion-distance">${suggestionDistance}</span>
+                        ${capacity ? `<span class="capacity-badge ${capacity.className}">${capacity.text}</span>` : ''}
                     </div>
                 </td>
                 <td style="font-size:13px;color:var(--muted)">${fmtDate(r.createdAt)}</td>
@@ -336,6 +379,7 @@
         const suggested = r.suggestedVolunteerName ? r.suggestedVolunteerName + (fmtDistance(r.distanceKm) ? ' (' + fmtDistance(r.distanceKm) + ')' : '') : 'N/A';
         const suggestedEl = document.getElementById('mSuggested');
         if (suggestedEl) suggestedEl.textContent = suggested;
+        document.getElementById('mCapacity').textContent = capacityDetail(r);
         document.getElementById('detailModal').classList.add('open');
     }
 
@@ -360,13 +404,17 @@
                 address: request.address,
                 createdAt: request.createdAt,
                 description: request.description,
+                peopleCount: request.peopleCount,
                 requesterName: request.beneficiaryId ? 'Beneficiary #' + request.beneficiaryId : 'Beneficiary',
                 requesterEmail: '',
                 requesterPhone: '',
                 workerName,
                 workerRole: '',
                 suggestedVolunteerName: item.suggestedVolunteerName || 'N/A',
-                distanceKm: item.distanceKm
+                distanceKm: item.distanceKm,
+                capacityMode: item.capacityMode,
+                capacityAmount: item.capacityAmount,
+                capacitySufficient: item.capacitySufficient
             };
         });
 
@@ -386,13 +434,17 @@
                 address: null,
                 createdAt: request.createdAt,
                 description: request.description,
+                peopleCount: null,
                 requesterName: request.beneficiaryId ? 'Beneficiary #' + request.beneficiaryId : 'Beneficiary',
                 requesterEmail: '',
                 requesterPhone: '',
                 workerName: request.assignedPsychologistId ? 'Assigned' : 'Not assigned yet',
                 workerRole: 'Psychologist',
                 suggestedVolunteerName: request.isCrisis ? 'On-duty psychologist required' : 'N/A',
-                distanceKm: null
+                distanceKm: null,
+                capacityMode: null,
+                capacityAmount: null,
+                capacitySufficient: null
             };
         });
 

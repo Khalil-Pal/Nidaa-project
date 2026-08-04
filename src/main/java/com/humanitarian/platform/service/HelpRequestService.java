@@ -1,6 +1,7 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.HelpRequestDto;
+import com.humanitarian.platform.dto.ProviderCapacityAssessment;
 import com.humanitarian.platform.dto.RankedRequestDTO;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
@@ -124,7 +125,7 @@ public class HelpRequestService {
 
         HelpRequest request = getRequestById(requestId);
         providerResourceService.requireUsableResource(
-                currentUser.getId(), request.getHelpType());
+                currentUser.getId(), request.getHelpType(), request.getPeopleCount());
 
         if (role.equals("volunteer")) {
             Long volunteerId;
@@ -300,19 +301,29 @@ public class HelpRequestService {
 
     @Transactional(readOnly = true)
     public List<RankedRequestDTO> getRankedWithSuggestions(List<Volunteer> availableVolunteers) {
-        Map<String, Set<Long>> eligibleUserIdsByHelpType = new HashMap<>();
+        Map<CapacityLookupKey, Map<Long, ProviderCapacityAssessment>> capacityByRequest =
+                new HashMap<>();
         return helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING").stream()
                 .map(request -> {
                     int score = request.getPriorityScore() != null
                             ? request.getPriorityScore()
                             : priorityScoreService.calculate(request);
                     String helpType = HelpTypeNormalizer.normalize(request.getHelpType());
-                    Set<Long> eligibleUserIds = eligibleUserIdsByHelpType.computeIfAbsent(
-                            helpType, providerResourceService::findEligibleProviderUserIds);
+                    CapacityLookupKey capacityKey = new CapacityLookupKey(
+                            helpType, request.getPeopleCount());
+                    Map<Long, ProviderCapacityAssessment> capacityByUserId =
+                            capacityByRequest.computeIfAbsent(
+                                    capacityKey,
+                                    key -> providerResourceService
+                                            .findEligibleProviderCapacityAssessments(
+                                                    key.helpType(), key.peopleCount()));
                     List<Volunteer> resourceMatchedVolunteers = filterByProviderResource(
-                            availableVolunteers, eligibleUserIds);
+                            availableVolunteers, capacityByUserId.keySet());
                     var nearest = geoMatchingService.findNearestProvider(
                             request, resourceMatchedVolunteers, List.of());
+                    ProviderCapacityAssessment capacity = nearest
+                            .map(match -> capacityByUserId.get(match.userId()))
+                            .orElse(null);
                     return RankedRequestDTO.builder()
                             .request(request)
                             .priorityScore(score)
@@ -322,6 +333,10 @@ public class HelpRequestService {
                             .distanceKm(nearest
                                     .map(GeoMatchingService.ProviderMatch::distanceKm)
                                     .orElse(null))
+                            .capacityMode(capacity == null ? null : capacity.getCapacityMode())
+                            .capacityAmount(capacity == null ? null : capacity.getCapacityAmount())
+                            .capacitySufficient(
+                                    capacity == null ? null : capacity.getCapacitySufficient())
                             .build();
                 })
                 .toList();
@@ -368,5 +383,8 @@ public class HelpRequestService {
                         organizationId, "ASSIGNED") == 0) {
             organizationRepository.release(organizationId);
         }
+    }
+
+    private record CapacityLookupKey(String helpType, Integer peopleCount) {
     }
 }

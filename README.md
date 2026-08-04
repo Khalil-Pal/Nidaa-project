@@ -103,12 +103,13 @@ When a material request includes latitude and longitude, the production assignme
 
 1. Loads `provider_resources` rows for the request's normalized `helpType`.
 2. Removes numeric rows whose `capacityAmount` is zero and malformed qualitative rows.
-3. Loads available volunteers and organizations and keeps only providers whose user ID is in the eligible resource set.
-4. Reads provider coordinates from `profiles` and removes providers without both values.
-5. Calculates straight-line distance with the Haversine formula.
-6. Orders candidates from nearest to farthest.
-7. Atomically claims the first available provider, regardless of provider type.
-8. Changes the request from `PENDING` to `ASSIGNED`.
+3. Compares positive numeric capacity with `peopleCount` for the ranked/admin capacity flag without excluding partial-capacity providers.
+4. Loads available volunteers and organizations and keeps only providers whose user ID is in the eligible resource set.
+5. Reads provider coordinates from `profiles` and removes providers without both values.
+6. Calculates straight-line distance with the Haversine formula.
+7. Orders candidates from nearest to farthest.
+8. Atomically claims the first available provider, regardless of provider type.
+9. Changes the request from `PENDING` to `ASSIGNED`.
 9. Saves an `AUTO_GEO` assignment-history record with the distance.
 
 The atomic claim prevents two simultaneous requests from assigning the same provider. When an assignment is completed or cancelled, the provider is released to their saved availability preference if no other active assignment remains.
@@ -438,7 +439,7 @@ The current tests cover:
 The following boundaries are important when evaluating the current implementation:
 
 - The repository does not yet include a complete V1 database bootstrap migration.
-- Automatic provider assignment filters by structured help-type resources, but it does not compare numeric capacity with the request's `peopleCount`, decrement inventory, or match free-form skills.
+- Automatic provider assignment filters by structured help-type resources, and ranked admin responses report numeric sufficiency against `peopleCount`; capacity is not decremented or reserved, and free-form skills are not matched.
 - Providers with coordinates only in legacy volunteer columns must save them to `profiles` before automatic matching can consider them.
 - The help-request form currently submits a textual address without browser-captured coordinates, so UI-created requests require a future geocoding/location step for automatic matching.
 - Volunteer profile skills, schedule, and textual location are currently stored by the frontend and are not fully synchronized with the backend volunteer record.
@@ -478,4 +479,4 @@ git push -u origin feature/descriptive-name
 
 ## Project Status
 
-Nidaa is under active development. The core request, psychological support, resource-aware combined provider assignment, ranking, and evaluation workflows are implemented. The next major steps are capacity-aware allocation and a reproducible fresh-database bootstrap.
+Nidaa is under active development. The core request, psychological support, resource-aware combined provider assignment, ranking, and evaluation workflows are implemented. The next major steps are transactional inventory allocation and a reproducible fresh-database bootstrap.

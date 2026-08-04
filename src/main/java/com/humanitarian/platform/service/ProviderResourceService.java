@@ -1,5 +1,6 @@
 package com.humanitarian.platform.service;
 
+import com.humanitarian.platform.dto.ProviderCapacityAssessment;
 import com.humanitarian.platform.dto.ProviderResourceDto;
 import com.humanitarian.platform.dto.ProviderResourceResponse;
 import com.humanitarian.platform.exception.BusinessException;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -82,30 +84,49 @@ public class ProviderResourceService {
 
     @Transactional(readOnly = true)
     public Set<Long> findEligibleProviderUserIds(String rawHelpType) {
+        return findEligibleProviderCapacityAssessments(rawHelpType, null).keySet();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, ProviderCapacityAssessment> findEligibleProviderCapacityAssessments(
+            String rawHelpType,
+            Integer peopleCount) {
         String helpType = HelpTypeNormalizer.normalize(rawHelpType);
         if (!SUPPORTED_HELP_TYPES.contains(helpType)) {
-            return Set.of();
+            return Map.of();
         }
 
         return providerResourceRepository.findByHelpType(helpType).stream()
                 .filter(this::hasUsableCapacity)
-                .map(ProviderResource::getUserId)
-                .collect(Collectors.toUnmodifiableSet());
+                .collect(Collectors.toUnmodifiableMap(
+                        ProviderResource::getUserId,
+                        resource -> toCapacityAssessment(resource, peopleCount),
+                        (first, ignored) -> first));
     }
 
     @Transactional(readOnly = true)
-    public void requireUsableResource(Long userId, String rawHelpType) {
-        String helpType = HelpTypeNormalizer.normalize(rawHelpType);
-        boolean canProvide = SUPPORTED_HELP_TYPES.contains(helpType)
-                && providerResourceRepository.findByUserIdAndHelpType(userId, helpType)
-                .filter(this::hasUsableCapacity)
-                .isPresent();
+    public ProviderCapacityAssessment requireUsableResource(Long userId,
+                                                             String rawHelpType) {
+        return requireUsableResource(userId, rawHelpType, null);
+    }
 
-        if (!canProvide) {
+    @Transactional(readOnly = true)
+    public ProviderCapacityAssessment requireUsableResource(Long userId,
+                                                             String rawHelpType,
+                                                             Integer peopleCount) {
+        String helpType = HelpTypeNormalizer.normalize(rawHelpType);
+        ProviderResource resource = SUPPORTED_HELP_TYPES.contains(helpType)
+                ? providerResourceRepository.findByUserIdAndHelpType(userId, helpType)
+                .filter(this::hasUsableCapacity)
+                .orElse(null)
+                : null;
+
+        if (resource == null) {
             throw new BusinessException(
                     "Your provider profile does not list an available "
                             + helpType + " resource for this request.");
         }
+        return toCapacityAssessment(resource, peopleCount);
     }
 
     private User requireProviderUser() {
@@ -157,6 +178,21 @@ public class ProviderResourceService {
             return resource.getCapacityLabel() != null && !resource.getCapacityLabel().isBlank();
         }
         return false;
+    }
+
+    private ProviderCapacityAssessment toCapacityAssessment(ProviderResource resource,
+                                                             Integer peopleCount) {
+        Boolean sufficient = null;
+        if ("NUMERIC".equals(resource.getCapacityMode())
+                && peopleCount != null && peopleCount > 0) {
+            sufficient = resource.getCapacityAmount() >= peopleCount;
+        }
+        return ProviderCapacityAssessment.builder()
+                .userId(resource.getUserId())
+                .capacityMode(resource.getCapacityMode())
+                .capacityAmount(resource.getCapacityAmount())
+                .capacitySufficient(sufficient)
+                .build();
     }
 
     private ProviderResourceResponse toResponse(ProviderResource resource) {

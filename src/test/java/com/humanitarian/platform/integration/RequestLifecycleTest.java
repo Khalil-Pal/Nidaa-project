@@ -81,6 +81,7 @@ class RequestLifecycleTest {
                 .beneficiaryId(beneficiary.getId())
                 .title("Need food")
                 .helpType("FOOD")
+                .peopleCount(3)
                 .priorityScore(36)
                 .status("PENDING")
                 .build();
@@ -123,7 +124,7 @@ class RequestLifecycleTest {
 
         helpRequestService.assignToMe(10L);
 
-        verify(providerResourceService).requireUsableResource(volunteer.getId(), "FOOD");
+        verify(providerResourceService).requireUsableResource(volunteer.getId(), "FOOD", 3);
         ArgumentCaptor<Assignment> captor = ArgumentCaptor.forClass(Assignment.class);
         verify(assignmentRepository).save(captor.capture());
         assertEquals("ASSIGNED", captor.getValue().getStatus());

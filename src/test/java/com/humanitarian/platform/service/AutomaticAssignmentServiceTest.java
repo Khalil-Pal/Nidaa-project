@@ -1,5 +1,6 @@
 package com.humanitarian.platform.service;
 
+import com.humanitarian.platform.dto.ProviderCapacityAssessment;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.Organization;
@@ -23,7 +24,8 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -48,10 +50,11 @@ class AutomaticAssignmentServiceTest {
     @InjectMocks private AutomaticAssignmentService service;
 
     @Test
-    void nearestAvailableVolunteerIsClaimedAndRecorded() {
+    void insufficientNumericCapacityDoesNotChangeAutomaticNearestSelection() {
         HelpRequest request = HelpRequest.builder()
                 .id(10L)
                 .helpType("FOOD")
+                .peopleCount(20)
                 .latitude(55.75)
                 .longitude(37.62)
                 .status("PENDING")
@@ -62,8 +65,8 @@ class AutomaticAssignmentServiceTest {
                 .isAvailable(true)
                 .build();
 
-        when(providerResourceService.findEligibleProviderUserIds("FOOD"))
-                .thenReturn(Set.of(200L));
+        when(providerResourceService.findEligibleProviderCapacityAssessments("FOOD", 20))
+                .thenReturn(Map.of(200L, capacity(200L, "NUMERIC", 5, false)));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of());
         when(volunteerRepository.claimIfAvailable(20L)).thenReturn(1);
@@ -99,8 +102,8 @@ class AutomaticAssignmentServiceTest {
                 .isAvailable(true)
                 .build();
 
-        when(providerResourceService.findEligibleProviderUserIds("WATER"))
-                .thenReturn(Set.of(202L));
+        when(providerResourceService.findEligibleProviderCapacityAssessments("WATER", 1))
+                .thenReturn(capacities(202L));
         when(volunteerRepository.findByIsAvailableTrue())
                 .thenReturn(List.of(closerWrongResource, fartherRightResource));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of());
@@ -132,8 +135,8 @@ class AutomaticAssignmentServiceTest {
                 .isAvailable(true)
                 .build();
 
-        when(providerResourceService.findEligibleProviderUserIds("FOOD"))
-                .thenReturn(Set.of(203L, 300L));
+        when(providerResourceService.findEligibleProviderCapacityAssessments("FOOD", 1))
+                .thenReturn(capacities(203L, 300L));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(organizationRepository.claimIfAvailable(30L)).thenReturn(1);
@@ -163,8 +166,8 @@ class AutomaticAssignmentServiceTest {
                 .isAvailable(true)
                 .build();
 
-        when(providerResourceService.findEligibleProviderUserIds("WATER"))
-                .thenReturn(Set.of(204L, 301L));
+        when(providerResourceService.findEligibleProviderCapacityAssessments("WATER", 1))
+                .thenReturn(capacities(204L, 301L));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(volunteerRepository.claimIfAvailable(24L)).thenReturn(1);
@@ -194,8 +197,8 @@ class AutomaticAssignmentServiceTest {
                 .isAvailable(true)
                 .build();
 
-        when(providerResourceService.findEligibleProviderUserIds("SHELTER"))
-                .thenReturn(Set.of(205L));
+        when(providerResourceService.findEligibleProviderCapacityAssessments("SHELTER", 1))
+                .thenReturn(capacities(205L));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(volunteerRepository.claimIfAvailable(25L)).thenReturn(1);
@@ -222,8 +225,8 @@ class AutomaticAssignmentServiceTest {
                 .isAvailable(false)
                 .build();
 
-        when(providerResourceService.findEligibleProviderUserIds("MEDICAL"))
-                .thenReturn(Set.of(206L, 303L));
+        when(providerResourceService.findEligibleProviderCapacityAssessments("MEDICAL", 1))
+                .thenReturn(capacities(206L, 303L));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(volunteerRepository.claimIfAvailable(26L)).thenReturn(1);
@@ -245,8 +248,8 @@ class AutomaticAssignmentServiceTest {
                 .isAvailable(true)
                 .build();
 
-        when(providerResourceService.findEligibleProviderUserIds("CLOTHING"))
-                .thenReturn(Set.of(304L));
+        when(providerResourceService.findEligibleProviderCapacityAssessments("CLOTHING", 1))
+                .thenReturn(capacities(304L));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of());
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(organizationRepository.claimIfAvailable(34L)).thenReturn(1);
@@ -317,5 +320,25 @@ class AutomaticAssignmentServiceTest {
                 .longitude(longitude)
                 .build());
         return user;
+    }
+
+    private Map<Long, ProviderCapacityAssessment> capacities(Long... userIds) {
+        Map<Long, ProviderCapacityAssessment> result = new HashMap<>();
+        for (Long userId : userIds) {
+            result.put(userId, capacity(userId, "QUALITATIVE", null, null));
+        }
+        return result;
+    }
+
+    private ProviderCapacityAssessment capacity(Long userId,
+                                                  String mode,
+                                                  Integer amount,
+                                                  Boolean sufficient) {
+        return ProviderCapacityAssessment.builder()
+                .userId(userId)
+                .capacityMode(mode)
+                .capacityAmount(amount)
+                .capacitySufficient(sufficient)
+                .build();
     }
 }

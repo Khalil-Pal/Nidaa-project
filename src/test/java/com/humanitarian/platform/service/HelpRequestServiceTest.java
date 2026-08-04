@@ -1,5 +1,7 @@
 package com.humanitarian.platform.service;
 
+import com.humanitarian.platform.dto.ProviderCapacityAssessment;
+import com.humanitarian.platform.dto.RankedRequestDTO;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.User;
@@ -18,10 +20,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -58,16 +61,17 @@ class HelpRequestServiceTest {
                 .id(90L)
                 .beneficiaryId(3L)
                 .helpType("SHELTER")
+                .peopleCount(6)
                 .status("PENDING")
                 .build();
         when(userService.getCurrentUser()).thenReturn(organization);
         when(helpRequestRepository.findById(90L)).thenReturn(Optional.of(request));
         doThrow(new BusinessException("No matching resource"))
-                .when(providerResourceService).requireUsableResource(8L, "SHELTER");
+                .when(providerResourceService).requireUsableResource(8L, "SHELTER", 6);
 
         assertThrows(BusinessException.class, () -> service.assignToMe(90L));
 
-        verify(providerResourceService).requireUsableResource(8L, "SHELTER");
+        verify(providerResourceService).requireUsableResource(8L, "SHELTER", 6);
         verify(organizationRepository, never()).claimIfAvailable(anyLong());
         verify(helpRequestRepository, never()).assignOrganization(
                 anyLong(), anyLong(), anyString(), anyString());
@@ -79,6 +83,7 @@ class HelpRequestServiceTest {
                 .id(91L)
                 .helpType("MEDICAL")
                 .priorityScore(80)
+                .peopleCount(12)
                 .latitude(55.75)
                 .longitude(37.62)
                 .status("PENDING")
@@ -99,8 +104,8 @@ class HelpRequestServiceTest {
                 .build();
         when(helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING"))
                 .thenReturn(List.of(request));
-        when(providerResourceService.findEligibleProviderUserIds("MEDICAL"))
-                .thenReturn(Set.of(302L));
+        when(providerResourceService.findEligibleProviderCapacityAssessments("MEDICAL", 12))
+                .thenReturn(Map.of(302L, capacity(302L, "NUMERIC", 12, true)));
         when(geoMatchingService.findNearestProvider(
                 request, List.of(fartherRightResource), List.of()))
                 .thenReturn(Optional.of(new GeoMatchingService.ProviderMatch(
@@ -118,6 +123,37 @@ class HelpRequestServiceTest {
         assertEquals(1, ranked.size());
         assertEquals("Matching Provider", ranked.get(0).getSuggestedVolunteerName());
         assertEquals(7.2, ranked.get(0).getDistanceKm());
+        assertEquals(Boolean.TRUE, ranked.get(0).getCapacitySufficient());
+        assertEquals("NUMERIC", ranked.get(0).getCapacityMode());
+        assertEquals(12, ranked.get(0).getCapacityAmount());
+    }
+
+    @Test
+    void rankedResponseFlagsInsufficientNumericCapacity() {
+        HelpRequest request = rankedRequest(94L, "FOOD", 20);
+        Volunteer volunteer = rankedVolunteer(34L, 304L, "Partial Provider");
+
+        RankedRequestDTO ranked = rankSingleVolunteer(
+                request, volunteer, capacity(304L, "NUMERIC", 5, false));
+
+        assertEquals("Partial Provider", ranked.getSuggestedVolunteerName());
+        assertEquals(Boolean.FALSE, ranked.getCapacitySufficient());
+        assertEquals("NUMERIC", ranked.getCapacityMode());
+        assertEquals(5, ranked.getCapacityAmount());
+    }
+
+    @Test
+    void rankedResponseLeavesQualitativeCapacityUnknown() {
+        HelpRequest request = rankedRequest(95L, "WATER", 20);
+        Volunteer volunteer = rankedVolunteer(35L, 305L, "Qualitative Provider");
+
+        RankedRequestDTO ranked = rankSingleVolunteer(
+                request, volunteer, capacity(305L, "QUALITATIVE", null, null));
+
+        assertEquals("Qualitative Provider", ranked.getSuggestedVolunteerName());
+        assertNull(ranked.getCapacitySufficient());
+        assertEquals("QUALITATIVE", ranked.getCapacityMode());
+        assertNull(ranked.getCapacityAmount());
     }
 
     @Test
@@ -168,5 +204,61 @@ class HelpRequestServiceTest {
         assertThrows(BusinessException.class, () -> service.assignToMe(93L));
 
         verify(organizationRepository).release(42L);
+    }
+
+    private RankedRequestDTO rankSingleVolunteer(HelpRequest request,
+                                                  Volunteer volunteer,
+                                                  ProviderCapacityAssessment capacity) {
+        when(helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING"))
+                .thenReturn(List.of(request));
+        when(providerResourceService.findEligibleProviderCapacityAssessments(
+                request.getHelpType(), request.getPeopleCount()))
+                .thenReturn(Map.of(volunteer.getUser().getId(), capacity));
+        when(geoMatchingService.findNearestProvider(
+                request, List.of(volunteer), List.of()))
+                .thenReturn(Optional.of(new GeoMatchingService.ProviderMatch(
+                        UserRole.VOLUNTEER,
+                        volunteer.getId(),
+                        volunteer.getUser().getId(),
+                        volunteer.getUser().getFullName(),
+                        volunteer.getLatitude(),
+                        volunteer.getLongitude(),
+                        2.5)));
+
+        return service.getRankedWithSuggestions(List.of(volunteer)).get(0);
+    }
+
+    private HelpRequest rankedRequest(Long id, String helpType, Integer peopleCount) {
+        return HelpRequest.builder()
+                .id(id)
+                .helpType(helpType)
+                .peopleCount(peopleCount)
+                .priorityScore(80)
+                .latitude(55.75)
+                .longitude(37.62)
+                .status("PENDING")
+                .build();
+    }
+
+    private Volunteer rankedVolunteer(Long id, Long userId, String name) {
+        return Volunteer.builder()
+                .id(id)
+                .user(User.builder().id(userId).fullName(name).build())
+                .isAvailable(true)
+                .latitude(55.76)
+                .longitude(37.63)
+                .build();
+    }
+
+    private ProviderCapacityAssessment capacity(Long userId,
+                                                  String mode,
+                                                  Integer amount,
+                                                  Boolean sufficient) {
+        return ProviderCapacityAssessment.builder()
+                .userId(userId)
+                .capacityMode(mode)
+                .capacityAmount(amount)
+                .capacitySufficient(sufficient)
+                .build();
     }
 }

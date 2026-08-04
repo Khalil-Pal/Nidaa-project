@@ -1,5 +1,6 @@
 package com.humanitarian.platform.service;
 
+import com.humanitarian.platform.dto.ProviderCapacityAssessment;
 import com.humanitarian.platform.dto.ProviderResourceDto;
 import com.humanitarian.platform.dto.ProviderResourceResponse;
 import com.humanitarian.platform.exception.BusinessException;
@@ -15,12 +16,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.never;
@@ -156,6 +160,38 @@ class ProviderResourceServiceTest {
         Set<Long> eligible = service.findEligibleProviderUserIds("food");
 
         assertEquals(Set.of(11L, 13L), eligible);
+    }
+
+    @Test
+    void capacityAssessmentDistinguishesNumericCoverageAndQualitativeUnknown() {
+        ProviderResource insufficient = ProviderResource.builder()
+                .userId(11L)
+                .helpType("FOOD")
+                .capacityMode("NUMERIC")
+                .capacityAmount(5)
+                .build();
+        ProviderResource sufficient = ProviderResource.builder()
+                .userId(12L)
+                .helpType("FOOD")
+                .capacityMode("NUMERIC")
+                .capacityAmount(20)
+                .build();
+        ProviderResource qualitative = ProviderResource.builder()
+                .userId(13L)
+                .helpType("FOOD")
+                .capacityMode("QUALITATIVE")
+                .capacityLabel("Large shared stock")
+                .build();
+        when(providerResourceRepository.findByHelpType("FOOD"))
+                .thenReturn(List.of(insufficient, sufficient, qualitative));
+
+        Map<Long, ProviderCapacityAssessment> assessments =
+                service.findEligibleProviderCapacityAssessments("food", 20);
+
+        assertFalse(assessments.get(11L).getCapacitySufficient());
+        assertTrue(assessments.get(12L).getCapacitySufficient());
+        assertNull(assessments.get(13L).getCapacitySufficient());
+        assertEquals("QUALITATIVE", assessments.get(13L).getCapacityMode());
     }
 
     @Test
