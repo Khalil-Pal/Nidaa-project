@@ -21,21 +21,31 @@ public class VolunteerService {
         this.userService = userService;
     }
 
+    @Transactional(readOnly = true)
+    public VolunteerOccupationDto getMyOccupation() {
+        return toOccupationDto(getCurrentVolunteer());
+    }
+
     @Transactional
     public VolunteerOccupationDto updateMyOccupation(VolunteerOccupationDto request) {
+        Volunteer volunteer = getCurrentVolunteer();
+        volunteer.setOccupation(request.getOccupation().trim());
+        return toOccupationDto(volunteerRepository.save(volunteer));
+    }
+
+    private Volunteer getCurrentVolunteer() {
         User currentUser = userService.getCurrentUser();
         if (currentUser.getRole() != UserRole.VOLUNTEER) {
-            throw new UnauthorizedException("Only volunteers can update an occupation.");
+            throw new UnauthorizedException("Only volunteers can manage an occupation.");
         }
-
-        Volunteer volunteer = volunteerRepository.findByUserId(currentUser.getId())
+        return volunteerRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Volunteer profile not found for the current user."));
-        volunteer.setOccupation(request.getOccupation().trim());
-        Volunteer saved = volunteerRepository.save(volunteer);
+    }
 
+    private VolunteerOccupationDto toOccupationDto(Volunteer volunteer) {
         return VolunteerOccupationDto.builder()
-                .occupation(saved.getOccupation())
+                .occupation(volunteer.getOccupation())
                 .build();
     }
 }

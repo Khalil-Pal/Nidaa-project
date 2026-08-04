@@ -52,6 +52,23 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 .field-edit{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;color:var(--dark)}
 .field-edit:focus{border-color:var(--blue)}
 textarea.field-edit{resize:vertical;min-height:80px;line-height:1.6}
+.provider-summary[hidden],.provider-summary-row[hidden]{display:none}
+.provider-summary-row{display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.provider-summary-row .section-label{margin:0}
+.provider-summary-value{font-size:14px;font-weight:600;color:var(--dark)}
+.provider-resource-list{border-top:1px solid var(--border)}
+.provider-resource-item{display:grid;grid-template-columns:minmax(160px,1fr) minmax(160px,1fr);align-items:center;gap:20px;padding:14px 0;border-bottom:1px solid var(--border)}
+.provider-resource-name{display:flex;align-items:center;gap:11px;font-size:14px;font-weight:700}
+.provider-resource-icon{width:34px;height:34px;flex:0 0 34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.provider-resource-icon.medical{background:#fef2f2;color:#dc2626}
+.provider-resource-icon.food{background:#fefce8;color:#a16207}
+.provider-resource-icon.water{background:#ecfeff;color:#0e7490}
+.provider-resource-icon.shelter{background:#f0fdf4;color:#047857}
+.provider-resource-icon.clothing{background:#fff7ed;color:#c2410c}
+.provider-resource-capacity{font-size:13px;color:var(--muted);text-align:right;overflow-wrap:anywhere}
+.provider-summary-empty{padding:18px 0;color:var(--muted);font-size:14px}
+.provider-summary-empty a{color:var(--blue);font-weight:600;text-decoration:none}
+.provider-summary-empty a:hover{text-decoration:underline}
 
 /* Skills tags */
 .tags-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -125,6 +142,7 @@ textarea.field-edit{resize:vertical;min-height:80px;line-height:1.6}
 .empty-state i{font-size:32px;opacity:.3;margin-bottom:12px;display:block}
 
 @media(max-width:900px){.content{padding:20px 16px}}
+@media(max-width:560px){.provider-summary-row,.provider-resource-item{grid-template-columns:1fr;gap:7px}.provider-resource-capacity{text-align:left;padding-left:45px}}
 </style>
 <link rel="stylesheet" href="css/shared-layout.css"/>
 </head>
@@ -218,6 +236,18 @@ textarea.field-edit{resize:vertical;min-height:80px;line-height:1.6}
                     </div>
                 </div>
             </div>
+
+            <div class="card provider-summary" id="providerSummaryCard" hidden>
+                <div class="card-title">Services &amp; Capacity</div>
+                <div class="provider-summary-row" id="occupationSummaryRow" hidden>
+                    <div class="section-label">Occupation</div>
+                    <div class="provider-summary-value" id="occupationSummaryValue">Not specified</div>
+                </div>
+                <div class="section-label" style="margin-top:16px">Services</div>
+                <div class="provider-resource-list" id="providerResourceSummary" aria-live="polite">
+                    <div class="provider-summary-empty">Loading services...</div>
+                </div>
+            </div>
         </div>
 
 
@@ -298,8 +328,17 @@ const firstName  = fullName.split(' ')[0];
 const userRole   = (user.role||'volunteer').toLowerCase();
 const roleDisplay= userRole.charAt(0).toUpperCase()+userRole.slice(1);
 const initials   = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+const isProvider = userRole==='volunteer'||userRole==='organization';
 const PROF_KEY   = 'nidaa_profile_'+( user.id||user.email||'me');
 const POSTS_KEY  = 'nidaa_community_posts';
+
+const PROVIDER_SERVICE_META={
+    MEDICAL:{label:'Medical',icon:'fa-kit-medical',tone:'medical',order:0},
+    FOOD:{label:'Food',icon:'fa-bowl-food',tone:'food',order:1},
+    WATER:{label:'Water',icon:'fa-droplet',tone:'water',order:2},
+    SHELTER:{label:'Shelter',icon:'fa-house',tone:'shelter',order:3},
+    CLOTHING:{label:'Clothing',icon:'fa-shirt',tone:'clothing',order:4}
+};
 
 const roleColors={volunteer:'#059669',psychologist:'#7c3aed',admin:'#dc2626',beneficiary:'#1d4ed8',organization:'#ea580c'};
 const roleBg    ={volunteer:'#f0fdf4',psychologist:'#faf5ff',admin:'#fef2f2',beneficiary:'#eff6ff',organization:'#fff7ed'};
@@ -448,7 +487,63 @@ function timeAgo(ts){
     if(dy<30)return dy+'d ago';
     return Math.floor(dy/30)+'mo ago';
 }
-function escHtml(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(t){return String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function readProfileApiData(response){
+    let payload={};
+    try{payload=await response.json();}catch(ignored){}
+    if(!response.ok)throw new Error(payload.message||`Request failed (${response.status})`);
+    return payload.data??payload;
+}
+
+async function loadProviderSummary(){
+    if(!isProvider)return;
+    const card=document.getElementById('providerSummaryCard');
+    const list=document.getElementById('providerResourceSummary');
+    card.hidden=false;
+
+    try{
+        const resourceRequest=fetch(`${API}/provider-resources/me`,{headers:authHeader()}).then(readProfileApiData);
+        const occupationRequest=userRole==='volunteer'
+            ?fetch(`${API}/volunteers/me/occupation`,{headers:authHeader()}).then(readProfileApiData)
+            :Promise.resolve(null);
+        const [resources,occupation]=await Promise.all([resourceRequest,occupationRequest]);
+
+        if(userRole==='volunteer'){
+            document.getElementById('occupationSummaryRow').hidden=false;
+            document.getElementById('occupationSummaryValue').textContent=occupation?.occupation||'Not specified';
+        }
+
+        const rows=(Array.isArray(resources)?resources:[])
+            .filter(resource=>PROVIDER_SERVICE_META[String(resource.helpType||'').toUpperCase()])
+            .sort((a,b)=>{
+                const aMeta=PROVIDER_SERVICE_META[String(a.helpType).toUpperCase()];
+                const bMeta=PROVIDER_SERVICE_META[String(b.helpType).toUpperCase()];
+                return aMeta.order-bMeta.order;
+            });
+
+        if(!rows.length){
+            list.innerHTML='<div class="provider-summary-empty">No services added yet. <a href="settings.html#my-services">Manage services</a></div>';
+            return;
+        }
+
+        list.innerHTML=rows.map(resource=>{
+            const meta=PROVIDER_SERVICE_META[String(resource.helpType).toUpperCase()];
+            const capacity=resource.capacityMode==='NUMERIC'
+                ?`${Number(resource.capacityAmount||0).toLocaleString()} available`
+                :escHtml(resource.capacityLabel||'Available');
+            return `<div class="provider-resource-item">
+                <div class="provider-resource-name">
+                    <span class="provider-resource-icon ${meta.tone}"><i class="fa ${meta.icon}"></i></span>
+                    ${meta.label}
+                </div>
+                <div class="provider-resource-capacity">${capacity}</div>
+            </div>`;
+        }).join('');
+    }catch(error){
+        list.innerHTML=`<div class="provider-summary-empty">${escHtml(error.message||'Could not load services.')}</div>`;
+    }
+}
 
 // Edit mode
 let isEditing=false;
@@ -586,6 +681,7 @@ function buildSidebar(){
 }
 buildSidebar();
 loadProfileData();
+loadProviderSummary();
 
 // ── Beneficiary role UI customization ──────────────────────────
 function setupBeneficiaryUI() {

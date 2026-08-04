@@ -10,7 +10,7 @@
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         :root{--blue:#1d4ed8;--green:#059669;--bg:#f0fdf4;--dark:#1e293b;--muted:#64748b}
         body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
-        .content{padding:32px;flex:1;max-width:800px}
+        .content{padding:32px;flex:1;max-width:920px;width:100%}
         .page-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px}
         .page-sub{color:var(--muted);font-size:14px;margin-bottom:32px}
         .settings-card{background:white;border-radius:16px;border:1px solid var(--border);margin-bottom:20px;overflow:hidden}
@@ -20,7 +20,7 @@
         .form-group{margin-bottom:18px}
         .form-group:last-child{margin-bottom:0}
         label{display:block;font-size:13px;font-weight:600;color:var(--dark);margin-bottom:7px}
-        input[type="text"],input[type="email"],input[type="tel"],input[type="password"]{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;color:var(--dark);outline:none;transition:border-color .2s}
+        input[type="text"],input[type="email"],input[type="tel"],input[type="password"],input[type="number"]{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;color:var(--dark);outline:none;transition:border-color .2s}
         input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.08)}
         input:disabled{background:#f8fafc;color:var(--muted);cursor:not-allowed}
         .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
@@ -33,6 +33,44 @@
         .slider:before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.3s}
         .toggle input:checked + .slider{background:var(--blue)}
         .toggle input:checked + .slider:before{transform:translateX(20px)}
+        .toggle input:focus-visible + .slider{box-shadow:0 0 0 3px rgba(29,78,216,.18)}
+        .toggle input:disabled + .slider{cursor:not-allowed;opacity:.55}
+        .provider-services{scroll-margin-top:82px}
+        .provider-services[hidden]{display:none}
+        .occupation-wrap{padding-bottom:22px;margin-bottom:4px;border-bottom:1px solid var(--border)}
+        .services-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0 8px}
+        .services-heading h3{font-size:13px;font-weight:700;color:var(--dark)}
+        .services-count{font-size:12px;font-weight:600;color:var(--muted)}
+        .service-list{border-top:1px solid var(--border)}
+        .service-row{padding:17px 0;border-bottom:1px solid var(--border)}
+        .service-row-head{display:grid;grid-template-columns:minmax(190px,1fr) auto;align-items:center;gap:16px}
+        .service-name{display:flex;align-items:center;gap:12px;min-width:0}
+        .service-icon{width:36px;height:36px;flex:0 0 36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+        .service-icon.medical{background:#fef2f2;color:#dc2626}
+        .service-icon.food{background:#fefce8;color:#a16207}
+        .service-icon.water{background:#ecfeff;color:#0e7490}
+        .service-icon.shelter{background:#f0fdf4;color:#047857}
+        .service-icon.clothing{background:#fff7ed;color:#c2410c}
+        .service-name strong{display:block;font-size:14px;line-height:20px}
+        .service-name span{display:block;color:var(--muted);font-size:12px;line-height:18px}
+        .service-row .toggle{display:block;margin:0}
+        .service-controls{margin:14px 0 0 48px;display:grid;grid-template-columns:220px minmax(210px,1fr);gap:14px;align-items:end}
+        .service-controls[hidden],.capacity-field[hidden]{display:none}
+        .mode-label,.capacity-field label{font-size:12px;margin-bottom:6px;color:var(--muted)}
+        .mode-segment{height:42px;display:grid;grid-template-columns:1fr 1fr;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;background:#f8fafc}
+        .mode-option{display:flex;align-items:stretch;margin:0;cursor:pointer}
+        .mode-option input{position:absolute;opacity:0;pointer-events:none}
+        .mode-option span{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;color:var(--muted);font-size:12px;font-weight:700;transition:background .2s,color .2s}
+        .mode-option + .mode-option{border-left:1px solid var(--border)}
+        .mode-option input:checked + span{background:#fff;color:var(--blue);box-shadow:0 1px 4px rgba(15,23,42,.08)}
+        .mode-option input:focus-visible + span{box-shadow:inset 0 0 0 2px var(--blue)}
+        .mode-option input:disabled + span{cursor:not-allowed;opacity:.55}
+        .service-input.invalid{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.08)}
+        .services-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:18px}
+        .services-status{min-height:20px;font-size:13px;color:var(--muted)}
+        .services-status.error{color:#dc2626}
+        .services-status.success{color:var(--green)}
+        .btn:disabled{cursor:not-allowed;opacity:.55}
         .danger-zone{background:#fef2f2;border-color:#fecaca}
         .danger-zone .card-title{color:#dc2626;border-color:#fecaca}
         .btn{padding:10px 20px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:'Inter',sans-serif}
@@ -48,7 +86,7 @@
         .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
         .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
         @keyframes spin{to{transform:rotate(360deg)}}
-        @media(max-width:768px){.form-row{grid-template-columns:1fr}.content{padding:20px}}
+        @media(max-width:768px){.form-row{grid-template-columns:1fr}.content{padding:20px}.service-controls{margin-left:0;grid-template-columns:1fr}.services-footer{align-items:stretch;flex-direction:column}.services-footer .btn{width:100%}}
 
         /* ── Verification Code Modal ── */
         .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center}
@@ -126,6 +164,30 @@
                     </div>
                 </div>
                 <button class="btn btn-primary" onclick="saveProfile()"><i class="fa fa-floppy-disk"></i> Save Changes</button>
+            </div>
+        </div>
+
+        <!-- Provider services -->
+        <div class="settings-card provider-services" id="my-services" hidden>
+            <div class="card-title"><i class="fa fa-box-open" style="color:var(--green)"></i> My Services</div>
+            <div class="card-body" id="providerServicesBody" aria-busy="true">
+                <div class="occupation-wrap" id="occupationGroup" hidden>
+                    <div class="form-group">
+                        <label for="occupationInput">Occupation</label>
+                        <input type="text" id="occupationInput" maxlength="150" placeholder="e.g. Emergency nurse" oninput="updateProviderSaveState()"/>
+                    </div>
+                </div>
+                <div class="services-heading">
+                    <h3>Services and capacity</h3>
+                    <span class="services-count" id="servicesCount">0 of 5 active</span>
+                </div>
+                <div class="service-list" id="providerServiceList"></div>
+                <div class="services-footer">
+                    <div class="services-status" id="providerServicesStatus" role="status" aria-live="polite">Loading services...</div>
+                    <button class="btn btn-primary" id="saveServicesBtn" onclick="saveProviderServices()" disabled>
+                        <i class="fa fa-floppy-disk"></i> Save Services
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -218,6 +280,20 @@
     const userRole    = (user.role || 'user').toLowerCase();
     const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
     const initials    = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    const isProvider  = userRole === 'volunteer' || userRole === 'organization';
+
+    const SERVICE_DEFINITIONS = [
+        { key: 'MEDICAL', label: 'Medical', icon: 'fa-kit-medical', tone: 'medical' },
+        { key: 'FOOD', label: 'Food', icon: 'fa-bowl-food', tone: 'food' },
+        { key: 'WATER', label: 'Water', icon: 'fa-droplet', tone: 'water' },
+        { key: 'SHELTER', label: 'Shelter', icon: 'fa-house', tone: 'shelter' },
+        { key: 'CLOTHING', label: 'Clothing', icon: 'fa-shirt', tone: 'clothing' }
+    ];
+    const providerServiceState = new Map();
+    let providerServiceBaseline = new Map();
+    let occupationBaseline = '';
+    let providerServicesReady = false;
+    let providerServicesSaving = false;
 
     function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
     setEl('sidebarName',   fullName);
@@ -248,6 +324,297 @@
         el.classList.add('show');
         setTimeout(() => el.classList.remove('show'), 4000);
     }
+
+    function defaultProviderServiceState() {
+        return { enabled: false, capacityMode: 'NUMERIC', capacityAmount: '', capacityLabel: '' };
+    }
+
+    function resetProviderServiceState() {
+        providerServiceState.clear();
+        SERVICE_DEFINITIONS.forEach(service => {
+            providerServiceState.set(service.key, defaultProviderServiceState());
+        });
+    }
+
+    function renderProviderServiceRows() {
+        const list = document.getElementById('providerServiceList');
+        list.innerHTML = SERVICE_DEFINITIONS.map(service => `
+            <div class="service-row" id="serviceRow${service.key}">
+                <div class="service-row-head">
+                    <div class="service-name">
+                        <span class="service-icon ${service.tone}"><i class="fa ${service.icon}"></i></span>
+                        <span><strong>${service.label}</strong><span id="serviceState${service.key}">Not provided</span></span>
+                    </div>
+                    <label class="toggle" title="Toggle ${service.label} service">
+                        <input type="checkbox" id="serviceToggle${service.key}"
+                               aria-label="Provide ${service.label}"
+                               aria-controls="serviceControls${service.key}"
+                               onchange="setProviderServiceEnabled('${service.key}',this.checked)" disabled/>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="service-controls" id="serviceControls${service.key}" hidden>
+                    <div>
+                        <div class="mode-label">Capacity type</div>
+                        <div class="mode-segment">
+                            <label class="mode-option">
+                                <input type="radio" name="serviceMode${service.key}" id="serviceNumeric${service.key}"
+                                       onchange="setProviderServiceMode('${service.key}','NUMERIC')" disabled/>
+                                <span><i class="fa fa-hashtag"></i> Amount</span>
+                            </label>
+                            <label class="mode-option">
+                                <input type="radio" name="serviceMode${service.key}" id="serviceQualitative${service.key}"
+                                       onchange="setProviderServiceMode('${service.key}','QUALITATIVE')" disabled/>
+                                <span><i class="fa fa-align-left"></i> Description</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="capacity-field" id="serviceAmountWrap${service.key}">
+                        <label for="serviceAmount${service.key}">Capacity amount</label>
+                        <input class="service-input" type="number" id="serviceAmount${service.key}" min="1" max="2147483647" step="1"
+                               placeholder="0" oninput="setProviderServiceAmount('${service.key}',this.value)" disabled/>
+                    </div>
+                    <div class="capacity-field" id="serviceLabelWrap${service.key}" hidden>
+                        <label for="serviceLabel${service.key}">Capacity description</label>
+                        <input class="service-input" type="text" id="serviceLabel${service.key}" maxlength="50"
+                               placeholder="e.g. Limited stock" oninput="setProviderServiceLabel('${service.key}',this.value)" disabled/>
+                    </div>
+                </div>
+            </div>`).join('');
+    }
+
+    function normalizedProviderService(state) {
+        return {
+            enabled: Boolean(state.enabled),
+            capacityMode: state.enabled ? state.capacityMode : 'NUMERIC',
+            capacityAmount: state.enabled && state.capacityMode === 'NUMERIC'
+                ? Number(state.capacityAmount) || null : null,
+            capacityLabel: state.enabled && state.capacityMode === 'QUALITATIVE'
+                ? String(state.capacityLabel || '').trim() : null
+        };
+    }
+
+    function providerServiceChanged(key) {
+        const current = normalizedProviderService(providerServiceState.get(key));
+        const baseline = providerServiceBaseline.get(key) || normalizedProviderService(defaultProviderServiceState());
+        return JSON.stringify(current) !== JSON.stringify(baseline);
+    }
+
+    function syncProviderServiceRow(key) {
+        const state = providerServiceState.get(key);
+        const disabled = !providerServicesReady || providerServicesSaving;
+        document.getElementById(`serviceToggle${key}`).checked = state.enabled;
+        document.getElementById(`serviceToggle${key}`).disabled = disabled;
+        document.getElementById(`serviceToggle${key}`).setAttribute('aria-expanded', String(state.enabled));
+        document.getElementById(`serviceControls${key}`).hidden = !state.enabled;
+        document.getElementById(`serviceNumeric${key}`).checked = state.capacityMode === 'NUMERIC';
+        document.getElementById(`serviceQualitative${key}`).checked = state.capacityMode === 'QUALITATIVE';
+        document.getElementById(`serviceNumeric${key}`).disabled = disabled;
+        document.getElementById(`serviceQualitative${key}`).disabled = disabled;
+        document.getElementById(`serviceAmountWrap${key}`).hidden = state.capacityMode !== 'NUMERIC';
+        document.getElementById(`serviceLabelWrap${key}`).hidden = state.capacityMode !== 'QUALITATIVE';
+        document.getElementById(`serviceAmount${key}`).value = state.capacityAmount ?? '';
+        document.getElementById(`serviceLabel${key}`).value = state.capacityLabel ?? '';
+        document.getElementById(`serviceAmount${key}`).disabled = disabled;
+        document.getElementById(`serviceLabel${key}`).disabled = disabled;
+        document.getElementById(`serviceState${key}`).textContent = state.enabled ? 'Active' : 'Not provided';
+    }
+
+    function syncAllProviderServiceRows() {
+        SERVICE_DEFINITIONS.forEach(service => syncProviderServiceRow(service.key));
+        document.getElementById('occupationInput').disabled =
+            userRole !== 'volunteer' || !providerServicesReady || providerServicesSaving;
+        const activeCount = [...providerServiceState.values()].filter(state => state.enabled).length;
+        document.getElementById('servicesCount').textContent = `${activeCount} of ${SERVICE_DEFINITIONS.length} active`;
+    }
+
+    function setProviderServiceEnabled(key, enabled) {
+        providerServiceState.get(key).enabled = enabled;
+        syncProviderServiceRow(key);
+        updateProviderSaveState();
+    }
+
+    function setProviderServiceMode(key, mode) {
+        providerServiceState.get(key).capacityMode = mode;
+        syncProviderServiceRow(key);
+        updateProviderSaveState();
+    }
+
+    function setProviderServiceAmount(key, value) {
+        providerServiceState.get(key).capacityAmount = value;
+        document.getElementById(`serviceAmount${key}`).classList.remove('invalid');
+        updateProviderSaveState();
+    }
+
+    function setProviderServiceLabel(key, value) {
+        providerServiceState.get(key).capacityLabel = value;
+        document.getElementById(`serviceLabel${key}`).classList.remove('invalid');
+        updateProviderSaveState();
+    }
+
+    function updateProviderSaveState() {
+        if (!isProvider) return;
+        const resourcesChanged = SERVICE_DEFINITIONS.some(service => providerServiceChanged(service.key));
+        const occupationChanged = userRole === 'volunteer'
+            && document.getElementById('occupationInput').value.trim() !== occupationBaseline;
+        document.getElementById('saveServicesBtn').disabled =
+            !providerServicesReady || providerServicesSaving || (!resourcesChanged && !occupationChanged);
+    }
+
+    async function readApiData(response) {
+        let payload = {};
+        try { payload = await response.json(); } catch (ignored) {}
+        if (!response.ok) {
+            throw new Error(payload.message || `Request failed (${response.status})`);
+        }
+        return payload.data ?? payload;
+    }
+
+    function setProviderServicesStatus(message, type = '') {
+        const status = document.getElementById('providerServicesStatus');
+        status.textContent = message;
+        status.className = `services-status${type ? ` ${type}` : ''}`;
+    }
+
+    async function initializeProviderServices() {
+        if (!isProvider) return;
+        const section = document.getElementById('my-services');
+        section.hidden = false;
+        document.getElementById('occupationGroup').hidden = userRole !== 'volunteer';
+        resetProviderServiceState();
+        renderProviderServiceRows();
+        syncAllProviderServiceRows();
+
+        try {
+            const resourceRequest = fetch(`${API}/provider-resources/me`, { headers: authHeader() })
+                .then(readApiData);
+            const occupationRequest = userRole === 'volunteer'
+                ? fetch(`${API}/volunteers/me/occupation`, { headers: authHeader() }).then(readApiData)
+                : Promise.resolve(null);
+            const [resources, occupation] = await Promise.all([resourceRequest, occupationRequest]);
+
+            resetProviderServiceState();
+            (Array.isArray(resources) ? resources : []).forEach(resource => {
+                const state = providerServiceState.get(String(resource.helpType || '').toUpperCase());
+                if (!state) return;
+                state.enabled = true;
+                state.capacityMode = resource.capacityMode === 'QUALITATIVE' ? 'QUALITATIVE' : 'NUMERIC';
+                state.capacityAmount = resource.capacityAmount ?? '';
+                state.capacityLabel = resource.capacityLabel ?? '';
+            });
+            if (userRole === 'volunteer') {
+                occupationBaseline = String(occupation?.occupation || '').trim();
+                document.getElementById('occupationInput').value = occupationBaseline;
+            }
+            providerServiceBaseline = new Map(
+                SERVICE_DEFINITIONS.map(service => [
+                    service.key,
+                    normalizedProviderService(providerServiceState.get(service.key))
+                ])
+            );
+            providerServicesReady = true;
+            document.getElementById('providerServicesBody').setAttribute('aria-busy', 'false');
+            setProviderServicesStatus('');
+            syncAllProviderServiceRows();
+            updateProviderSaveState();
+        } catch (error) {
+            setProviderServicesStatus(error.message || 'Could not load services.', 'error');
+        }
+
+        if (window.location.hash === '#my-services') {
+            setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+        }
+    }
+
+    function validateProviderServices() {
+        for (const service of SERVICE_DEFINITIONS) {
+            const state = providerServiceState.get(service.key);
+            if (!state.enabled) continue;
+            if (state.capacityMode === 'NUMERIC') {
+                const amount = Number(state.capacityAmount);
+                if (!Number.isInteger(amount) || amount <= 0 || amount > 2147483647) {
+                    document.getElementById(`serviceAmount${service.key}`).classList.add('invalid');
+                    setProviderServicesStatus(`${service.label} needs a whole-number amount between 1 and 2,147,483,647.`, 'error');
+                    return false;
+                }
+            } else if (!String(state.capacityLabel || '').trim()) {
+                document.getElementById(`serviceLabel${service.key}`).classList.add('invalid');
+                setProviderServicesStatus(`${service.label} needs a capacity description.`, 'error');
+                return false;
+            }
+        }
+
+        if (userRole === 'volunteer') {
+            const occupation = document.getElementById('occupationInput').value.trim();
+            if (occupation !== occupationBaseline && !occupation) {
+                setProviderServicesStatus('Occupation cannot be empty once it has been set.', 'error');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    async function saveProviderServices() {
+        if (!providerServicesReady || providerServicesSaving || !validateProviderServices()) return;
+        providerServicesSaving = true;
+        syncAllProviderServiceRows();
+        updateProviderSaveState();
+        setProviderServicesStatus('Saving...');
+
+        try {
+            for (const service of SERVICE_DEFINITIONS) {
+                if (!providerServiceChanged(service.key)) continue;
+                const state = providerServiceState.get(service.key);
+                let response;
+                if (state.enabled) {
+                    const normalized = normalizedProviderService(state);
+                    response = await fetch(`${API}/provider-resources`, {
+                        method: 'PUT',
+                        headers: authHeader(),
+                        body: JSON.stringify({
+                            helpType: service.key,
+                            capacityMode: normalized.capacityMode,
+                            capacityAmount: normalized.capacityAmount,
+                            capacityLabel: normalized.capacityLabel
+                        })
+                    });
+                } else {
+                    response = await fetch(`${API}/provider-resources/${encodeURIComponent(service.key)}`, {
+                        method: 'DELETE',
+                        headers: authHeader()
+                    });
+                }
+                await readApiData(response);
+                providerServiceBaseline.set(service.key, normalizedProviderService(state));
+            }
+
+            if (userRole === 'volunteer') {
+                const occupation = document.getElementById('occupationInput').value.trim();
+                if (occupation !== occupationBaseline) {
+                    const response = await fetch(`${API}/volunteers/me/occupation`, {
+                        method: 'PUT',
+                        headers: authHeader(),
+                        body: JSON.stringify({ occupation })
+                    });
+                    const saved = await readApiData(response);
+                    occupationBaseline = String(saved?.occupation || occupation).trim();
+                    document.getElementById('occupationInput').value = occupationBaseline;
+                }
+            }
+
+            setProviderServicesStatus('Services saved.', 'success');
+            showMsg('success', 'Services updated successfully!');
+        } catch (error) {
+            setProviderServicesStatus(error.message || 'Could not save services.', 'error');
+            showMsg('error', error.message || 'Could not save services.');
+        } finally {
+            providerServicesSaving = false;
+            syncAllProviderServiceRows();
+            updateProviderSaveState();
+        }
+    }
+
+    initializeProviderServices();
 
     async function saveProfile() {
         const newName = document.getElementById('fullName').value.trim();

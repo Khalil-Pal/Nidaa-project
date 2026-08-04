@@ -30,6 +30,34 @@ class VolunteerServiceTest {
     @InjectMocks private VolunteerService service;
 
     @Test
+    void volunteerCanReadOccupation() {
+        User user = User.builder().id(8L).role(UserRole.VOLUNTEER).build();
+        Volunteer volunteer = Volunteer.builder()
+                .id(18L)
+                .user(user)
+                .occupation("Emergency nurse")
+                .build();
+        when(userService.getCurrentUser()).thenReturn(user);
+        when(volunteerRepository.findByUserId(8L)).thenReturn(Optional.of(volunteer));
+
+        VolunteerOccupationDto response = service.getMyOccupation();
+
+        assertEquals("Emergency nurse", response.getOccupation());
+    }
+
+    @Test
+    void nonVolunteerCannotReadOccupation() {
+        User user = User.builder().id(8L).role(UserRole.ORGANIZATION).build();
+        when(userService.getCurrentUser()).thenReturn(user);
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class, service::getMyOccupation);
+
+        assertEquals("Only volunteers can manage an occupation.", exception.getMessage());
+        verify(volunteerRepository, never()).findByUserId(any());
+    }
+
+    @Test
     void volunteerCanUpdateOccupation() {
         User user = User.builder().id(8L).role(UserRole.VOLUNTEER).build();
         Volunteer volunteer = Volunteer.builder().id(18L).user(user).build();
@@ -51,9 +79,12 @@ class VolunteerServiceTest {
         User user = User.builder().id(8L).role(UserRole.ORGANIZATION).build();
         when(userService.getCurrentUser()).thenReturn(user);
 
-        assertThrows(UnauthorizedException.class, () -> service.updateMyOccupation(
-                VolunteerOccupationDto.builder().occupation("Coordinator").build()));
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> service.updateMyOccupation(
+                        VolunteerOccupationDto.builder().occupation("Coordinator").build()));
 
+        assertEquals("Only volunteers can manage an occupation.", exception.getMessage());
         verify(volunteerRepository, never()).save(any());
     }
 }
