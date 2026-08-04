@@ -109,10 +109,11 @@ When a material request includes latitude and longitude, the production assignme
 6. Calculates straight-line distance with the Haversine formula.
 7. Orders candidates from nearest to farthest.
 8. Atomically claims the first available provider, regardless of provider type.
-9. Changes the request from `PENDING` to `ASSIGNED`.
-9. Saves an `AUTO_GEO` assignment-history record with the distance.
+9. Locks the matching provider-resource row and reserves up to `peopleCount` without allowing negative capacity.
+10. Changes the request from `PENDING` to `ASSIGNED`.
+11. Saves an `AUTO_GEO` assignment-history record with the distance and exact numeric amount reserved.
 
-The atomic claim prevents two simultaneous requests from assigning the same provider. When an assignment is completed or cancelled, the provider is released to their saved availability preference if no other active assignment remains.
+The provider claim, capacity reservation, request assignment, and history insert share one transaction. Completion keeps reserved capacity consumed; cancellation restores it exactly once. Either terminal outcome releases the provider to their saved availability preference if no other active assignment remains.
 
 Volunteers and organizations that manually accept a request must also list a usable resource for that request's help type. Ranked-queue volunteer suggestions use the same resource filter and canonical profile coordinates.
 
@@ -213,7 +214,7 @@ Maven does not need to be installed globally because the repository includes the
 ## Database Setup
 
 > [!IMPORTANT]
-> Hibernate schema generation is disabled with `spring.jpa.hibernate.ddl-auto=none`. The repository contains incremental V2-V4 migrations, but not a complete V1 bootstrap schema. A fresh empty database is therefore not enough. Load the project's existing base schema first, then apply every migration in version order.
+> Hibernate schema generation is disabled with `spring.jpa.hibernate.ddl-auto=none`. Create an empty PostgreSQL database, then apply every migration beginning with the complete V1 bootstrap schema in filename order.
 
 Create the database if it does not already exist:
 
@@ -221,9 +222,11 @@ Create the database if it does not already exist:
 CREATE DATABASE "Web_DB";
 ```
 
-After the base schema is present, apply migrations in version order:
+Apply migrations in version order:
 
 ```bash
+psql -h 127.0.0.1 -U postgres -d Web_DB \
+  -f database/migrations/V1__base_schema.sql
 psql -h 127.0.0.1 -U postgres -d Web_DB \
   -f database/migrations/V2__matching_and_assignment_history.sql
 psql -h 127.0.0.1 -U postgres -d Web_DB \
@@ -232,11 +235,20 @@ psql -h 127.0.0.1 -U postgres -d Web_DB \
   -f database/migrations/V4__message_types_and_community_channel.sql
 psql -h 127.0.0.1 -U postgres -d Web_DB \
   -f database/migrations/V5__provider_availability_preference.sql
+psql -h 127.0.0.1 -U postgres -d Web_DB \
+  -f database/migrations/V6__provider_capacity_reservations.sql
+psql -h 127.0.0.1 -U postgres -d Web_DB \
+  -f database/migrations/V7__assignment_assignee_constraints.sql
+psql -h 127.0.0.1 -U postgres -d Web_DB \
+  -f database/migrations/V8__drop_legacy_volunteer_coordinates.sql
 ```
 
 Windows PowerShell example when PostgreSQL is not on `PATH`:
 
 ```powershell
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V1__base_schema.sql"
 & "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
   -h 127.0.0.1 -U postgres -d Web_DB `
   -f ".\database\migrations\V2__matching_and_assignment_history.sql"
@@ -249,9 +261,27 @@ Windows PowerShell example when PostgreSQL is not on `PATH`:
 & "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
   -h 127.0.0.1 -U postgres -d Web_DB `
   -f ".\database\migrations\V5__provider_availability_preference.sql"
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V6__provider_capacity_reservations.sql"
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V7__assignment_assignee_constraints.sql"
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V8__drop_legacy_volunteer_coordinates.sql"
 ```
 
-V2 adds assignment history, V3 adds provider resources and moderation storage, V4 separates direct and community messages, and V5 adds provider availability preferences. See [database/migrations/README.md](database/migrations/README.md) for migration notes.
+V1 creates the base schema; V2 through V8 add assignment history, provider
+resources, community message isolation, provider availability, capacity
+reservations, explicit assignment invariants, and removal of duplicate volunteer
+coordinates. See [database/migrations/README.md](database/migrations/README.md) for
+migration notes.
+
+Before applying V4 to an existing environment, run `SELECT COUNT(*) FROM messages`.
+Proceed only when it returns zero; populated message rows require an explicit
+classification/backfill plan. The V4 file remains unchanged because it has already
+been applied and should not acquire checksum drift.
 
 ## Configuration
 
@@ -438,9 +468,7 @@ The current tests cover:
 
 The following boundaries are important when evaluating the current implementation:
 
-- The repository does not yet include a complete V1 database bootstrap migration.
-- Automatic provider assignment filters by structured help-type resources, and ranked admin responses report numeric sufficiency against `peopleCount`; capacity is not decremented or reserved, and free-form skills are not matched.
-- Providers with coordinates only in legacy volunteer columns must save them to `profiles` before automatic matching can consider them.
+- Automatic provider assignment filters by structured help-type resources, ranked admin responses report numeric sufficiency against `peopleCount`, and successful assignments reserve numeric capacity; free-form skills are not matched.
 - The help-request form currently submits a textual address without browser-captured coordinates, so UI-created requests require a future geocoding/location step for automatic matching.
 - Volunteer profile skills, schedule, and textual location are currently stored by the frontend and are not fully synchronized with the backend volunteer record.
 - Haversine distance is straight-line distance, not a road route or travel-time estimate.
@@ -456,8 +484,9 @@ Before deploying Nidaa outside a development environment:
 2. Remove secret-bearing fallback values from tracked configuration.
 3. Restrict public role registration so administrator accounts cannot be self-provisioned.
 4. Restrict CORS to trusted frontend origins.
-5. Add a complete V1 migration and an automated migration tool such as Flyway or Liquibase.
-6. Backfill any legacy provider coordinates into `profiles` and add transactional resource-capacity consumption.
+5. Adopt an automated migration tool such as Flyway or Liquibase.
+6. Before applying V8 to an upgraded database, migrate any non-null legacy
+   volunteer coordinates into `profiles`; V8 deliberately aborts if any remain.
 7. Add geocoding or browser location capture with explicit user consent.
 8. Configure HTTPS, secure headers, centralized logs, monitoring, and database backups.
 9. Add continuous integration for tests and build verification.
@@ -479,4 +508,4 @@ git push -u origin feature/descriptive-name
 
 ## Project Status
 
-Nidaa is under active development. The core request, psychological support, resource-aware combined provider assignment, ranking, and evaluation workflows are implemented. The next major steps are transactional inventory allocation and a reproducible fresh-database bootstrap.
+Nidaa is under active development. The core request, psychological support, resource-aware combined provider assignment, transactional numeric-capacity reservation, ranking, evaluation, and reproducible database bootstrap workflows are implemented. The next major steps are automated migrations and deployment hardening.

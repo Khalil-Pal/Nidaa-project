@@ -54,4 +54,16 @@ public class Assignment {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
+
+    @Column(name = "resource_user_id")
+    private Long resourceUserId;
+
+    @Column(name = "resource_help_type", columnDefinition = "help_type")
+    private String resourceHelpType;
+
+    @Column(name = "reserved_capacity_amount")
+    private Integer reservedCapacityAmount;
+
+    @Column(name = "capacity_restored_at")
+    private LocalDateTime capacityRestoredAt;
 }

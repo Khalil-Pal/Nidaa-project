@@ -2,6 +2,7 @@ package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.HelpRequestDto;
 import com.humanitarian.platform.dto.ProviderCapacityAssessment;
+import com.humanitarian.platform.dto.ProviderCapacityReservation;
 import com.humanitarian.platform.dto.RankedRequestDTO;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
@@ -115,7 +116,6 @@ public class HelpRequestService {
     public Map<String, Object> assignToMe(Long requestId) {
         User currentUser = userService.getCurrentUser();
         String role = currentUser.getRole().name().toLowerCase();
-        int updated = 0;
         Long assignedVolunteerId = null;
         Long assignedOrganizationId = null;
 
@@ -141,7 +141,6 @@ public class HelpRequestService {
             if (volunteerRepository.claimIfAvailable(volunteerId) == 0) {
                 throw new BusinessException("Your volunteer profile is not currently available.");
             }
-            updated = helpRequestRepository.assignVolunteer(requestId, volunteerId, "ASSIGNED", "PENDING");
             assignedVolunteerId = volunteerId;
 
         } else if (role.equals("organization")) {
@@ -158,18 +157,29 @@ public class HelpRequestService {
             if (organizationRepository.claimIfAvailable(organizationId) == 0) {
                 throw new BusinessException("Your organization profile is not currently available.");
             }
-            updated = helpRequestRepository.assignOrganization(requestId, organizationId, "ASSIGNED", "PENDING");
             assignedOrganizationId = organizationId;
 
         }
 
+        ProviderCapacityReservation reservation = providerResourceService
+                .reserveForAssignment(
+                        currentUser.getId(), request.getHelpType(), request.getPeopleCount())
+                .orElse(null);
+        if (reservation == null) {
+            releaseClaim(assignedVolunteerId, assignedOrganizationId);
+            throw new BusinessException(
+                    "Your matching provider resource is no longer available.");
+        }
+
+        int updated = assignedVolunteerId != null
+                ? helpRequestRepository.assignVolunteer(
+                        requestId, assignedVolunteerId, "ASSIGNED", "PENDING")
+                : helpRequestRepository.assignOrganization(
+                        requestId, assignedOrganizationId, "ASSIGNED", "PENDING");
+
         if (updated == 0) {
-            if (assignedVolunteerId != null) {
-                volunteerRepository.release(assignedVolunteerId);
-            }
-            if (assignedOrganizationId != null) {
-                organizationRepository.release(assignedOrganizationId);
-            }
+            providerResourceService.restoreReservation(reservation);
+            releaseClaim(assignedVolunteerId, assignedOrganizationId);
             throw new BusinessException("Request is no longer available or already assigned.");
         }
 
@@ -183,6 +193,11 @@ public class HelpRequestService {
                     .assignmentSource("MANUAL")
                     .status("ASSIGNED")
                     .assignedAt(LocalDateTime.now())
+                    .resourceUserId(reservation.hasNumericReservation()
+                            ? reservation.userId() : null)
+                    .resourceHelpType(reservation.hasNumericReservation()
+                            ? reservation.helpType() : null)
+                    .reservedCapacityAmount(reservation.reservedAmount())
                     .build();
             assignmentRepository.save(assignment);
         }
@@ -362,12 +377,45 @@ public class HelpRequestService {
                 .findFirstByRequestIdAndStatusOrderByAssignedAtDesc(requestId, "ASSIGNED")
                 .or(() -> assignmentRepository.findFirstByRequestIdOrderByAssignedAtDesc(requestId))
                 .ifPresent(assignment -> {
+                    if ("CANCELLED".equals(newStatus)
+                            && !restoreAssignmentCapacity(assignment, completedAt)) {
+                        return;
+                    }
                     assignment.setStatus(newStatus);
                     assignment.setCompletedAt(completedAt);
                     assignmentRepository.save(assignment);
                     releaseVolunteerIfIdle(assignment.getVolunteerId());
                     releaseOrganizationIfIdle(assignment.getOrganizationId());
                 });
+    }
+
+    private boolean restoreAssignmentCapacity(Assignment assignment,
+                                              LocalDateTime restoredAt) {
+        if (assignment.getReservedCapacityAmount() == null
+                || assignment.getCapacityRestoredAt() != null) {
+            return true;
+        }
+        if (assignment.getId() == null
+                || assignmentRepository.markCapacityRestored(
+                        assignment.getId(), restoredAt) == 0) {
+            return false;
+        }
+
+        providerResourceService.restoreReservation(new ProviderCapacityReservation(
+                assignment.getResourceUserId(),
+                assignment.getResourceHelpType(),
+                assignment.getReservedCapacityAmount()));
+        assignment.setCapacityRestoredAt(restoredAt);
+        return true;
+    }
+
+    private void releaseClaim(Long volunteerId, Long organizationId) {
+        if (volunteerId != null) {
+            volunteerRepository.release(volunteerId);
+        }
+        if (organizationId != null) {
+            organizationRepository.release(organizationId);
+        }
     }
 
     private void releaseVolunteerIfIdle(Long volunteerId) {

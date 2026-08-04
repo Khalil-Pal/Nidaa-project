@@ -1,6 +1,7 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.ProviderCapacityAssessment;
+import com.humanitarian.platform.dto.ProviderCapacityReservation;
 import com.humanitarian.platform.dto.ProviderResourceDto;
 import com.humanitarian.platform.dto.ProviderResourceResponse;
 import com.humanitarian.platform.exception.BusinessException;
@@ -8,6 +9,7 @@ import com.humanitarian.platform.exception.UnauthorizedException;
 import com.humanitarian.platform.model.ProviderResource;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
+import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.ProviderResourceRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +37,7 @@ import static org.mockito.Mockito.when;
 class ProviderResourceServiceTest {
 
     @Mock private ProviderResourceRepository providerResourceRepository;
+    @Mock private AssignmentRepository assignmentRepository;
     @Mock private UserService userService;
 
     @InjectMocks private ProviderResourceService service;
@@ -192,6 +195,108 @@ class ProviderResourceServiceTest {
         assertTrue(assessments.get(12L).getCapacitySufficient());
         assertNull(assessments.get(13L).getCapacitySufficient());
         assertEquals("QUALITATIVE", assessments.get(13L).getCapacityMode());
+    }
+
+    @Test
+    void reservesOnlyAvailableNumericCapacityForPartialContribution() {
+        ProviderResource resource = ProviderResource.builder()
+                .userId(11L)
+                .helpType("FOOD")
+                .capacityMode("NUMERIC")
+                .capacityAmount(5)
+                .build();
+        when(providerResourceRepository.findByUserIdAndHelpTypeForUpdate(11L, "FOOD"))
+                .thenReturn(Optional.of(resource));
+
+        ProviderCapacityReservation reservation = service
+                .reserveForAssignment(11L, "food", 20)
+                .orElseThrow();
+
+        assertEquals(5, reservation.reservedAmount());
+        assertEquals(0, resource.getCapacityAmount());
+        verify(providerResourceRepository).save(same(resource));
+    }
+
+    @Test
+    void reservesRequestedAmountWhenNumericCapacityIsSufficient() {
+        ProviderResource resource = ProviderResource.builder()
+                .userId(12L)
+                .helpType("WATER")
+                .capacityMode("NUMERIC")
+                .capacityAmount(25)
+                .build();
+        when(providerResourceRepository.findByUserIdAndHelpTypeForUpdate(12L, "WATER"))
+                .thenReturn(Optional.of(resource));
+
+        ProviderCapacityReservation reservation = service
+                .reserveForAssignment(12L, "WATER", 20)
+                .orElseThrow();
+
+        assertEquals(20, reservation.reservedAmount());
+        assertEquals(5, resource.getCapacityAmount());
+    }
+
+    @Test
+    void qualitativeResourceProducesNoNumericReservation() {
+        ProviderResource resource = ProviderResource.builder()
+                .userId(13L)
+                .helpType("SHELTER")
+                .capacityMode("QUALITATIVE")
+                .capacityLabel("Two temporary rooms")
+                .build();
+        when(providerResourceRepository.findByUserIdAndHelpTypeForUpdate(13L, "SHELTER"))
+                .thenReturn(Optional.of(resource));
+
+        ProviderCapacityReservation reservation = service
+                .reserveForAssignment(13L, "SHELTER", 4)
+                .orElseThrow();
+
+        assertNull(reservation.reservedAmount());
+        verify(providerResourceRepository, never()).save(any());
+    }
+
+    @Test
+    void restoresExactReservedAmount() {
+        ProviderResource resource = ProviderResource.builder()
+                .userId(14L)
+                .helpType("MEDICAL")
+                .capacityMode("NUMERIC")
+                .capacityAmount(3)
+                .build();
+        when(providerResourceRepository.findByUserIdAndHelpTypeForUpdate(14L, "MEDICAL"))
+                .thenReturn(Optional.of(resource));
+
+        service.restoreReservation(new ProviderCapacityReservation(
+                14L, "MEDICAL", 7));
+
+        assertEquals(10, resource.getCapacityAmount());
+        verify(providerResourceRepository).save(same(resource));
+    }
+
+    @Test
+    void activeReservationBlocksResourceChanges() {
+        User volunteer = providerUser(UserRole.VOLUNTEER);
+        ProviderResource existing = ProviderResource.builder()
+                .userId(7L)
+                .helpType("FOOD")
+                .capacityMode("NUMERIC")
+                .capacityAmount(10)
+                .build();
+        when(userService.getCurrentUser()).thenReturn(volunteer);
+        when(providerResourceRepository.findByUserIdAndHelpType(7L, "FOOD"))
+                .thenReturn(Optional.of(existing));
+        when(assignmentRepository.hasActiveCapacityReservation(7L, "FOOD"))
+                .thenReturn(true);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.upsertResource(resourceDto(
+                        "FOOD", "NUMERIC", 15, null)));
+
+        assertEquals(
+                "This resource has capacity reserved by an active assignment "
+                        + "and cannot be changed yet.",
+                exception.getMessage());
+        verify(providerResourceRepository, never()).save(any());
     }
 
     @Test

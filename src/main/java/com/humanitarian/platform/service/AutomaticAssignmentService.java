@@ -1,6 +1,7 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.ProviderCapacityAssessment;
+import com.humanitarian.platform.dto.ProviderCapacityReservation;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.Organization;
@@ -87,8 +88,17 @@ public class AutomaticAssignmentService {
                 continue;
             }
 
+            var reservationResult = providerResourceService.reserveForAssignment(
+                    candidate.userId(), request.getHelpType(), request.getPeopleCount());
+            if (reservationResult.isEmpty()) {
+                release(candidate);
+                continue;
+            }
+            ProviderCapacityReservation reservation = reservationResult.get();
+
             int assigned = assignRequest(request.getId(), candidate);
             if (assigned == 0) {
+                providerResourceService.restoreReservation(reservation);
                 release(candidate);
                 return false;
             }
@@ -103,6 +113,11 @@ public class AutomaticAssignmentService {
                     .assignmentSource("AUTO_GEO")
                     .status("ASSIGNED")
                     .assignedAt(LocalDateTime.now())
+                    .resourceUserId(reservation.hasNumericReservation()
+                            ? reservation.userId() : null)
+                    .resourceHelpType(reservation.hasNumericReservation()
+                            ? reservation.helpType() : null)
+                    .reservedCapacityAmount(reservation.reservedAmount())
                     .notes(String.format(Locale.ROOT,
                             "Automatically matched to nearest available %s (%.2f km)",
                             candidate.providerType().name().toLowerCase(Locale.ROOT),

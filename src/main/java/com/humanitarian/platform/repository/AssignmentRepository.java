@@ -2,7 +2,12 @@ package com.humanitarian.platform.repository;
 
 import com.humanitarian.platform.model.Assignment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,4 +32,22 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
     long countByVolunteerIdAndStatus(Long volunteerId, String status);
     long countByOrganizationIdAndStatus(Long organizationId, String status);
     long countByPsychologistIdAndStatus(Long psychologistId, String status);
+
+    @Query("SELECT (COUNT(assignment) > 0) FROM Assignment assignment "
+            + "WHERE assignment.resourceUserId = :userId "
+            + "AND assignment.resourceHelpType = :helpType "
+            + "AND assignment.status = 'ASSIGNED' "
+            + "AND assignment.reservedCapacityAmount IS NOT NULL "
+            + "AND assignment.capacityRestoredAt IS NULL")
+    boolean hasActiveCapacityReservation(@Param("userId") Long userId,
+                                         @Param("helpType") String helpType);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Assignment assignment "
+            + "SET assignment.capacityRestoredAt = :restoredAt "
+            + "WHERE assignment.id = :assignmentId "
+            + "AND assignment.reservedCapacityAmount IS NOT NULL "
+            + "AND assignment.capacityRestoredAt IS NULL")
+    int markCapacityRestored(@Param("assignmentId") Long assignmentId,
+                             @Param("restoredAt") LocalDateTime restoredAt);
 }

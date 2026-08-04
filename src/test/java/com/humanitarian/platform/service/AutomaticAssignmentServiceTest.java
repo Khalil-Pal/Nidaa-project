@@ -1,6 +1,7 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.ProviderCapacityAssessment;
+import com.humanitarian.platform.dto.ProviderCapacityReservation;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.Organization;
@@ -26,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -67,6 +69,8 @@ class AutomaticAssignmentServiceTest {
 
         when(providerResourceService.findEligibleProviderCapacityAssessments("FOOD", 20))
                 .thenReturn(Map.of(200L, capacity(200L, "NUMERIC", 5, false)));
+        when(providerResourceService.reserveForAssignment(200L, "FOOD", 20))
+                .thenReturn(Optional.of(reservation(200L, "FOOD", 5)));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of());
         when(volunteerRepository.claimIfAvailable(20L)).thenReturn(1);
@@ -80,6 +84,9 @@ class AutomaticAssignmentServiceTest {
         assertEquals("HELP_REQUEST", captor.getValue().getRequestType());
         assertEquals("AUTO_GEO", captor.getValue().getAssignmentSource());
         assertEquals(20L, captor.getValue().getVolunteerId());
+        assertEquals(200L, captor.getValue().getResourceUserId());
+        assertEquals("FOOD", captor.getValue().getResourceHelpType());
+        assertEquals(5, captor.getValue().getReservedCapacityAmount());
     }
 
     @Test
@@ -104,6 +111,8 @@ class AutomaticAssignmentServiceTest {
 
         when(providerResourceService.findEligibleProviderCapacityAssessments("WATER", 1))
                 .thenReturn(capacities(202L));
+        when(providerResourceService.reserveForAssignment(202L, "WATER", 1))
+                .thenReturn(Optional.of(reservation(202L, "WATER", null)));
         when(volunteerRepository.findByIsAvailableTrue())
                 .thenReturn(List.of(closerWrongResource, fartherRightResource));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of());
@@ -137,6 +146,8 @@ class AutomaticAssignmentServiceTest {
 
         when(providerResourceService.findEligibleProviderCapacityAssessments("FOOD", 1))
                 .thenReturn(capacities(203L, 300L));
+        when(providerResourceService.reserveForAssignment(300L, "FOOD", 1))
+                .thenReturn(Optional.of(reservation(300L, "FOOD", null)));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(organizationRepository.claimIfAvailable(30L)).thenReturn(1);
@@ -168,6 +179,8 @@ class AutomaticAssignmentServiceTest {
 
         when(providerResourceService.findEligibleProviderCapacityAssessments("WATER", 1))
                 .thenReturn(capacities(204L, 301L));
+        when(providerResourceService.reserveForAssignment(204L, "WATER", 1))
+                .thenReturn(Optional.of(reservation(204L, "WATER", null)));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(volunteerRepository.claimIfAvailable(24L)).thenReturn(1);
@@ -199,6 +212,8 @@ class AutomaticAssignmentServiceTest {
 
         when(providerResourceService.findEligibleProviderCapacityAssessments("SHELTER", 1))
                 .thenReturn(capacities(205L));
+        when(providerResourceService.reserveForAssignment(205L, "SHELTER", 1))
+                .thenReturn(Optional.of(reservation(205L, "SHELTER", null)));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(volunteerRepository.claimIfAvailable(25L)).thenReturn(1);
@@ -227,6 +242,8 @@ class AutomaticAssignmentServiceTest {
 
         when(providerResourceService.findEligibleProviderCapacityAssessments("MEDICAL", 1))
                 .thenReturn(capacities(206L, 303L));
+        when(providerResourceService.reserveForAssignment(206L, "MEDICAL", 1))
+                .thenReturn(Optional.of(reservation(206L, "MEDICAL", null)));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(volunteerRepository.claimIfAvailable(26L)).thenReturn(1);
@@ -242,6 +259,7 @@ class AutomaticAssignmentServiceTest {
     @Test
     void organizationIsReleasedWhenRequestAssignmentLosesRace() {
         HelpRequest request = request(16L, "CLOTHING");
+        ProviderCapacityReservation reservation = reservation(304L, "CLOTHING", 1);
         Organization organization = Organization.builder()
                 .id(34L)
                 .user(userAt(304L, "Race Organization", 55.751, 37.621))
@@ -250,6 +268,8 @@ class AutomaticAssignmentServiceTest {
 
         when(providerResourceService.findEligibleProviderCapacityAssessments("CLOTHING", 1))
                 .thenReturn(capacities(304L));
+        when(providerResourceService.reserveForAssignment(304L, "CLOTHING", 1))
+                .thenReturn(Optional.of(reservation));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of());
         when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of(organization));
         when(organizationRepository.claimIfAvailable(34L)).thenReturn(1);
@@ -258,6 +278,7 @@ class AutomaticAssignmentServiceTest {
 
         assertFalse(service.assignNearestProvider(request));
 
+        verify(providerResourceService).restoreReservation(reservation);
         verify(organizationRepository).release(34L);
         verify(assignmentRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
@@ -340,5 +361,11 @@ class AutomaticAssignmentServiceTest {
                 .capacityAmount(amount)
                 .capacitySufficient(sufficient)
                 .build();
+    }
+
+    private ProviderCapacityReservation reservation(Long userId,
+                                                    String helpType,
+                                                    Integer amount) {
+        return new ProviderCapacityReservation(userId, helpType, amount);
     }
 }

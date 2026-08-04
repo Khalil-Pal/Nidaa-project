@@ -39,12 +39,6 @@ public class Volunteer {
     @Builder.Default
     private Double rating = 0.0;
 
-    @Column(name = "latitude", columnDefinition = "numeric")
-    private Double latitude;
-
-    @Column(name = "longitude", columnDefinition = "numeric")
-    private Double longitude;
-
     @CreationTimestamp
     @Column(name = "joined_at", updatable = false)
     private LocalDateTime joinedAt;

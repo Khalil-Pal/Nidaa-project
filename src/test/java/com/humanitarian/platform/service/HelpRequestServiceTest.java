@@ -1,9 +1,12 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.ProviderCapacityAssessment;
+import com.humanitarian.platform.dto.ProviderCapacityReservation;
 import com.humanitarian.platform.dto.RankedRequestDTO;
 import com.humanitarian.platform.exception.BusinessException;
+import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
+import com.humanitarian.platform.model.Profile;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.model.Volunteer;
@@ -19,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -90,17 +94,13 @@ class HelpRequestServiceTest {
                 .build();
         Volunteer closerWrongResource = Volunteer.builder()
                 .id(31L)
-                .user(User.builder().id(301L).fullName("Closer Provider").build())
+                .user(userAt(301L, "Closer Provider", 55.751, 37.621))
                 .isAvailable(true)
-                .latitude(55.751)
-                .longitude(37.621)
                 .build();
         Volunteer fartherRightResource = Volunteer.builder()
                 .id(32L)
-                .user(User.builder().id(302L).fullName("Matching Provider").build())
+                .user(userAt(302L, "Matching Provider", 55.80, 37.70))
                 .isAvailable(true)
-                .latitude(55.80)
-                .longitude(37.70)
                 .build();
         when(helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING"))
                 .thenReturn(List.of(request));
@@ -173,11 +173,16 @@ class HelpRequestServiceTest {
         when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Long.class),
                 org.mockito.ArgumentMatchers.eq(9L))).thenReturn(41L);
         when(volunteerRepository.claimIfAvailable(41L)).thenReturn(1);
+        ProviderCapacityReservation reservation = new ProviderCapacityReservation(
+                9L, "FOOD", 1);
+        when(providerResourceService.reserveForAssignment(9L, "FOOD", 1))
+                .thenReturn(Optional.of(reservation));
         when(helpRequestRepository.assignVolunteer(92L, 41L, "ASSIGNED", "PENDING"))
                 .thenReturn(0);
 
         assertThrows(BusinessException.class, () -> service.assignToMe(92L));
 
+        verify(providerResourceService).restoreReservation(reservation);
         verify(volunteerRepository).release(41L);
     }
 
@@ -198,12 +203,70 @@ class HelpRequestServiceTest {
         when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Long.class),
                 org.mockito.ArgumentMatchers.eq(10L))).thenReturn(42L);
         when(organizationRepository.claimIfAvailable(42L)).thenReturn(1);
+        ProviderCapacityReservation reservation = new ProviderCapacityReservation(
+                10L, "WATER", 1);
+        when(providerResourceService.reserveForAssignment(10L, "WATER", 1))
+                .thenReturn(Optional.of(reservation));
         when(helpRequestRepository.assignOrganization(93L, 42L, "ASSIGNED", "PENDING"))
                 .thenReturn(0);
 
         assertThrows(BusinessException.class, () -> service.assignToMe(93L));
 
+        verify(providerResourceService).restoreReservation(reservation);
         verify(organizationRepository).release(42L);
+    }
+
+    @Test
+    void cancellationRestoresReservedCapacityExactlyOnce() {
+        User admin = User.builder()
+                .id(99L)
+                .role(UserRole.ADMIN)
+                .fullName("Admin")
+                .build();
+        HelpRequest assignedRequest = HelpRequest.builder()
+                .id(96L)
+                .beneficiaryId(3L)
+                .helpType("FOOD")
+                .status("ASSIGNED")
+                .build();
+        HelpRequest cancelledRequest = HelpRequest.builder()
+                .id(96L)
+                .beneficiaryId(3L)
+                .helpType("FOOD")
+                .status("CANCELLED")
+                .build();
+        Assignment assignment = Assignment.builder()
+                .id(501L)
+                .requestId(96L)
+                .volunteerId(41L)
+                .resourceUserId(9L)
+                .resourceHelpType("FOOD")
+                .reservedCapacityAmount(5)
+                .status("ASSIGNED")
+                .build();
+        when(userService.getCurrentUser()).thenReturn(admin);
+        when(helpRequestRepository.findById(96L))
+                .thenReturn(Optional.of(assignedRequest), Optional.of(cancelledRequest));
+        when(assignmentRepository.findFirstByRequestIdAndStatusOrderByAssignedAtDesc(
+                96L, "ASSIGNED"))
+                .thenReturn(Optional.of(assignment));
+        when(assignmentRepository.markCapacityRestored(
+                org.mockito.ArgumentMatchers.eq(501L),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class)))
+                .thenReturn(1);
+        when(assignmentRepository.countByVolunteerIdAndStatus(41L, "ASSIGNED"))
+                .thenReturn(0L);
+
+        HelpRequest result = service.updateStatus(96L, "CANCELLED");
+
+        assertEquals("CANCELLED", result.getStatus());
+        verify(providerResourceService).restoreReservation(
+                new ProviderCapacityReservation(9L, "FOOD", 5));
+        verify(assignmentRepository).markCapacityRestored(
+                org.mockito.ArgumentMatchers.eq(501L),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
+        verify(volunteerRepository).release(41L);
+        assertEquals("CANCELLED", assignment.getStatus());
     }
 
     private RankedRequestDTO rankSingleVolunteer(HelpRequest request,
@@ -221,8 +284,8 @@ class HelpRequestServiceTest {
                         volunteer.getId(),
                         volunteer.getUser().getId(),
                         volunteer.getUser().getFullName(),
-                        volunteer.getLatitude(),
-                        volunteer.getLongitude(),
+                        volunteer.getUser().getProfile().getLatitude(),
+                        volunteer.getUser().getProfile().getLongitude(),
                         2.5)));
 
         return service.getRankedWithSuggestions(List.of(volunteer)).get(0);
@@ -243,11 +306,19 @@ class HelpRequestServiceTest {
     private Volunteer rankedVolunteer(Long id, Long userId, String name) {
         return Volunteer.builder()
                 .id(id)
-                .user(User.builder().id(userId).fullName(name).build())
+                .user(userAt(userId, name, 55.76, 37.63))
                 .isAvailable(true)
-                .latitude(55.76)
-                .longitude(37.63)
                 .build();
+    }
+
+    private User userAt(Long id, String name, double latitude, double longitude) {
+        User user = User.builder().id(id).fullName(name).build();
+        user.setProfile(Profile.builder()
+                .user(user)
+                .latitude(latitude)
+                .longitude(longitude)
+                .build());
+        return user;
     }
 
     private ProviderCapacityAssessment capacity(Long userId,

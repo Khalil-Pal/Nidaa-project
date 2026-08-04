@@ -74,8 +74,6 @@ class GeoMatchingServiceTest {
         Volunteer volunteer = Volunteer.builder()
                 .id(1L)
                 .isAvailable(true)
-                .latitude(55.7501)
-                .longitude(37.6201)
                 .user(userAt(10L, 55.90, 37.90))
                 .build();
         User organizationUser = userAt(20L, 55.751, 37.621);

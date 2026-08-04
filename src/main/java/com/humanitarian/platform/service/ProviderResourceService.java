@@ -1,6 +1,7 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.ProviderCapacityAssessment;
+import com.humanitarian.platform.dto.ProviderCapacityReservation;
 import com.humanitarian.platform.dto.ProviderResourceDto;
 import com.humanitarian.platform.dto.ProviderResourceResponse;
 import com.humanitarian.platform.exception.BusinessException;
@@ -9,6 +10,7 @@ import com.humanitarian.platform.exception.UnauthorizedException;
 import com.humanitarian.platform.model.ProviderResource;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
+import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.ProviderResourceRepository;
 import com.humanitarian.platform.util.HelpTypeNormalizer;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,11 +32,14 @@ public class ProviderResourceService {
             UserRole.VOLUNTEER, UserRole.ORGANIZATION);
 
     private final ProviderResourceRepository providerResourceRepository;
+    private final AssignmentRepository assignmentRepository;
     private final UserService userService;
 
     public ProviderResourceService(ProviderResourceRepository providerResourceRepository,
+                                   AssignmentRepository assignmentRepository,
                                    UserService userService) {
         this.providerResourceRepository = providerResourceRepository;
+        this.assignmentRepository = assignmentRepository;
         this.userService = userService;
     }
 
@@ -52,9 +58,11 @@ public class ProviderResourceService {
         String mode = requireCapacityMode(request.getCapacityMode());
         validateCapacity(request, mode);
 
-        ProviderResource resource = providerResourceRepository
-                .findByUserIdAndHelpType(currentUser.getId(), helpType)
-                .orElseGet(() -> ProviderResource.builder()
+        Optional<ProviderResource> existing = providerResourceRepository
+                .findByUserIdAndHelpType(currentUser.getId(), helpType);
+        existing.ifPresent(resource -> requireNoActiveReservation(
+                currentUser.getId(), helpType));
+        ProviderResource resource = existing.orElseGet(() -> ProviderResource.builder()
                         .userId(currentUser.getId())
                         .helpType(helpType)
                         .build());
@@ -79,7 +87,62 @@ public class ProviderResourceService {
                 .findByUserIdAndHelpType(currentUser.getId(), helpType)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Provider resource not found for help type: " + helpType));
+        requireNoActiveReservation(currentUser.getId(), helpType);
         providerResourceRepository.delete(resource);
+    }
+
+    @Transactional
+    public Optional<ProviderCapacityReservation> reserveForAssignment(
+            Long userId,
+            String rawHelpType,
+            Integer peopleCount) {
+        String helpType = HelpTypeNormalizer.normalize(rawHelpType);
+        if (!SUPPORTED_HELP_TYPES.contains(helpType)) {
+            return Optional.empty();
+        }
+
+        Optional<ProviderResource> lockedResource = providerResourceRepository
+                .findByUserIdAndHelpTypeForUpdate(userId, helpType)
+                .filter(this::hasUsableCapacity);
+        if (lockedResource.isEmpty()) {
+            return Optional.empty();
+        }
+
+        ProviderResource resource = lockedResource.get();
+        Integer reservedAmount = null;
+        if ("NUMERIC".equals(resource.getCapacityMode())) {
+            int requestedAmount = peopleCount != null && peopleCount > 0 ? peopleCount : 1;
+            reservedAmount = Math.min(resource.getCapacityAmount(), requestedAmount);
+            resource.setCapacityAmount(resource.getCapacityAmount() - reservedAmount);
+            providerResourceRepository.save(resource);
+        }
+
+        return Optional.of(new ProviderCapacityReservation(
+                userId, helpType, reservedAmount));
+    }
+
+    @Transactional
+    public void restoreReservation(ProviderCapacityReservation reservation) {
+        if (reservation == null || !reservation.hasNumericReservation()) {
+            return;
+        }
+
+        ProviderResource resource = providerResourceRepository
+                .findByUserIdAndHelpTypeForUpdate(
+                        reservation.userId(), reservation.helpType())
+                .orElseThrow(() -> new BusinessException(
+                        "Reserved provider resource no longer exists; capacity cannot be restored."));
+        if (!"NUMERIC".equals(resource.getCapacityMode())) {
+            throw new BusinessException(
+                    "Reserved provider resource is no longer numeric; capacity cannot be restored.");
+        }
+
+        long restoredAmount = (long) resource.getCapacityAmount() + reservation.reservedAmount();
+        if (restoredAmount > Integer.MAX_VALUE) {
+            throw new BusinessException("Restored provider capacity exceeds the supported limit.");
+        }
+        resource.setCapacityAmount((int) restoredAmount);
+        providerResourceRepository.save(resource);
     }
 
     @Transactional(readOnly = true)
@@ -136,6 +199,14 @@ public class ProviderResourceService {
                     "Only volunteers and organizations can manage provider resources.");
         }
         return currentUser;
+    }
+
+    private void requireNoActiveReservation(Long userId, String helpType) {
+        if (assignmentRepository.hasActiveCapacityReservation(userId, helpType)) {
+            throw new BusinessException(
+                    "This resource has capacity reserved by an active assignment "
+                            + "and cannot be changed yet.");
+        }
     }
 
     private String requireSupportedHelpType(String rawHelpType) {

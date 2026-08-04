@@ -1,6 +1,7 @@
 package com.humanitarian.platform.integration;
 
 import com.humanitarian.platform.dto.HelpRequestDto;
+import com.humanitarian.platform.dto.ProviderCapacityReservation;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.User;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,6 +75,9 @@ class RequestLifecycleTest {
         });
         when(jdbc.queryForObject(anyString(), eq(Long.class), eq(volunteer.getId()))).thenReturn(20L);
         when(volunteerRepository.claimIfAvailable(20L)).thenReturn(1);
+        when(providerResourceService.reserveForAssignment(volunteer.getId(), "FOOD", 3))
+                .thenReturn(Optional.of(new ProviderCapacityReservation(
+                        volunteer.getId(), "FOOD", 3)));
         when(helpRequestRepository.assignVolunteer(10L, 20L, "ASSIGNED", "PENDING")).thenReturn(1);
         when(userRepository.findById(beneficiary.getId())).thenReturn(Optional.of(beneficiary));
 
@@ -105,8 +110,12 @@ class RequestLifecycleTest {
                 .thenReturn(Optional.of(completed));
 
         Assignment assignment = Assignment.builder()
+                .id(100L)
                 .requestId(10L)
                 .volunteerId(20L)
+                .resourceUserId(volunteer.getId())
+                .resourceHelpType("FOOD")
+                .reservedCapacityAmount(3)
                 .status("ASSIGNED")
                 .build();
         when(assignmentRepository.findFirstByRequestIdAndStatusOrderByAssignedAtDesc(10L, "ASSIGNED"))
@@ -129,11 +138,14 @@ class RequestLifecycleTest {
         verify(assignmentRepository).save(captor.capture());
         assertEquals("ASSIGNED", captor.getValue().getStatus());
         assertEquals(20L, captor.getValue().getVolunteerId());
+        assertEquals(3, captor.getValue().getReservedCapacityAmount());
 
         HelpRequest updated = helpRequestService.updateStatus(10L, "COMPLETED");
 
         assertEquals("COMPLETED", updated.getStatus());
         assertEquals("COMPLETED", assignment.getStatus());
+        verify(providerResourceService, never()).restoreReservation(
+                any(ProviderCapacityReservation.class));
         verify(helpRequestRepository).updateStatusCompleted(eq(10L), eq("COMPLETED"), any());
     }
 }
