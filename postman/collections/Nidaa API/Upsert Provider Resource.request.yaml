@@ -1,0 +1,18 @@
+$kind: http-request
+name: Upsert Provider Resource
+url: http://localhost:8081/api/provider-resources
+method: PUT
+body:
+  type: json
+  content: |-
+    {
+      "helpType": "FOOD",
+      "capacityMode": "NUMERIC",
+      "capacityAmount": 25,
+      "capacityLabel": null
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{providerToken}}"
+order: 1784095783091

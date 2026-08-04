@@ -1,0 +1,9 @@
+$kind: http-request
+name: Delete Provider Resource
+url: http://localhost:8081/api/provider-resources/FOOD
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{providerToken}}"
+order: 1784095783092

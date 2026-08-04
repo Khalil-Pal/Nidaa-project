@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.exception.UnauthorizedException;
+import com.humanitarian.platform.util.HelpTypeNormalizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,7 +63,7 @@ public class HelpRequestService {
     public HelpRequest createRequest(HelpRequestDto dto) {
         User currentUser = userService.getCurrentUser();
 
-        String helpType = mapHelpType(dto.getHelpType());
+        String helpType = HelpTypeNormalizer.normalize(dto.getHelpType());
         String urgency  = mapUrgency(dto.getUrgencyLevel());
 
         int count = 1;
@@ -176,19 +177,6 @@ public class HelpRequestService {
         });
 
         return result;
-    }
-
-    private String mapHelpType(String raw) {
-        if (raw == null) return "OTHER";
-        return switch (raw.toUpperCase().trim()) {
-            case "MEDICAL"       -> "MEDICAL";
-            case "FOOD"          -> "FOOD";
-            case "SHELTER"       -> "SHELTER";
-            case "WATER"         -> "WATER";
-            case "CLOTHING"      -> "CLOTHING";
-            case "PSYCHOLOGICAL" -> "PSYCHOLOGICAL";
-            default              -> "OTHER";
-        };
     }
 
     private String mapUrgency(String raw) {
@@ -316,7 +304,7 @@ public class HelpRequestService {
     }
 
     public List<HelpRequest> getRequestsByType(String helpType) {
-        return helpRequestRepository.findByHelpType(mapHelpType(helpType));
+        return helpRequestRepository.findByHelpType(HelpTypeNormalizer.normalize(helpType));
     }
 
     public Map<String, Object> getContactInfo(Long requestId) {

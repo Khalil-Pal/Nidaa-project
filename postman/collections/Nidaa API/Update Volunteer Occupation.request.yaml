@@ -1,0 +1,15 @@
+$kind: http-request
+name: Update Volunteer Occupation
+url: http://localhost:8081/api/volunteers/me/occupation
+method: PUT
+body:
+  type: json
+  content: |-
+    {
+      "occupation": "Emergency nurse"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{volunteerToken}}"
+order: 1784095783093

@@ -25,6 +25,9 @@ public class Volunteer {
     @Column(name = "skills", columnDefinition = "TEXT")
     private String skills;
 
+    @Column(name = "occupation", length = 150)
+    private String occupation;
+
     @Column(name = "availability", columnDefinition = "jsonb")
     private String availability;
 

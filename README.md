@@ -25,6 +25,11 @@ The backend is a Spring Boot REST application. The frontend is a set of responsi
 
 Repository: [github.com/Khalil-Pal/Nidaa-project](https://github.com/Khalil-Pal/Nidaa-project)
 
+## Detailed Documentation
+
+- [Backend guide](docs/BACKEND_GUIDE.md): startup, configuration, security, database model, APIs, request lifecycles, matching, migrations, and tests.
+- [Frontend guide](docs/FRONTEND_GUIDE.md): pages, role navigation, browser state, API calls, shared layout, local-only features, debugging, and test checklists.
+
 ## Core Capabilities
 
 ### Identity and access
