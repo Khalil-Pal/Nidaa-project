@@ -181,6 +181,12 @@ Volunteers and organizations manage structured services in `settings.html` throu
 are loaded from the backend and should not be replaced with local profile-only
 fields.
 
+Numeric values represent currently unreserved capacity. A successful material
+assignment reduces that value, while cancellation restores the exact reserved
+amount. The backend rejects service edits or deletion while that resource has an
+active reservation; the page should display the returned message and reload the
+server value rather than keeping an optimistic edit.
+
 The same settings area exposes a server-backed availability toggle for volunteers
 and organizations. It reads and writes `/api/provider-availability/me`; it does not
 change or complete an active assignment.

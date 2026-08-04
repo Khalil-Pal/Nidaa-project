@@ -44,12 +44,16 @@ HTTP request
 | 6 | Added the real community backend, V4 message isolation, and admin moderation | Complete |
 | 7 | Added V5 availability, matching-location UI, and combined provider geo-matching | Complete |
 | Post-7 A | Added request-aware tri-state provider-capacity reporting without changing nearest-provider selection | Complete |
+| Post-7 B | Added transactional numeric-capacity reservation and cancellation restoration | Complete |
+| Post-7 C | Added V1 bootstrap plus V7 assignment-assignee correction and real persistence tests | Complete |
+| Post-7 D | Added the mandatory V4 empty-message preflight without changing the shipped SQL | Complete |
+| Post-7 E | Removed duplicate volunteer coordinates through guarded V8 and verified the full migration chain | Complete |
 
 Current verification result:
 
 ```text
-Maven test suites: 19
-Tests:             81
+Maven test suites: 20
+Tests:             89
 Failures:          0
 Errors:            0
 Skipped:           0
@@ -422,9 +426,10 @@ src/main/java/com/humanitarian/platform/service/HelpRequestService.java
 
 Positive numeric capacity is compared with `HelpRequest.peopleCount` for ranked and
 admin visibility. The comparison does not reorder automatic candidates or block
-manual acceptance, so partial contributions remain possible. The implementation
-still does not decrement inventory after assignment or reserve capacity
-transactionally.
+manual acceptance, so partial contributions remain possible. V6 adds transactional
+reservation: assignment takes a row lock and deducts the lesser of remaining
+capacity and `peopleCount`. The exact amount is stored on the assignment, retained
+on fulfilled completion, and restored exactly once on cancellation.
 
 ---
 
@@ -764,9 +769,9 @@ command lets them explicitly reopen themselves.
 Volunteer/Organization -> User -> Profile -> latitude/longitude
 ```
 
-No matching service reads `volunteers.latitude` or `volunteers.longitude` anymore.
-Those legacy columns remain in the schema only for compatibility and future
-backfill/removal work.
+No matching service reads `volunteers.latitude` or `volunteers.longitude`. V8 now
+removes those duplicate columns after refusing to discard unexpected non-null
+values, leaving `profiles` as the only provider-location source.
 
 ### Combined Automatic Candidate Pool
 
@@ -816,7 +821,7 @@ Phase 7 coverage proves:
 - an unavailable organization is skipped;
 - an organization is released after a lost assignment race;
 - manual volunteer and organization claims are released after lost races;
-- profile coordinates override legacy volunteer coordinates;
+- profile coordinates determine volunteer and organization distance;
 - volunteers and organizations can manage availability;
 - a beneficiary cannot manage provider availability;
 - false and true availability changes preserve active assignments;
@@ -862,15 +867,27 @@ Therefore migrations are manual and must follow filename order after the existin
 base schema:
 
 ```text
+V1__base_schema.sql
 V2__matching_and_assignment_history.sql
 V3__location_resources_and_message_moderation.sql
 V4__message_types_and_community_channel.sql
 V5__provider_availability_preference.sql
+V6__provider_capacity_reservations.sql
+V7__assignment_assignee_constraints.sql
+V8__drop_legacy_volunteer_coordinates.sql
 ```
 
 PowerShell example:
 
 ```powershell
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V1__base_schema.sql"
+
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V2__matching_and_assignment_history.sql"
+
 & "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
   -h 127.0.0.1 -U postgres -d Web_DB `
   -f ".\database\migrations\V3__location_resources_and_message_moderation.sql"
@@ -882,15 +899,34 @@ PowerShell example:
 & "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
   -h 127.0.0.1 -U postgres -d Web_DB `
   -f ".\database\migrations\V5__provider_availability_preference.sql"
+
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V6__provider_capacity_reservations.sql"
+
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V7__assignment_assignee_constraints.sql"
+
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V8__drop_legacy_volunteer_coordinates.sql"
 ```
 
 Important:
 
 - V4 has no `message_type` default and was designed for the confirmed empty
-  `messages` table. It should not be rerun after successful application.
+  `messages` table. `SELECT COUNT(*) FROM messages` must return zero before first
+  application to an existing environment. It should not be rerun after success.
+- V4 remains byte-for-byte unchanged because it was already applied; the preflight
+  guard is documented instead of introducing migration-checksum drift.
 - V5 uses `IF NOT EXISTS` and can safely report already-exists notices.
-- The repository still does not contain a complete V1 bootstrap migration or an
-  automatic Flyway/Liquibase runner.
+- V6 uses additive columns and guarded constraints/indexes.
+- V7 corrects assignment nullability and enforces role/source combinations.
+- V8 removes duplicate volunteer coordinates and aborts if non-null legacy values
+  have not first been migrated to `profiles`.
+- V1 through V8 were verified on an empty database with a zero-line schema diff.
+- Migrations are still manual; there is no automatic Flyway/Liquibase runner.
 
 ---
 
@@ -905,7 +941,7 @@ Important:
 Final result:
 
 ```text
-81 tests passed
+89 tests passed
 0 failures
 0 errors
 0 skipped
@@ -915,6 +951,8 @@ Coverage includes:
 
 - provider resource validation and upsert;
 - tri-state provider-capacity assessment against request people count;
+- partial/full numeric reservation, cancellation restoration, and completion
+  retention;
 - occupation authorization;
 - resource-aware automatic and manual matching;
 - weighted and geographic matching behavior;
@@ -927,7 +965,8 @@ Coverage includes:
 - direct/community message isolation;
 - mandatory moderation reasons;
 - moderation audit snapshots;
-- assignment lifecycle and history; and
+- assignment lifecycle and history;
+- real PostgreSQL automatic-material and psychological assignment inserts;
 - Spring application-context startup.
 
 ### Frontend
@@ -940,8 +979,9 @@ Coverage includes:
 
 ### Database
 
-- V3, V4, and V5 were applied manually during the work.
-- PostgreSQL accepted V5 and completed the transaction.
+- V3 through V8 were applied manually during the work.
+- PostgreSQL accepted V7 and V8 and completed both transactions.
+- V1 through V8 produced an exact schema match from an empty database.
 - The Spring context successfully initialized all JPA entities and repositories
   against the migrated schema.
 
@@ -975,16 +1015,11 @@ Coverage includes:
 
 The seven phases are complete, but these intentional boundaries remain:
 
-- No complete V1 bootstrap migration exists.
 - Migrations are not run automatically.
-- Numeric capacity is compared with `peopleCount` and exposed in ranked/admin
-  responses, but it is not decremented or reserved transactionally.
 - Haversine distance is straight-line distance, not driving distance or travel
   time.
-- A provider without `profiles.latitude/longitude` is excluded even if legacy
-  volunteer coordinates exist.
-- The legacy volunteer coordinate columns remain until a separate backfill/removal
-  migration is planned.
+- A provider without `profiles.latitude/longitude` is excluded from geographic
+  matching; there is no fallback coordinate store after V8.
 - Automatic matching requires coordinates on the material request itself; saving
   beneficiary profile coordinates does not geocode or silently rewrite a request.
 - Ranked-queue suggestion fields retain the existing volunteer-oriented response
@@ -1049,7 +1084,8 @@ Nidaa now supports an end-to-end material-help workflow in which:
 4. the backend filters providers by resource and availability and reports whether
    the suggested provider's numeric capacity covers the request;
 5. volunteers and organizations compete in one distance-ranked pool;
-6. the winner is claimed atomically and recorded in assignment history;
+6. the winner is claimed atomically, numeric capacity is reserved, and the exact
+   deduction is recorded in assignment history;
 7. assigned parties can securely reveal contact details; and
 8. responders can coordinate through a server-backed, moderated community feed.
 

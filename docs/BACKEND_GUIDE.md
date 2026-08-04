@@ -45,18 +45,34 @@ context and loads the corresponding `User`.
 Hibernate schema generation is disabled with `spring.jpa.hibernate.ddl-auto=none`.
 Database changes must be applied manually in filename order:
 
-1. `V2__matching_and_assignment_history.sql`
-2. `V3__location_resources_and_message_moderation.sql`
-3. `V4__message_types_and_community_channel.sql`
-4. `V5__provider_availability_preference.sql`
+1. `V1__base_schema.sql`
+2. `V2__matching_and_assignment_history.sql`
+3. `V3__location_resources_and_message_moderation.sql`
+4. `V4__message_types_and_community_channel.sql`
+5. `V5__provider_availability_preference.sql`
+6. `V6__provider_capacity_reservations.sql`
+7. `V7__assignment_assignee_constraints.sql`
+8. `V8__drop_legacy_volunteer_coordinates.sql`
 
-The repository does not yet contain a complete V1 bootstrap migration. A new empty
-database still needs the existing base schema before these migrations are applied.
+V1 contains the complete pre-V2 PostgreSQL schema, including enums, functions,
+tables, sequences, constraints, indexes, triggers, and foreign keys. Applying V1
+through V8 to an empty verification database produced a schema dump identical to
+the migrated development database.
+
+Before applying V4 to any existing environment, `SELECT COUNT(*) FROM messages`
+must return zero. V4 has no message-type default or backfill. The already-applied
+file remains unchanged to avoid checksum drift; stop and plan an explicit data
+classification migration if rows already exist.
 
 V3 adds provider resources, volunteer occupation, message soft deletion, and the
 message-deletion audit table. V4 separates direct messages from community messages
 without overloading `receiver_id`. V5 adds organization availability and preserves
-each provider's manual availability preference across assignment claims.
+each provider's manual availability preference across assignment claims. V6 records
+numeric-capacity reservations. V7 makes automatic/human assignment authorship and
+role-specific assignee columns explicit database invariants. V8 removes the old
+volunteer coordinate columns after checking that they contain no non-null data.
+An upgrading environment with values in those columns must migrate them to the
+corresponding user profiles before V8 can succeed.
 
 ## Request And Matching Domains
 
@@ -66,8 +82,9 @@ builds one pool of available volunteers and organizations, filters both roles by
 provider resource type, then orders the combined pool by geographic distance.
 
 `profiles.latitude` and `profiles.longitude` are the single source of truth for
-provider location. Matching never reads the legacy volunteer coordinate columns.
-A provider without both profile coordinates is omitted from geographic matching.
+provider location. V8 removed the duplicate volunteer coordinate columns, so the
+schema and matching service now enforce one location source. A provider without
+both profile coordinates is omitted from geographic matching.
 The nearest candidate is claimed atomically, the request moves from `PENDING` to
 `ASSIGNED`, and an `AUTO_GEO` assignment stores exactly one of `volunteer_id` or
 `organization_id`. A failed request update releases the winning claim.
@@ -79,6 +96,19 @@ part of provider-resource matching.
 Assignment history records material and psychological assignment events so admin
 analytics can measure waiting time, utilization, regional fairness, and strategy
 outcomes.
+
+V7 enforces the assignment shape directly in PostgreSQL:
+
+- `HELP_REQUEST` has exactly one of `volunteer_id` or `organization_id`, and no
+  psychologist.
+- `PSYCHOLOGICAL_REQUEST` has exactly one psychologist, and no volunteer or
+  organization placeholder.
+- `AUTO_GEO` and `AUTO_CRISIS` have `assigned_by = NULL`.
+- `MANUAL` and `ADMIN` assignments require the responsible user's ID.
+
+Real PostgreSQL integration tests flush and reload automatic material and
+psychological assignment rows. This protects the nullable-column contract without
+mocking `AssignmentRepository`.
 
 ## Provider Resources
 
@@ -107,9 +137,17 @@ does not change provider ordering or reject partial contributions.
 
 ### Remaining Capacity Boundary
 
-Numeric capacity is not decremented or reserved after assignment. Cancellation and
-completion therefore do not restore inventory, because no inventory is consumed in
-the current model.
+Numeric capacity is transactionally reserved during both automatic and manual
+assignment. The provider-resource row is pessimistically locked, and the service
+deducts `min(capacityAmount, peopleCount)` so a confirmed partial provider remains
+usable without producing negative inventory.
+
+The assignment stores `resource_user_id`, `resource_help_type`, and the exact
+`reserved_capacity_amount`. `COMPLETED` means the contribution was fulfilled and
+keeps that amount consumed. `CANCELLED` is the non-fulfilled terminal outcome: it
+atomically marks `capacity_restored_at` and adds the exact amount back once. Active
+reservations prevent the matching provider-resource row from being edited or
+deleted until the assignment reaches a terminal state.
 
 ## Provider Availability And Location
 
@@ -243,7 +281,9 @@ snapshot creation, soft-deleted-message exclusion, direct-message exclusion, and
 admin audit retrieval. Matching coverage includes combined provider ranking,
 resource and availability filters, atomic claim cleanup, availability authorization,
 profile-location save/load behavior, request-aware numeric capacity flags, and the
-qualitative-capacity unknown state.
+qualitative-capacity unknown state. Reservation coverage includes partial and full
+deductions, assignment-race restoration, cancellation restoration, completion
+retention, and active-reservation edit protection.
 
 ## Extension Pattern
 
@@ -259,13 +299,10 @@ For a backend feature:
 
 ## Known Boundaries
 
-- There is no complete V1 schema migration or automatic Flyway/Liquibase runner.
+- Migrations are complete but still applied manually; there is no automatic
+  Flyway/Liquibase runner.
 - Direct-message controllers/services are not operational yet, although the entity
   and repository path remain available and are isolated by `MessageType.DIRECT`.
 - Community likes and comments are browser-local; only the message feed and
   moderation history are multi-user backend features.
 - Community photo uploads are not modeled in the backend.
-- Numeric provider capacity is compared with request `peopleCount` for ranked/admin
-  visibility, but it is not decremented or reserved transactionally.
-- Existing providers with only legacy volunteer coordinates must save matching
-  coordinates in `profiles` before they can participate in geographic matching.
