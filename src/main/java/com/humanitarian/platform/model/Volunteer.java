@@ -52,4 +52,8 @@ public class Volunteer {
     @Column(name = "is_available")
     @Builder.Default
     private Boolean isAvailable = true;
+
+    @Column(name = "availability_preference", nullable = false)
+    @Builder.Default
+    private Boolean availabilityPreference = true;
 }

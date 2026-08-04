@@ -25,5 +25,6 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
             Long psychologicalRequestId, String status);
     List<Assignment> findByVolunteerIdAndStatus(Long volunteerId, String status);
     long countByVolunteerIdAndStatus(Long volunteerId, String status);
+    long countByOrganizationIdAndStatus(Long organizationId, String status);
     long countByPsychologistIdAndStatus(Long psychologistId, String status);
 }

@@ -44,6 +44,14 @@ public class Organization {
     @Column(name = "verified_by")
     private Long verifiedBy;
 
+    @Column(name = "is_available", nullable = false)
+    @Builder.Default
+    private Boolean isAvailable = true;
+
+    @Column(name = "availability_preference", nullable = false)
+    @Builder.Default
+    private Boolean availabilityPreference = true;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

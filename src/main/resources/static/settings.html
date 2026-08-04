@@ -37,6 +37,15 @@
         .toggle input:disabled + .slider{cursor:not-allowed;opacity:.55}
         .provider-services{scroll-margin-top:82px}
         .provider-services[hidden]{display:none}
+        .matching-location[hidden],.provider-availability[hidden]{display:none}
+        .location-status,.availability-status{min-height:20px;font-size:13px;color:var(--muted)}
+        .location-status.error,.availability-status.error{color:#dc2626}
+        .location-status.success,.availability-status.success{color:var(--green)}
+        .location-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}
+        .provider-availability{padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--border)}
+        .provider-availability .toggle-row{padding:0;border:none}
+        .availability-feedback{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px}
+        .availability-now-btn[hidden]{display:none}
         .occupation-wrap{padding-bottom:22px;margin-bottom:4px;border-bottom:1px solid var(--border)}
         .services-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0 8px}
         .services-heading h3{font-size:13px;font-weight:700;color:var(--dark)}
@@ -86,7 +95,7 @@
         .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
         .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
         @keyframes spin{to{transform:rotate(360deg)}}
-        @media(max-width:768px){.form-row{grid-template-columns:1fr}.content{padding:20px}.service-controls{margin-left:0;grid-template-columns:1fr}.services-footer{align-items:stretch;flex-direction:column}.services-footer .btn{width:100%}}
+        @media(max-width:768px){.form-row{grid-template-columns:1fr}.content{padding:20px}.service-controls{margin-left:0;grid-template-columns:1fr}.services-footer,.location-actions{align-items:stretch;flex-direction:column}.services-footer .btn,.location-actions .btn{width:100%}}
 
         /* ── Verification Code Modal ── */
         .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center}
@@ -167,10 +176,59 @@
             </div>
         </div>
 
+        <!-- Server-backed matching location -->
+        <div class="settings-card matching-location" id="matching-location" hidden>
+            <div class="card-title"><i class="fa fa-location-dot" style="color:var(--blue)"></i> Matching Location</div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="matchingAddress">Address or location name</label>
+                    <input type="text" id="matchingAddress" maxlength="500" placeholder="City, district, or service location"/>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="matchingLatitude">Latitude</label>
+                        <input type="number" id="matchingLatitude" min="-90" max="90" step="any" placeholder="31.9539"/>
+                    </div>
+                    <div class="form-group">
+                        <label for="matchingLongitude">Longitude</label>
+                        <input type="number" id="matchingLongitude" min="-180" max="180" step="any" placeholder="35.9106"/>
+                    </div>
+                </div>
+                <div class="location-actions">
+                    <div class="location-status" id="matchingLocationStatus" role="status" aria-live="polite">Not set yet.</div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap">
+                        <button class="btn btn-outline" id="useLocationBtn" onclick="useCurrentLocation()">
+                            <i class="fa fa-location-crosshairs"></i> Use Current Location
+                        </button>
+                        <button class="btn btn-primary" id="saveLocationBtn" onclick="saveMatchingLocation()">
+                            <i class="fa fa-floppy-disk"></i> Save Location
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Provider services -->
         <div class="settings-card provider-services" id="my-services" hidden>
             <div class="card-title"><i class="fa fa-box-open" style="color:var(--green)"></i> My Services</div>
             <div class="card-body" id="providerServicesBody" aria-busy="true">
+                <div class="provider-availability" id="providerAvailability" hidden>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <div class="t-label">Available for new matches</div>
+                        </div>
+                        <label class="toggle" title="Available for new matches">
+                            <input type="checkbox" id="providerAvailabilityToggle" onchange="saveProviderAvailability(this.checked)"/>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="availability-feedback">
+                        <div class="availability-status" id="providerAvailabilityStatus" role="status" aria-live="polite"></div>
+                        <button class="btn btn-outline availability-now-btn" id="providerAvailableNowBtn" hidden onclick="saveProviderAvailability(true)">
+                            <i class="fa fa-check"></i> Available Now
+                        </button>
+                    </div>
+                </div>
                 <div class="occupation-wrap" id="occupationGroup" hidden>
                     <div class="form-group">
                         <label for="occupationInput">Occupation</label>
@@ -268,7 +326,7 @@
 </div>
 
 <script>
-    const API = 'http://localhost:8081/api';
+    const API = '/api';
     function authHeader() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' }; }
     function logout() { if(confirm('Log out?')) { localStorage.clear(); window.location.href='login.html'; } }
 
@@ -281,6 +339,7 @@
     const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
     const initials    = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
     const isProvider  = userRole === 'volunteer' || userRole === 'organization';
+    const hasMatchingLocation = ['beneficiary','volunteer','organization'].includes(userRole);
 
     const SERVICE_DEFINITIONS = [
         { key: 'MEDICAL', label: 'Medical', icon: 'fa-kit-medical', tone: 'medical' },
@@ -306,17 +365,32 @@
     const emEl = document.getElementById('email');    if (emEl) emEl.value = user.email || '';
     const rdEl = document.getElementById('roleDisplay'); if (rdEl) rdEl.value = roleDisplay;
 
-    // Load current profile from server
-    fetch(API + '/users/me', { headers: authHeader() })
-        .then(r => r.json())
-        .then(d => {
-            const u = d.data || d;
-            if (u.phone) document.getElementById('phone').value = u.phone;
-            if (u.fullName) {
-                document.getElementById('fullName').value = u.fullName;
-                {const _e=document.getElementById('sidebarName'); if(_e) _e.textContent = u.fullName;}
+    async function loadAccountProfile() {
+        try {
+            const response = await fetch(API + '/users/me/profile', { headers: authHeader() });
+            const profile = await readApiData(response);
+            if (profile.phone) document.getElementById('phone').value = profile.phone;
+            if (profile.fullName) {
+                document.getElementById('fullName').value = profile.fullName;
+                const sidebarName = document.getElementById('sidebarName');
+                if (sidebarName) sidebarName.textContent = profile.fullName;
             }
-        }).catch(() => {});
+            if (hasMatchingLocation) {
+                document.getElementById('matching-location').hidden = false;
+                document.getElementById('matchingAddress').value = profile.address || '';
+                document.getElementById('matchingLatitude').value = profile.latitude ?? '';
+                document.getElementById('matchingLongitude').value = profile.longitude ?? '';
+                renderMatchingLocationStatus(profile.latitude, profile.longitude);
+            }
+        } catch (error) {
+            if (hasMatchingLocation) {
+                document.getElementById('matching-location').hidden = false;
+                setMatchingLocationStatus(error.message || 'Could not load location.', 'error');
+            }
+        }
+    }
+
+    loadAccountProfile();
 
     function showMsg(type, msg) {
         const el = document.getElementById(type+'Alert');
@@ -470,6 +544,144 @@
         return payload.data ?? payload;
     }
 
+    function setMatchingLocationStatus(message, type = '') {
+        const status = document.getElementById('matchingLocationStatus');
+        status.textContent = message;
+        status.className = `location-status${type ? ` ${type}` : ''}`;
+    }
+
+    function renderMatchingLocationStatus(latitude, longitude) {
+        if (latitude == null || longitude == null) {
+            setMatchingLocationStatus('Not set yet.');
+            return;
+        }
+        setMatchingLocationStatus(
+            `Saved: ${Number(latitude).toFixed(6)}, ${Number(longitude).toFixed(6)}`,
+            'success');
+    }
+
+    function readCoordinate(inputId, label, minimum, maximum) {
+        const raw = document.getElementById(inputId).value.trim();
+        if (!raw) throw new Error(`${label} is required.`);
+        const value = Number(raw);
+        if (!Number.isFinite(value) || value < minimum || value > maximum) {
+            throw new Error(`${label} must be between ${minimum} and ${maximum}.`);
+        }
+        return value;
+    }
+
+    async function saveMatchingLocation() {
+        const button = document.getElementById('saveLocationBtn');
+        try {
+            const latitude = readCoordinate('matchingLatitude', 'Latitude', -90, 90);
+            const longitude = readCoordinate('matchingLongitude', 'Longitude', -180, 180);
+            button.disabled = true;
+            setMatchingLocationStatus('Saving...');
+            const response = await fetch(`${API}/users/me/profile`, {
+                method: 'PUT',
+                headers: authHeader(),
+                body: JSON.stringify({
+                    address: document.getElementById('matchingAddress').value.trim(),
+                    latitude,
+                    longitude
+                })
+            });
+            const profile = await readApiData(response);
+            document.getElementById('matchingLatitude').value = profile.latitude ?? latitude;
+            document.getElementById('matchingLongitude').value = profile.longitude ?? longitude;
+            renderMatchingLocationStatus(profile.latitude ?? latitude, profile.longitude ?? longitude);
+            showMsg('success', 'Matching location saved.');
+        } catch (error) {
+            setMatchingLocationStatus(error.message || 'Could not save location.', 'error');
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    function useCurrentLocation() {
+        const button = document.getElementById('useLocationBtn');
+        if (!navigator.geolocation) {
+            setMatchingLocationStatus('Browser geolocation is not available.', 'error');
+            return;
+        }
+        button.disabled = true;
+        setMatchingLocationStatus('Finding current location...');
+        navigator.geolocation.getCurrentPosition(position => {
+            document.getElementById('matchingLatitude').value =
+                position.coords.latitude.toFixed(6);
+            document.getElementById('matchingLongitude').value =
+                position.coords.longitude.toFixed(6);
+            setMatchingLocationStatus('Coordinates ready. Save to confirm.');
+            button.disabled = false;
+        }, error => {
+            const message = error.code === error.PERMISSION_DENIED
+                ? 'Location permission was denied.'
+                : 'Current location could not be determined.';
+            setMatchingLocationStatus(message, 'error');
+            button.disabled = false;
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+    }
+
+    function renderProviderAvailability(data) {
+        const available = Boolean(data?.available);
+        const preference = Boolean(data?.availabilityPreference);
+        const activeCount = Number(data?.activeAssignmentCount || 0);
+        const toggle = document.getElementById('providerAvailabilityToggle');
+        toggle.checked = preference;
+        toggle.disabled = false;
+        const availableNowButton = document.getElementById('providerAvailableNowBtn');
+        availableNowButton.hidden = !(activeCount > 0 && !available && preference);
+        availableNowButton.disabled = false;
+        let message = available ? 'Available for new matches.' : 'Unavailable for new matches.';
+        if (activeCount > 0 && !available && preference) {
+            message = 'Reserved by an active assignment.';
+        }
+        if (activeCount > 0) {
+            message += ` ${activeCount} active assignment${activeCount === 1 ? '' : 's'} ${activeCount === 1 ? 'continues' : 'continue'}.`;
+        }
+        const status = document.getElementById('providerAvailabilityStatus');
+        status.textContent = message;
+        status.className = `availability-status ${available ? 'success' : ''}`.trim();
+    }
+
+    async function initializeProviderAvailability() {
+        if (!isProvider) return;
+        document.getElementById('providerAvailability').hidden = false;
+        const toggle = document.getElementById('providerAvailabilityToggle');
+        toggle.disabled = true;
+        document.getElementById('providerAvailabilityStatus').textContent = 'Loading availability...';
+        try {
+            const response = await fetch(`${API}/provider-availability/me`, {
+                headers: authHeader()
+            });
+            renderProviderAvailability(await readApiData(response));
+        } catch (error) {
+            const status = document.getElementById('providerAvailabilityStatus');
+            status.textContent = error.message || 'Could not load availability.';
+            status.className = 'availability-status error';
+        }
+    }
+
+    async function saveProviderAvailability(available) {
+        const toggle = document.getElementById('providerAvailabilityToggle');
+        const availableNowButton = document.getElementById('providerAvailableNowBtn');
+        toggle.disabled = true;
+        availableNowButton.disabled = true;
+        try {
+            const response = await fetch(`${API}/provider-availability/me`, {
+                method: 'PUT',
+                headers: authHeader(),
+                body: JSON.stringify({ available })
+            });
+            renderProviderAvailability(await readApiData(response));
+        } catch (error) {
+            const status = document.getElementById('providerAvailabilityStatus');
+            status.textContent = error.message || 'Could not update availability.';
+            status.className = 'availability-status error';
+            initializeProviderAvailability();
+        }
+    }
+
     function setProviderServicesStatus(message, type = '') {
         const status = document.getElementById('providerServicesStatus');
         status.textContent = message;
@@ -614,6 +826,7 @@
         }
     }
 
+    initializeProviderAvailability();
     initializeProviderServices();
 
     async function saveProfile() {

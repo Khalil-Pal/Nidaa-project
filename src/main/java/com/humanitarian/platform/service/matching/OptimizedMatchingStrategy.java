@@ -86,10 +86,8 @@ public class OptimizedMatchingStrategy implements MatchingStrategy {
         int alreadySelected = selectedPerRegion.getOrDefault(regionResolver.resolve(request), 0);
         score += 35.0 / (alreadySelected + 1);
 
-        score += geoMatchingService.findNearestVolunteer(request, volunteers)
-                .map(volunteer -> geoMatchingService.haversine(
-                        request.getLatitude(), request.getLongitude(),
-                        volunteer.getLatitude(), volunteer.getLongitude()))
+        score += geoMatchingService.findNearestProvider(request, volunteers, List.of())
+                .map(GeoMatchingService.ProviderMatch::distanceKm)
                 .map(distance -> Math.max(-20.0, 30.0 - distance * 0.4))
                 .orElse(-10.0);
 

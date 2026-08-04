@@ -7,6 +7,7 @@ import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.HelpRequestRepository;
+import com.humanitarian.platform.repository.OrganizationRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class HelpRequestServiceTest {
     @Mock private GeoMatchingService geoMatchingService;
     @Mock private AssignmentRepository assignmentRepository;
     @Mock private VolunteerRepository volunteerRepository;
+    @Mock private OrganizationRepository organizationRepository;
     @Mock private AutomaticAssignmentService automaticAssignmentService;
     @Mock private ProviderResourceService providerResourceService;
 
@@ -66,6 +68,7 @@ class HelpRequestServiceTest {
         assertThrows(BusinessException.class, () -> service.assignToMe(90L));
 
         verify(providerResourceService).requireUsableResource(8L, "SHELTER");
+        verify(organizationRepository, never()).claimIfAvailable(anyLong());
         verify(helpRequestRepository, never()).assignOrganization(
                 anyLong(), anyLong(), anyString(), anyString());
     }
@@ -98,11 +101,16 @@ class HelpRequestServiceTest {
                 .thenReturn(List.of(request));
         when(providerResourceService.findEligibleProviderUserIds("MEDICAL"))
                 .thenReturn(Set.of(302L));
-        when(geoMatchingService.findNearestVolunteer(
-                request, List.of(fartherRightResource)))
-                .thenReturn(Optional.of(fartherRightResource));
-        when(geoMatchingService.haversine(55.75, 37.62, 55.80, 37.70))
-                .thenReturn(7.2);
+        when(geoMatchingService.findNearestProvider(
+                request, List.of(fartherRightResource), List.of()))
+                .thenReturn(Optional.of(new GeoMatchingService.ProviderMatch(
+                        UserRole.VOLUNTEER,
+                        32L,
+                        302L,
+                        "Matching Provider",
+                        55.80,
+                        37.70,
+                        7.2)));
 
         var ranked = service.getRankedWithSuggestions(
                 List.of(closerWrongResource, fartherRightResource));
@@ -110,5 +118,55 @@ class HelpRequestServiceTest {
         assertEquals(1, ranked.size());
         assertEquals("Matching Provider", ranked.get(0).getSuggestedVolunteerName());
         assertEquals(7.2, ranked.get(0).getDistanceKm());
+    }
+
+    @Test
+    void volunteerClaimIsReleasedWhenManualAssignmentLosesRace() {
+        User volunteer = User.builder()
+                .id(9L)
+                .role(UserRole.VOLUNTEER)
+                .fullName("Volunteer")
+                .build();
+        HelpRequest request = HelpRequest.builder()
+                .id(92L)
+                .helpType("FOOD")
+                .status("PENDING")
+                .build();
+        when(userService.getCurrentUser()).thenReturn(volunteer);
+        when(helpRequestRepository.findById(92L)).thenReturn(Optional.of(request));
+        when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Long.class),
+                org.mockito.ArgumentMatchers.eq(9L))).thenReturn(41L);
+        when(volunteerRepository.claimIfAvailable(41L)).thenReturn(1);
+        when(helpRequestRepository.assignVolunteer(92L, 41L, "ASSIGNED", "PENDING"))
+                .thenReturn(0);
+
+        assertThrows(BusinessException.class, () -> service.assignToMe(92L));
+
+        verify(volunteerRepository).release(41L);
+    }
+
+    @Test
+    void organizationClaimIsReleasedWhenManualAssignmentLosesRace() {
+        User organization = User.builder()
+                .id(10L)
+                .role(UserRole.ORGANIZATION)
+                .fullName("Organization")
+                .build();
+        HelpRequest request = HelpRequest.builder()
+                .id(93L)
+                .helpType("WATER")
+                .status("PENDING")
+                .build();
+        when(userService.getCurrentUser()).thenReturn(organization);
+        when(helpRequestRepository.findById(93L)).thenReturn(Optional.of(request));
+        when(jdbc.queryForObject(anyString(), org.mockito.ArgumentMatchers.eq(Long.class),
+                org.mockito.ArgumentMatchers.eq(10L))).thenReturn(42L);
+        when(organizationRepository.claimIfAvailable(42L)).thenReturn(1);
+        when(helpRequestRepository.assignOrganization(93L, 42L, "ASSIGNED", "PENDING"))
+                .thenReturn(0);
+
+        assertThrows(BusinessException.class, () -> service.assignToMe(93L));
+
+        verify(organizationRepository).release(42L);
     }
 }

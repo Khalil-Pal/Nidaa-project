@@ -23,11 +23,14 @@ public class MatchingEvaluationService {
 
     private final List<MatchingStrategy> strategies;
     private final RequestRegionResolver regionResolver;
+    private final GeoMatchingService geoMatchingService;
 
     public MatchingEvaluationService(List<MatchingStrategy> strategies,
-                                     RequestRegionResolver regionResolver) {
+                                     RequestRegionResolver regionResolver,
+                                     GeoMatchingService geoMatchingService) {
         this.strategies = strategies;
         this.regionResolver = regionResolver;
+        this.geoMatchingService = geoMatchingService;
     }
 
     public Map<String, Object> evaluate(List<HelpRequest> requests) {
@@ -262,19 +265,10 @@ public class MatchingEvaluationService {
     }
 
     private Double distance(HelpRequest request, Volunteer volunteer) {
-        if (request.getLatitude() == null || request.getLongitude() == null
-                || volunteer.getLatitude() == null || volunteer.getLongitude() == null) {
-            return null;
-        }
-
-        double earthRadiusKm = 6371.0;
-        double latitudeDelta = Math.toRadians(volunteer.getLatitude() - request.getLatitude());
-        double longitudeDelta = Math.toRadians(volunteer.getLongitude() - request.getLongitude());
-        double a = Math.sin(latitudeDelta / 2) * Math.sin(latitudeDelta / 2)
-                + Math.cos(Math.toRadians(request.getLatitude()))
-                * Math.cos(Math.toRadians(volunteer.getLatitude()))
-                * Math.sin(longitudeDelta / 2) * Math.sin(longitudeDelta / 2);
-        return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return geoMatchingService.findNearestProvider(
+                        request, List.of(volunteer), List.of())
+                .map(GeoMatchingService.ProviderMatch::distanceKm)
+                .orElse(null);
     }
 
     private double percentage(long numerator, long denominator) {

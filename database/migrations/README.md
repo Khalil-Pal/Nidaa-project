@@ -10,6 +10,7 @@ Apply migrations once in filename order:
 psql -U postgres -d Web_DB -f database/migrations/V2__matching_and_assignment_history.sql
 psql -U postgres -d Web_DB -f database/migrations/V3__location_resources_and_message_moderation.sql
 psql -U postgres -d Web_DB -f database/migrations/V4__message_types_and_community_channel.sql
+psql -U postgres -d Web_DB -f database/migrations/V5__provider_availability_preference.sql
 ```
 
 ## Versions
@@ -21,6 +22,10 @@ psql -U postgres -d Web_DB -f database/migrations/V4__message_types_and_communit
 - `V4` requires every message insert to choose `DIRECT` or `COMMUNITY`, makes
   `receiver_id` conditionally nullable, and enforces receiver/category rules with
   database checks.
+- `V5` adds effective availability to organizations and a durable manual
+  availability preference to both provider roles. Claim release restores this
+  preference instead of always forcing the provider available.
 
 `V4` has no `message_type` default and assumes the `messages` table is empty when it
-is applied. Do not rerun V4 after it succeeds.
+is applied. Do not rerun V4 after it succeeds. V5 uses `IF NOT EXISTS`, so rerunning
+it safely reports notices for columns and indexes already present.

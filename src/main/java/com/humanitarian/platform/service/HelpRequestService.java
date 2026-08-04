@@ -8,6 +8,7 @@ import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.HelpRequestRepository;
+import com.humanitarian.platform.repository.OrganizationRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +58,9 @@ public class HelpRequestService {
     private VolunteerRepository volunteerRepository;
 
     @Autowired
+    private OrganizationRepository organizationRepository;
+
+    @Autowired
     private AutomaticAssignmentService automaticAssignmentService;
 
     @Autowired
@@ -98,7 +102,7 @@ public class HelpRequestService {
 
         request.setPriorityScore(priorityScoreService.calculate(request));
         HelpRequest saved = helpRequestRepository.save(request);
-        automaticAssignmentService.assignNearestVolunteer(saved);
+        automaticAssignmentService.assignNearestProvider(saved);
         return helpRequestRepository.findById(saved.getId()).orElse(saved);
     }
 
@@ -150,12 +154,21 @@ public class HelpRequestService {
             } catch (Exception e) {
                 throw new BusinessException("Error retrieving organization profile: " + e.getMessage());
             }
+            if (organizationRepository.claimIfAvailable(organizationId) == 0) {
+                throw new BusinessException("Your organization profile is not currently available.");
+            }
             updated = helpRequestRepository.assignOrganization(requestId, organizationId, "ASSIGNED", "PENDING");
             assignedOrganizationId = organizationId;
 
         }
 
         if (updated == 0) {
+            if (assignedVolunteerId != null) {
+                volunteerRepository.release(assignedVolunteerId);
+            }
+            if (assignedOrganizationId != null) {
+                organizationRepository.release(assignedOrganizationId);
+            }
             throw new BusinessException("Request is no longer available or already assigned.");
         }
 
@@ -298,21 +311,16 @@ public class HelpRequestService {
                             helpType, providerResourceService::findEligibleProviderUserIds);
                     List<Volunteer> resourceMatchedVolunteers = filterByProviderResource(
                             availableVolunteers, eligibleUserIds);
-                    var nearest = geoMatchingService.findNearestVolunteer(
-                            request, resourceMatchedVolunteers);
+                    var nearest = geoMatchingService.findNearestProvider(
+                            request, resourceMatchedVolunteers, List.of());
                     return RankedRequestDTO.builder()
                             .request(request)
                             .priorityScore(score)
-                            .suggestedVolunteerName(nearest.map(this::volunteerName).orElse("N/A"))
+                            .suggestedVolunteerName(nearest
+                                    .map(GeoMatchingService.ProviderMatch::providerName)
+                                    .orElse("N/A"))
                             .distanceKm(nearest
-                                    .filter(volunteer -> hasCoordinates(request)
-                                            && volunteer.getLatitude() != null
-                                            && volunteer.getLongitude() != null)
-                                    .map(volunteer -> geoMatchingService.haversine(
-                                            request.getLatitude(),
-                                            request.getLongitude(),
-                                            volunteer.getLatitude(),
-                                            volunteer.getLongitude()))
+                                    .map(GeoMatchingService.ProviderMatch::distanceKm)
                                     .orElse(null))
                             .build();
                 })
@@ -343,6 +351,7 @@ public class HelpRequestService {
                     assignment.setCompletedAt(completedAt);
                     assignmentRepository.save(assignment);
                     releaseVolunteerIfIdle(assignment.getVolunteerId());
+                    releaseOrganizationIfIdle(assignment.getOrganizationId());
                 });
     }
 
@@ -353,14 +362,11 @@ public class HelpRequestService {
         }
     }
 
-    private boolean hasCoordinates(HelpRequest request) {
-        return request.getLatitude() != null && request.getLongitude() != null;
-    }
-
-    private String volunteerName(Volunteer volunteer) {
-        if (volunteer.getUser() != null && volunteer.getUser().getFullName() != null) {
-            return volunteer.getUser().getFullName();
+    private void releaseOrganizationIfIdle(Long organizationId) {
+        if (organizationId != null
+                && assignmentRepository.countByOrganizationIdAndStatus(
+                        organizationId, "ASSIGNED") == 0) {
+            organizationRepository.release(organizationId);
         }
-        return volunteer.getId() != null ? "Volunteer #" + volunteer.getId() : "Volunteer";
     }
 }

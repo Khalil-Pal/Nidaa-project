@@ -1,6 +1,10 @@
 package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.model.HelpRequest;
+import com.humanitarian.platform.model.Organization;
+import com.humanitarian.platform.model.Profile;
+import com.humanitarian.platform.model.User;
+import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.model.Volunteer;
 import org.junit.jupiter.api.Test;
 
@@ -36,14 +40,12 @@ class GeoMatchingServiceTest {
         Volunteer unavailableNearby = Volunteer.builder()
                 .id(1L)
                 .isAvailable(false)
-                .latitude(55.75)
-                .longitude(37.62)
+                .user(userAt(10L, 55.75, 37.62))
                 .build();
         Volunteer availableFarther = Volunteer.builder()
                 .id(2L)
                 .isAvailable(true)
-                .latitude(55.80)
-                .longitude(37.70)
+                .user(userAt(20L, 55.80, 37.70))
                 .build();
 
         assertEquals(2L, service.findNearestVolunteer(
@@ -57,10 +59,47 @@ class GeoMatchingServiceTest {
         Volunteer available = Volunteer.builder()
                 .id(1L)
                 .isAvailable(true)
-                .latitude(55.75)
-                .longitude(37.62)
+                .user(userAt(10L, 55.75, 37.62))
                 .build();
 
         assertTrue(service.findNearestVolunteer(request, List.of(available)).isEmpty());
+    }
+
+    @Test
+    void combinedRankingUsesCanonicalProfileCoordinates() {
+        HelpRequest request = HelpRequest.builder()
+                .latitude(55.75)
+                .longitude(37.62)
+                .build();
+        Volunteer volunteer = Volunteer.builder()
+                .id(1L)
+                .isAvailable(true)
+                .latitude(55.7501)
+                .longitude(37.6201)
+                .user(userAt(10L, 55.90, 37.90))
+                .build();
+        User organizationUser = userAt(20L, 55.751, 37.621);
+        Organization organization = Organization.builder()
+                .id(2L)
+                .user(organizationUser)
+                .officialName("Nearby Aid")
+                .isAvailable(true)
+                .build();
+
+        var match = service.findNearestProvider(
+                request, List.of(volunteer), List.of(organization)).orElseThrow();
+
+        assertEquals(UserRole.ORGANIZATION, match.providerType());
+        assertEquals(2L, match.providerId());
+    }
+
+    private User userAt(Long id, double latitude, double longitude) {
+        User user = User.builder().id(id).fullName("Provider " + id).build();
+        user.setProfile(Profile.builder()
+                .user(user)
+                .latitude(latitude)
+                .longitude(longitude)
+                .build());
+        return user;
     }
 }

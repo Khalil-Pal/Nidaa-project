@@ -2,6 +2,8 @@ package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
+import com.humanitarian.platform.model.Profile;
+import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.service.matching.FifoMatchingStrategy;
 import com.humanitarian.platform.service.matching.OptimizedMatchingStrategy;
@@ -26,7 +28,8 @@ class MatchingEvaluationServiceTest {
                     new WeightedScoringStrategy(priorityScoreService),
                     new OptimizedMatchingStrategy(
                             priorityScoreService, geoMatchingService, regionResolver)),
-            regionResolver);
+            regionResolver,
+            geoMatchingService);
 
     @Test
     @SuppressWarnings("unchecked")
@@ -37,9 +40,9 @@ class MatchingEvaluationServiceTest {
         HelpRequest high = request(3L, "HIGH", now.minusHours(5), 59.94, 30.31);
 
         Volunteer first = Volunteer.builder()
-                .id(10L).isAvailable(true).latitude(55.76).longitude(37.63).build();
+                .id(10L).isAvailable(true).user(userAt(100L, 55.76, 37.63)).build();
         Volunteer second = Volunteer.builder()
-                .id(11L).isAvailable(true).latitude(59.95).longitude(30.30).build();
+                .id(11L).isAvailable(true).user(userAt(110L, 59.95, 30.30)).build();
 
         Assignment historical = Assignment.builder()
                 .requestId(3L)
@@ -90,5 +93,15 @@ class MatchingEvaluationServiceTest {
                 .latitude(latitude)
                 .longitude(longitude)
                 .build();
+    }
+
+    private User userAt(Long id, double latitude, double longitude) {
+        User user = User.builder().id(id).fullName("Volunteer " + id).build();
+        user.setProfile(Profile.builder()
+                .user(user)
+                .latitude(latitude)
+                .longitude(longitude)
+                .build());
+        return user;
     }
 }

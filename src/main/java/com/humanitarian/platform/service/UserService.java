@@ -50,12 +50,16 @@ public class UserService {
     }
 
     // Update user profile
+    @Transactional
     public Profile updateProfile(Long userId, UserProfileDto dto) {
+        validateCoordinates(dto);
         User user = getUserById(userId);
 
         // Update user full name and phone
-        if (dto.getFullName() != null) user.setFullName(dto.getFullName());
-        if (dto.getPhone() != null) user.setPhone(dto.getPhone());
+        if (dto.getFullName() != null && !dto.getFullName().isBlank()) {
+            user.setFullName(dto.getFullName().trim());
+        }
+        if (dto.getPhone() != null) user.setPhone(dto.getPhone().trim());
         userRepository.save(user);
 
         // Update or create profile
@@ -71,6 +75,22 @@ public class UserService {
         return profileRepository.save(profile);
     }
 
+    @Transactional(readOnly = true)
+    public UserProfileDto getCurrentProfile() {
+        User user = getCurrentUser();
+        UserProfileDto response = new UserProfileDto();
+        response.setFullName(user.getFullName());
+        response.setPhone(user.getPhone());
+        profileRepository.findByUserId(user.getId()).ifPresent(profile -> {
+            response.setBio(profile.getBio());
+            response.setAddress(profile.getAddress());
+            response.setPreferredLanguage(profile.getPreferredLanguage());
+            response.setLatitude(profile.getLatitude());
+            response.setLongitude(profile.getLongitude());
+        });
+        return response;
+    }
+
     // Block or unblock user (admin only)
     @Transactional
     public User toggleUserActive(Long userId) {
@@ -84,5 +104,14 @@ public class UserService {
     // Search users by name
     public List<User> searchUsers(String name) {
         return userRepository.searchByName(name);
+    }
+
+    private void validateCoordinates(UserProfileDto dto) {
+        boolean hasLatitude = dto.getLatitude() != null;
+        boolean hasLongitude = dto.getLongitude() != null;
+        if (hasLatitude != hasLongitude) {
+            throw new BusinessException(
+                    "Latitude and longitude must be provided together.");
+        }
     }
 }

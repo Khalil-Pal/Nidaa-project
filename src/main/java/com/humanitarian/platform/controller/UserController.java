@@ -7,6 +7,7 @@ import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.service.PasswordChangeService;
 import com.humanitarian.platform.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,28 +34,25 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("User retrieved", userService.getCurrentUser()));
     }
 
-    // PUT /api/users/me/profile — update name, phone, bio
+    @GetMapping("/me/profile")
+    public ResponseEntity<ApiResponse<UserProfileDto>> getMyProfile() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Profile retrieved", userService.getCurrentProfile()));
+    }
+
+    // PUT /api/users/me/profile — update account and profile fields
     @PutMapping("/me/profile")
-    public ResponseEntity<ApiResponse<?>> updateProfile(@RequestBody UserProfileDto dto) {
+    public ResponseEntity<ApiResponse<?>> updateProfile(
+            @Valid @RequestBody UserProfileDto dto) {
         User current = userService.getCurrentUser();
-
-        // Update fullName and phone directly on User
-        if (dto.getFullName() != null && !dto.getFullName().isBlank()) {
-            current.setFullName(dto.getFullName().trim());
-        }
-        if (dto.getPhone() != null) {
-            current.setPhone(dto.getPhone().trim());
-        }
-        userRepository.save(current);
-
-        // Also update profile table
         var profile = userService.updateProfile(current.getId(), dto);
         return ResponseEntity.ok(ApiResponse.success("Profile updated", profile));
     }
 
     // Also support old endpoint path
     @PutMapping("/profile")
-    public ResponseEntity<ApiResponse<?>> updateProfileAlt(@RequestBody UserProfileDto dto) {
+    public ResponseEntity<ApiResponse<?>> updateProfileAlt(
+            @Valid @RequestBody UserProfileDto dto) {
         return updateProfile(dto);
     }
 

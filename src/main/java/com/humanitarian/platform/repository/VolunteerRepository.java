@@ -12,14 +12,14 @@ import java.util.Optional;
 
 @Repository
 public interface VolunteerRepository extends JpaRepository<Volunteer, Long> {
-    @EntityGraph(attributePaths = "user")
+    @EntityGraph(attributePaths = {"user", "user.profile"})
     List<Volunteer> findByIsAvailableTrue();
 
-    @EntityGraph(attributePaths = "user")
+    @EntityGraph(attributePaths = {"user", "user.profile"})
     Optional<Volunteer> findByUserId(Long userId);
 
     @Override
-    @EntityGraph(attributePaths = "user")
+    @EntityGraph(attributePaths = {"user", "user.profile"})
     List<Volunteer> findAll();
 
     List<Volunteer> findByOrganizationId(Long organizationId);
@@ -29,12 +29,21 @@ public interface VolunteerRepository extends JpaRepository<Volunteer, Long> {
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "UPDATE volunteers SET is_available = false " +
-            "WHERE volunteer_id = :volunteerId AND is_available = true",
+            "WHERE volunteer_id = :volunteerId AND is_available = true " +
+            "AND availability_preference = true",
             nativeQuery = true)
     int claimIfAvailable(@Param("volunteerId") Long volunteerId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "UPDATE volunteers SET is_available = true WHERE volunteer_id = :volunteerId",
+    @Query(value = "UPDATE volunteers SET is_available = availability_preference " +
+            "WHERE volunteer_id = :volunteerId",
             nativeQuery = true)
     int release(@Param("volunteerId") Long volunteerId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE volunteers SET is_available = :available, " +
+            "availability_preference = :available WHERE user_id = :userId",
+            nativeQuery = true)
+    int setManualAvailability(@Param("userId") Long userId,
+                              @Param("available") boolean available);
 }
