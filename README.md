@@ -212,7 +212,7 @@ Maven does not need to be installed globally because the repository includes the
 ## Database Setup
 
 > [!IMPORTANT]
-> Hibernate schema generation is disabled with `spring.jpa.hibernate.ddl-auto=none`. The repository currently contains the V2 matching/history migration, but not a complete V1 bootstrap schema. A fresh empty database is therefore not enough. Load the project's existing base schema first, then apply V2.
+> Hibernate schema generation is disabled with `spring.jpa.hibernate.ddl-auto=none`. The repository contains incremental V2-V4 migrations, but not a complete V1 bootstrap schema. A fresh empty database is therefore not enough. Load the project's existing base schema first, then apply every migration in version order.
 
 Create the database if it does not already exist:
 
@@ -225,6 +225,10 @@ After the base schema is present, apply migrations in version order:
 ```bash
 psql -h 127.0.0.1 -U postgres -d Web_DB \
   -f database/migrations/V2__matching_and_assignment_history.sql
+psql -h 127.0.0.1 -U postgres -d Web_DB \
+  -f database/migrations/V3__location_resources_and_message_moderation.sql
+psql -h 127.0.0.1 -U postgres -d Web_DB \
+  -f database/migrations/V4__message_types_and_community_channel.sql
 ```
 
 Windows PowerShell example when PostgreSQL is not on `PATH`:
@@ -233,9 +237,15 @@ Windows PowerShell example when PostgreSQL is not on `PATH`:
 & "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
   -h 127.0.0.1 -U postgres -d Web_DB `
   -f ".\database\migrations\V2__matching_and_assignment_history.sql"
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V3__location_resources_and_message_moderation.sql"
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
+  -h 127.0.0.1 -U postgres -d Web_DB `
+  -f ".\database\migrations\V4__message_types_and_community_channel.sql"
 ```
 
-The V2 script is idempotent and adds assignment-history support for material and psychological requests. See [database/migrations/README.md](database/migrations/README.md) for migration notes.
+V2 adds assignment history, V3 adds provider resources and moderation storage, and V4 separates direct messages from community-feed messages with database-enforced receiver rules. See [database/migrations/README.md](database/migrations/README.md) for migration notes.
 
 ## Configuration
 
@@ -348,6 +358,10 @@ Access tokens expire after 15 minutes by default. Use `/api/auth/refresh` with t
 | `GET` | `/api/v1/admin/dashboard/ranked` | Admin | View material and psychological priority queues. |
 | `GET` | `/api/v1/admin/assignments` | Admin | View complete assignment history. |
 | `GET` | `/api/v1/admin/evaluation` | Admin | Compare matching strategies and metrics. |
+| `GET` | `/api/community/messages` | Volunteer, psychologist, organization, admin | View paginated shared community messages. |
+| `POST` | `/api/community/messages` | Volunteer, psychologist, organization, admin | Publish a community message. |
+| `DELETE` | `/api/community/messages/{id}?reason=...` | Admin | Soft-delete a message with mandatory justification. |
+| `GET` | `/api/admin/community/deletions` | Admin | Review the community moderation audit. |
 
 ## Example Help Request
 
@@ -407,6 +421,8 @@ The current tests cover:
 - Assignment history mapping.
 - Matching strategy evaluation metrics.
 - Ranked administrator dashboard contracts.
+- Community role enforcement and direct-message isolation.
+- Mandatory moderation reasons, soft deletion, and audit snapshots.
 
 ## Current Constraints
 
@@ -421,6 +437,7 @@ The following boundaries are important when evaluating the current implementatio
 - Haversine distance is straight-line distance, not a road route or travel-time estimate.
 - Waiting-time priority points are not capped, so very old requests can produce unusually large scores.
 - Strategy comparison is an analytical simulation and does not yet apply provider-resource eligibility; production material assignment uses resource-filtered nearest-volunteer matching.
+- Community messages and moderation are server-backed, but likes/comments remain browser-local and community photo posts are not yet supported.
 
 ## Production Checklist
 

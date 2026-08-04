@@ -88,6 +88,7 @@ public class UserController {
 
     // GET /api/users/{id}
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<User>> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("User retrieved", userService.getUserById(id)));
     }
@@ -101,6 +102,7 @@ public class UserController {
 
     // GET /api/users/role/{role}
     @GetMapping("/role/{role}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<User>>> getUsersByRole(@PathVariable String role) {
         List<User> users = userService.getUsersByRole(UserRole.valueOf(role.toUpperCase()));
         return ResponseEntity.ok(ApiResponse.success("Users retrieved", users));
@@ -108,6 +110,7 @@ public class UserController {
 
     // GET /api/users/search
     @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<User>>> searchUsers(@RequestParam String name) {
         return ResponseEntity.ok(ApiResponse.success("Search results", userService.searchUsers(name)));
     }

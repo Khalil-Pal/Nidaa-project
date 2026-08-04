@@ -18,8 +18,15 @@ public class Message {
     @Column(name = "sender_id", nullable = false)
     private Long senderId;
 
-    @Column(name = "receiver_id", nullable = false)
+    @Column(name = "receiver_id")
     private Long receiverId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "message_type", nullable = false, length = 20)
+    private MessageType messageType;
+
+    @Column(name = "community_category", length = 50)
+    private String communityCategory;
 
     @Column(name = "help_request_id")
     private Long helpRequestId;
@@ -44,4 +51,8 @@ public class Message {
     @Column(name = "is_encrypted")
     @Builder.Default
     private Boolean isEncrypted = false;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 }

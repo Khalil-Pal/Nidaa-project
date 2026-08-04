@@ -334,17 +334,6 @@ public class HelpRequestService {
         return helpRequestRepository.findByHelpType(HelpTypeNormalizer.normalize(helpType));
     }
 
-    public Map<String, Object> getContactInfo(Long requestId) {
-        HelpRequest req = getRequestById(requestId);
-        Map<String, Object> contact = new HashMap<>();
-        userRepository.findById(req.getBeneficiaryId()).ifPresent(b -> {
-            contact.put("name",  b.getFullName());
-            contact.put("email", b.getEmail());
-            contact.put("phone", b.getPhone() != null ? b.getPhone() : "Not provided");
-        });
-        return contact;
-    }
-
     private void updateAssignmentStatus(Long requestId, String newStatus, LocalDateTime completedAt) {
         assignmentRepository
                 .findFirstByRequestIdAndStatusOrderByAssignedAtDesc(requestId, "ASSIGNED")

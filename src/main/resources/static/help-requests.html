@@ -290,13 +290,14 @@
             // Action button changes based on role
             let actionBtn = '';
             if (userRole === 'beneficiary') {
-                // Beneficiary sees their own requests — no action needed
-                actionBtn = '';
+                if (status === 'ASSIGNED' || status === 'COMPLETED') {
+                    actionBtn = `<button class="btn-action btn-view" onclick="openContactModal(${id})"><i class="fa fa-address-card" style="font-size:11px;margin-right:4px"></i>Contact Responder</button>`;
+                }
             } else if (userRole === 'volunteer' || userRole === 'organization') {
                 if (status === 'PENDING') {
                     actionBtn = `<button class="btn-action btn-accept" style="background:var(--green)" onclick="startWork(${id}, this)"><i class="fa fa-play" style="font-size:11px;margin-right:4px"></i>Start Working</button>`;
                 } else if (status === 'ASSIGNED' || status === 'COMPLETED') {
-                    actionBtn = `<button class="btn-action btn-view" onclick="openContactModal(${id}, '${title.replace(/'/g, "\'")}')"><i class="fa fa-address-card" style="font-size:11px;margin-right:4px"></i>Contact & Status</button>`;
+                    actionBtn = `<button class="btn-action btn-view" onclick="openContactModal(${id})"><i class="fa fa-address-card" style="font-size:11px;margin-right:4px"></i>Contact & Status</button>`;
                 }
             }
 
@@ -371,22 +372,13 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
                 method: 'PUT', headers: authHeader()
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
-            const d = data.data || data;
 
             // Update local list status
             const req = allRequests.find(r => (r.requestId || r.id) == id);
             if (req) req.status = 'ASSIGNED';
             filterCards();
 
-            // Show contact modal with returned data
-            openContactModalWithData(
-                id,
-                d.requesterName  || '—',
-                d.requesterEmail || '—',
-                d.requesterPhone || '—',
-                req ? (req.title || 'Request') : 'Help Request'
-            );
+            await openContactModal(id);
         } catch (e) {
             alert('Could not start: ' + e.message);
             btn.disabled = false;
@@ -396,37 +388,42 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
 
     async function openContactModal(id, title) {
         currentContactRequestId = id;
-        document.getElementById('contactRequestTitle').textContent = title || 'Help Request';
+        const req = allRequests.find(r => (r.requestId || r.id) == id);
+        document.getElementById('contactRequestTitle').textContent =
+            title || (req && req.title) || 'Help Request';
         document.getElementById('contactName').textContent  = '...';
         document.getElementById('contactEmail').textContent = '...';
         document.getElementById('contactPhone').textContent = '...';
+        document.getElementById('contactPartyLabel').textContent = 'Contact';
+        document.getElementById('contactStatusSection').style.display =
+            userRole === 'beneficiary' ? 'none' : 'block';
         document.getElementById('contactOverlay').classList.add('open');
         // Set current status in dropdown
-        const req = allRequests.find(r => (r.requestId || r.id) == id);
-        if (req) {
+        if (req && userRole !== 'beneficiary') {
             buildStatusOptions(req.status || 'ASSIGNED');
         }
         try {
             const res = await fetch(API + '/help-requests/' + id + '/contact', { headers: authHeader() });
-            if (!res.ok) throw new Error();
+            if (!res.ok) {
+                const error = await res.json().catch(() => ({}));
+                throw new Error(error.message || 'Contact is not available');
+            }
             const data = await res.json();
             const d = data.data || data;
+            document.getElementById('contactPartyLabel').textContent = formatContactRole(d.contactRole);
             document.getElementById('contactName').textContent  = d.name  || '—';
             document.getElementById('contactEmail').textContent = d.email || '—';
-            document.getElementById('contactPhone').textContent = d.phone || '—';
-        } catch {
-            document.getElementById('contactName').textContent = 'Could not load contact';
+            document.getElementById('contactPhone').textContent = d.phone || 'Not provided';
+        } catch (error) {
+            document.getElementById('contactName').textContent = error.message;
+            document.getElementById('contactEmail').textContent = '—';
+            document.getElementById('contactPhone').textContent = '—';
         }
     }
 
-    function openContactModalWithData(id, name, email, phone, title) {
-        currentContactRequestId = id;
-        document.getElementById('contactRequestTitle').textContent = title || 'Help Request';
-        document.getElementById('contactName').textContent  = name;
-        document.getElementById('contactEmail').textContent = email;
-        document.getElementById('contactPhone').textContent = phone;
-        document.getElementById('contactOverlay').classList.add('open');
-        buildStatusOptions('ASSIGNED');
+    function formatContactRole(role) {
+        const normalized = (role || 'Contact').toLowerCase();
+        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
     }
 
     function closeContactModal() {
@@ -630,7 +627,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
         <div class="contact-sub" id="contactRequestTitle">Loading...</div>
         <div class="contact-row">
             <div class="contact-icon"><i class="fa fa-user"></i></div>
-            <div><div class="contact-label">Requester</div><div class="contact-value" id="contactName">—</div></div>
+            <div><div class="contact-label" id="contactPartyLabel">Contact</div><div class="contact-value" id="contactName">—</div></div>
         </div>
         <div class="contact-row">
             <div class="contact-icon"><i class="fa fa-envelope"></i></div>
@@ -640,7 +637,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
             <div class="contact-icon"><i class="fa fa-phone"></i></div>
             <div><div class="contact-label">Phone</div><div class="contact-value" id="contactPhone">—</div></div>
         </div>
-        <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+        <div id="contactStatusSection" style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
             <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--dark)">Update Request Status</div>
             <select class="status-select" id="contactStatusSelect">
             </select>

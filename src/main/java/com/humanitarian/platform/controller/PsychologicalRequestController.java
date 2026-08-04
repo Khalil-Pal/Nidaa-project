@@ -1,8 +1,10 @@
 package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.dto.ApiResponse;
+import com.humanitarian.platform.dto.ContactInfoResponse;
 import com.humanitarian.platform.dto.PsychologicalRequestDto;
 import com.humanitarian.platform.model.PsychologicalRequest;
+import com.humanitarian.platform.service.ContactInfoService;
 import com.humanitarian.platform.service.PsychologicalRequestService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -16,10 +18,13 @@ import java.util.List;
 public class PsychologicalRequestController {
 
     private final PsychologicalRequestService psychologicalRequestService;
+    private final ContactInfoService contactInfoService;
 
     // Constructor injection — no @Autowired on field
-    public PsychologicalRequestController(PsychologicalRequestService psychologicalRequestService) {
+    public PsychologicalRequestController(PsychologicalRequestService psychologicalRequestService,
+                                          ContactInfoService contactInfoService) {
         this.psychologicalRequestService = psychologicalRequestService;
+        this.contactInfoService = contactInfoService;
     }
 
     // POST /api/psychological-requests
@@ -66,6 +71,13 @@ public class PsychologicalRequestController {
     public ResponseEntity<ApiResponse<PsychologicalRequest>> getRequestById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Request retrieved",
                 psychologicalRequestService.getRequestById(id)));
+    }
+
+    @GetMapping("/{id}/contact")
+    @PreAuthorize("hasAnyRole('BENEFICIARY', 'PSYCHOLOGIST')")
+    public ResponseEntity<ApiResponse<ContactInfoResponse>> getContact(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Contact retrieved",
+                contactInfoService.getPsychologicalRequestContact(id)));
     }
 
     // PUT /api/psychological-requests/{id}/accept

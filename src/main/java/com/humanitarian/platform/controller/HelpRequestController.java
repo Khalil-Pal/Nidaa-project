@@ -1,8 +1,10 @@
 package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.dto.ApiResponse;
+import com.humanitarian.platform.dto.ContactInfoResponse;
 import com.humanitarian.platform.dto.HelpRequestDto;
 import com.humanitarian.platform.model.HelpRequest;
+import com.humanitarian.platform.service.ContactInfoService;
 import com.humanitarian.platform.service.HelpRequestService;
 import com.humanitarian.platform.service.UserService;
 import jakarta.validation.Valid;
@@ -24,6 +26,7 @@ import org.springframework.data.domain.Page;
 public class HelpRequestController {
 
     @Autowired private HelpRequestService helpRequestService;
+    @Autowired private ContactInfoService contactInfoService;
     @Autowired private UserService        userService;
     @Autowired private JdbcTemplate       jdbc;
 
@@ -96,9 +99,10 @@ public class HelpRequestController {
     }
 
     @GetMapping("/{id}/contact")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getContact(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('BENEFICIARY', 'VOLUNTEER', 'ORGANIZATION')")
+    public ResponseEntity<ApiResponse<ContactInfoResponse>> getContact(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Contact retrieved",
-                helpRequestService.getContactInfo(id)));
+                contactInfoService.getHelpRequestContact(id)));
     }
 
     @DeleteMapping("/{id}")

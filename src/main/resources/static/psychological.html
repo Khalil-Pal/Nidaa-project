@@ -71,6 +71,9 @@
     select, textarea { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-family: 'Inter', sans-serif; color: var(--dark); outline: none; transition: border-color .2s; background: white; }
     select:focus, textarea:focus { border-color: var(--blue); }
     textarea { resize: vertical; min-height: 90px; }
+    .anonymous-choice { display: flex; align-items: center; gap: 10px; padding: 11px 12px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+    .anonymous-choice input { width: 17px; height: 17px; margin: 0; accent-color: var(--blue); flex-shrink: 0; }
+    .anonymous-choice span { font-size: 14px; font-weight: 600; }
     .btn-submit { width: 100%; padding: 13px; background: var(--blue); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif; }
     .btn-submit:hover { background: #1e40af; }
 
@@ -92,6 +95,8 @@
     .pcicon{width:34px;height:34px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:13px;flex-shrink:0}
     .pclbl{font-size:11px;color:var(--muted);text-transform:uppercase}
     .pcval{font-size:14px;font-weight:600;color:var(--dark)}
+    .psych-contact-notice{margin-top:14px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:8px;background:#eff6ff;color:#1e40af;font-size:13px;line-height:1.45}
+    .psych-contact-notice[hidden]{display:none}
     .psych-status-section{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
     .psych-status-title{font-size:13px;font-weight:600;margin-bottom:8px;color:var(--dark)}
     .psych-status-sel{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'Inter',sans-serif;outline:none;background:white}
@@ -226,6 +231,10 @@
         <label>Tell us a bit about what you're going through <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
         <textarea id="supportDesc" placeholder="Your message is private and confidential..."></textarea>
       </div>
+      <label class="anonymous-choice">
+        <input type="checkbox" id="supportAnonymous" />
+        <span>Keep my identity anonymous</span>
+      </label>
       <button type="submit" class="btn-submit">Submit Request</button>
     </form>
   </div>
@@ -309,7 +318,12 @@
             <div class="title">${r.category||''} — ${r.preferredFormat||r.supportType||''}</div>
             <div class="meta">Submitted ${fmtDate(r.createdAt)}${r.description?' · '+r.description.substring(0,40):''}</div>
           </div>
-          <div class="req-actions"><span class="tag ${sc[r.status]||'status-pending'}">${r.status||'PENDING'}</span></div>
+          <div class="req-actions">
+            <span class="tag ${sc[r.status]||'status-pending'}">${r.status||'PENDING'}</span>
+            ${['ASSIGNED','COMPLETED'].includes((r.status||'').toUpperCase())
+              ? `<button class="btn-accept" onclick="openPsychContact(${r.id},'Psychologist Contact','${r.status||'ASSIGNED'}')">Contact Psychologist</button>`
+              : ''}
+          </div>
         </div>`).join('');
     } catch {
       if (list) list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">Could not load requests.</div>';
@@ -357,7 +371,7 @@
       urgencyLevel:    'MEDIUM',
       preferredFormat: selectedFormat,
       description:     document.getElementById('supportDesc').value.trim(),
-      isAnonymous:     false
+      isAnonymous:     document.getElementById('supportAnonymous').checked
     };
 
     try {
@@ -381,12 +395,15 @@
   let currentPsychRequestId = null;
 
   async function startPsychWork(id, btn) {
-    if (!confirm('Start working with this person? Their contact information will be shown.')) return;
+    if (!confirm('Start working on this request? Anonymous requests will keep the beneficiary identity private.')) return;
     btn.disabled = true;
     btn.textContent = 'Starting...';
     try {
       const res = await fetch(API + '/psychological-requests/' + id + '/accept', { method: 'PUT', headers: authHeader() });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'HTTP ' + res.status);
+      }
 
       // Remove decline button
       const row = document.getElementById('pr-' + id);
@@ -396,10 +413,12 @@
         btn.textContent = '✓ Working';
         btn.style.background = '#047857';
         btn.disabled = false;
-        btn.onclick = () => openPsychContact(id, row.querySelector('.title') ? row.querySelector('.title').textContent : 'Support Request');
+        btn.onclick = () => openPsychContact(
+          id,
+          row.querySelector('.title') ? row.querySelector('.title').textContent : 'Support Request',
+          'ASSIGNED');
       }
-      // Show contact modal
-      openPsychContact(id, 'Support Request');
+      await openPsychContact(id, 'Support Request', 'ASSIGNED');
     } catch (e) {
       alert('Could not start: ' + e.message);
       btn.disabled = false;
@@ -407,33 +426,49 @@
     }
   }
 
-  async function openPsychContact(id, title) {
+  async function openPsychContact(id, title, status = 'ASSIGNED') {
     currentPsychRequestId = id;
     document.getElementById('psychContactTitle').textContent = title || 'Requester Contact';
     document.getElementById('psychContactName').textContent  = '...';
     document.getElementById('psychContactEmail').textContent = '...';
     document.getElementById('psychContactPhone').textContent = '...';
+    const notice = document.getElementById('psychContactNotice');
+    notice.hidden = true;
+    notice.textContent = '';
+    const statusSection = document.getElementById('psychStatusSection');
+    statusSection.style.display = userRole === 'psychologist' ? 'block' : 'none';
+    if (userRole === 'psychologist') buildPsychStatusOptions(status);
     document.getElementById('psychContactOverlay').classList.add('open');
     try {
-      // Get the request to find beneficiary id
-      const res = await fetch(API + '/psychological-requests/' + id, { headers: authHeader() });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      const req  = data.data || data;
-      buildPsychStatusOptions(req.status || 'ASSIGNED');
-      if (req.beneficiaryId) {
-        const ures = await fetch(API + '/users/' + req.beneficiaryId, { headers: authHeader() });
-        if (ures.ok) {
-          const ud = await ures.json();
-          const u  = ud.data || ud;
-          document.getElementById('psychContactName').textContent  = u.fullName || '—';
-          document.getElementById('psychContactEmail').textContent = u.email    || '—';
-          document.getElementById('psychContactPhone').textContent = u.phone    || 'Not provided';
-        }
+      const res = await fetch(API + '/psychological-requests/' + id + '/contact', { headers: authHeader() });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Contact is not available');
       }
-    } catch {
-      document.getElementById('psychContactName').textContent = 'Could not load contact';
+      const data = await res.json();
+      const contact = data.data || data;
+      const roleLabel = formatPsychContactRole(contact.contactRole);
+      document.getElementById('psychContactTitle').textContent =
+        contact.anonymous ? 'Anonymous Request' : roleLabel + ' Contact';
+      document.getElementById('psychContactName').textContent = contact.name || '—';
+      document.getElementById('psychContactEmail').textContent =
+        contact.anonymous ? 'Not shared' : (contact.email || '—');
+      document.getElementById('psychContactPhone').textContent =
+        contact.anonymous ? 'Not shared' : (contact.phone || 'Not provided');
+      if (contact.message) {
+        notice.textContent = contact.message;
+        notice.hidden = false;
+      }
+    } catch (error) {
+      document.getElementById('psychContactName').textContent = error.message;
+      document.getElementById('psychContactEmail').textContent = '—';
+      document.getElementById('psychContactPhone').textContent = '—';
     }
+  }
+
+  function formatPsychContactRole(role) {
+    const normalized = (role || 'Contact').toLowerCase();
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   }
 
   async function loadActiveSessions() {
@@ -457,7 +492,7 @@
           </div>
           <div class="req-actions">
             <span class="tag ${sc[r.status]||'status-assigned'}">${r.status||'ASSIGNED'}</span>
-            <button class="btn-accept" style="font-size:12px;padding:6px 12px" onclick="openPsychContact(${r.id},'${(r.category||'Session').replace(/'/g,'')}')">Contact & Status</button>
+            <button class="btn-accept" style="font-size:12px;padding:6px 12px" onclick="openPsychContact(${r.id},'${(r.category||'Session').replace(/'/g,'')}','${r.status||'ASSIGNED'}')">Contact & Status</button>
           </div>
         </div>`).join('');
     } catch {
@@ -598,7 +633,8 @@
     <div class="pcrow"><div class="pcicon"><i class="fa fa-user"></i></div><div><div class="pclbl">Name</div><div class="pcval" id="psychContactName">—</div></div></div>
     <div class="pcrow"><div class="pcicon"><i class="fa fa-envelope"></i></div><div><div class="pclbl">Email</div><div class="pcval" id="psychContactEmail">—</div></div></div>
     <div class="pcrow"><div class="pcicon"><i class="fa fa-phone"></i></div><div><div class="pclbl">Phone</div><div class="pcval" id="psychContactPhone">—</div></div></div>
-    <div class="psych-status-section">
+    <div class="psych-contact-notice" id="psychContactNotice" hidden></div>
+    <div class="psych-status-section" id="psychStatusSection">
       <div class="psych-status-title">Update Request Status</div>
       <select class="psych-status-sel" id="psychStatusSelect">
         <option value="ASSIGNED">Assigned (In Progress)</option>
