@@ -13,6 +13,7 @@ import com.humanitarian.platform.service.AutomaticAssignmentService;
 import com.humanitarian.platform.service.GeoMatchingService;
 import com.humanitarian.platform.service.HelpRequestService;
 import com.humanitarian.platform.service.PriorityScoreService;
+import com.humanitarian.platform.service.ProviderResourceService;
 import com.humanitarian.platform.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +45,7 @@ class RequestLifecycleTest {
     @Mock private VolunteerRepository volunteerRepository;
     @Mock private AutomaticAssignmentService automaticAssignmentService;
     @Mock private GeoMatchingService geoMatchingService;
+    @Mock private ProviderResourceService providerResourceService;
     @Spy private PriorityScoreService priorityScoreService = new PriorityScoreService();
 
     @InjectMocks private HelpRequestService helpRequestService;
@@ -78,6 +80,7 @@ class RequestLifecycleTest {
                 .id(10L)
                 .beneficiaryId(beneficiary.getId())
                 .title("Need food")
+                .helpType("FOOD")
                 .priorityScore(36)
                 .status("PENDING")
                 .build();
@@ -94,6 +97,7 @@ class RequestLifecycleTest {
                 .status("COMPLETED")
                 .build();
         when(helpRequestRepository.findById(10L))
+                .thenReturn(Optional.of(pending))
                 .thenReturn(Optional.of(pending))
                 .thenReturn(Optional.of(assigned))
                 .thenReturn(Optional.of(assigned))
@@ -119,6 +123,7 @@ class RequestLifecycleTest {
 
         helpRequestService.assignToMe(10L);
 
+        verify(providerResourceService).requireUsableResource(volunteer.getId(), "FOOD");
         ArgumentCaptor<Assignment> captor = ArgumentCaptor.forClass(Assignment.class);
         verify(assignmentRepository).save(captor.capture());
         assertEquals("ASSIGNED", captor.getValue().getStatus());

@@ -47,7 +47,7 @@ Repository: [github.com/Khalil-Pal/Nidaa-project](https://github.com/Khalil-Pal/
 - Capture urgency, number of people, vulnerability flags, address, and coordinates.
 - Calculate weighted priority from urgency, children, elderly people, disabled people, group size, and waiting time.
 - Rank pending requests by priority.
-- Suggest or automatically assign the nearest available volunteer when coordinates exist.
+- Suggest or automatically assign the nearest available volunteer who lists the requested resource when coordinates exist.
 - Allow volunteers and organizations to accept pending requests manually.
 - Enforce request lifecycle transitions from `PENDING` to `ASSIGNED`, then `COMPLETED` or `CANCELLED`.
 
@@ -101,15 +101,19 @@ Psychological requests receive urgency points, a `+35` crisis bonus, and the sam
 
 When a material request includes latitude and longitude, the production assignment flow:
 
-1. Loads volunteers whose `isAvailable` flag is true.
-2. Removes volunteers without coordinates.
-3. Calculates straight-line distance with the Haversine formula.
-4. Orders candidates from nearest to farthest.
-5. Atomically claims the first available volunteer.
-6. Changes the request from `PENDING` to `ASSIGNED`.
-7. Saves an `AUTO_GEO` assignment-history record with the distance.
+1. Loads `provider_resources` rows for the request's normalized `helpType`.
+2. Removes numeric rows whose `capacityAmount` is zero and malformed qualitative rows.
+3. Loads volunteers whose `isAvailable` flag is true and keeps only volunteers whose user ID is in the eligible resource set.
+4. Removes volunteers without coordinates.
+5. Calculates straight-line distance with the Haversine formula.
+6. Orders candidates from nearest to farthest.
+7. Atomically claims the first available volunteer.
+8. Changes the request from `PENDING` to `ASSIGNED`.
+9. Saves an `AUTO_GEO` assignment-history record with the distance.
 
 The atomic claim prevents two simultaneous requests from assigning the same volunteer. When an assignment is completed or cancelled, the volunteer is released if no other active assignment remains.
+
+Ranked-queue suggestions use the same resource filter before choosing the nearest volunteer. Organizations are not automatically assigned in the current implementation. Volunteers and organizations that manually accept a request must both list a usable resource for that request's help type before the assignment is allowed.
 
 ### Crisis routing
 
@@ -397,6 +401,7 @@ The current tests cover:
 - Request lifecycle behavior.
 - Weighted priority scoring.
 - Geographic distance and nearest-volunteer matching.
+- Resource-aware automatic, ranked, and manual provider matching.
 - Concurrent-safe automatic assignment behavior.
 - Crisis detection and crisis routing.
 - Assignment history mapping.
@@ -408,12 +413,14 @@ The current tests cover:
 The following boundaries are important when evaluating the current implementation:
 
 - The repository does not yet include a complete V1 database bootstrap migration.
-- Automatic volunteer assignment uses availability and geographic distance, but not structured resource or skill compatibility.
+- Automatic volunteer assignment filters by structured help-type resources, but it does not compare numeric capacity with the request's `peopleCount`, decrement inventory, or match free-form skills.
+- Provider coordinates are still read from `volunteers.latitude/longitude` for automatic and ranked matching. `profiles.latitude/longitude` is the intended canonical location, but existing volunteer data must be backfilled before that read path can move safely.
+- Organizations currently participate only through manual acceptance; there is no automatic organization distance ranking.
 - The help-request form currently submits a textual address without browser-captured coordinates, so UI-created requests require a future geocoding/location step for automatic matching.
 - Volunteer profile skills, schedule, and textual location are currently stored by the frontend and are not fully synchronized with the backend volunteer record.
 - Haversine distance is straight-line distance, not a road route or travel-time estimate.
 - Waiting-time priority points are not capped, so very old requests can produce unusually large scores.
-- Strategy comparison is an analytical simulation; production material assignment currently uses nearest available volunteer matching.
+- Strategy comparison is an analytical simulation and does not yet apply provider-resource eligibility; production material assignment uses resource-filtered nearest-volunteer matching.
 
 ## Production Checklist
 
@@ -424,7 +431,7 @@ Before deploying Nidaa outside a development environment:
 3. Restrict public role registration so administrator accounts cannot be self-provisioned.
 4. Restrict CORS to trusted frontend origins.
 5. Add a complete V1 migration and an automated migration tool such as Flyway or Liquibase.
-6. Persist volunteer capabilities, resources, schedules, and coordinates in the backend.
+6. Backfill provider coordinates into `profiles`, migrate matching reads to the canonical profile location, and add transactional resource-capacity consumption.
 7. Add geocoding or browser location capture with explicit user consent.
 8. Configure HTTPS, secure headers, centralized logs, monitoring, and database backups.
 9. Add continuous integration for tests and build verification.
@@ -446,4 +453,4 @@ git push -u origin feature/descriptive-name
 
 ## Project Status
 
-Nidaa is under active development. The core request, psychological support, assignment, ranking, and evaluation workflows are implemented. The next major step is completing resource-aware volunteer matching and a reproducible fresh-database bootstrap.
+Nidaa is under active development. The core request, psychological support, resource-aware assignment, ranking, and evaluation workflows are implemented. The next major steps are capacity-aware allocation, canonical profile-location matching, and a reproducible fresh-database bootstrap.

@@ -14,7 +14,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -120,6 +122,60 @@ class ProviderResourceServiceTest {
         assertEquals("NUMERIC", response.getCapacityMode());
         assertEquals(50, response.getCapacityAmount());
         assertNull(response.getCapacityLabel());
+    }
+
+    @Test
+    void eligibleProvidersExcludeZeroOrInvalidCapacity() {
+        ProviderResource numeric = ProviderResource.builder()
+                .userId(11L)
+                .helpType("FOOD")
+                .capacityMode("NUMERIC")
+                .capacityAmount(5)
+                .build();
+        ProviderResource outOfStock = ProviderResource.builder()
+                .userId(12L)
+                .helpType("FOOD")
+                .capacityMode("NUMERIC")
+                .capacityAmount(0)
+                .build();
+        ProviderResource qualitative = ProviderResource.builder()
+                .userId(13L)
+                .helpType("FOOD")
+                .capacityMode("QUALITATIVE")
+                .capacityLabel("Limited stock")
+                .build();
+        ProviderResource blankQualitative = ProviderResource.builder()
+                .userId(14L)
+                .helpType("FOOD")
+                .capacityMode("QUALITATIVE")
+                .capacityLabel(" ")
+                .build();
+        when(providerResourceRepository.findByHelpType("FOOD"))
+                .thenReturn(List.of(numeric, outOfStock, qualitative, blankQualitative));
+
+        Set<Long> eligible = service.findEligibleProviderUserIds("food");
+
+        assertEquals(Set.of(11L, 13L), eligible);
+    }
+
+    @Test
+    void manualEligibilityRejectsProviderWithoutUsableResource() {
+        ProviderResource outOfStock = ProviderResource.builder()
+                .userId(7L)
+                .helpType("WATER")
+                .capacityMode("NUMERIC")
+                .capacityAmount(0)
+                .build();
+        when(providerResourceRepository.findByUserIdAndHelpType(7L, "WATER"))
+                .thenReturn(Optional.of(outOfStock));
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> service.requireUsableResource(7L, "water"));
+
+        assertEquals(
+                "Your provider profile does not list an available WATER resource for this request.",
+                exception.getMessage());
     }
 
     private User providerUser(UserRole role) {

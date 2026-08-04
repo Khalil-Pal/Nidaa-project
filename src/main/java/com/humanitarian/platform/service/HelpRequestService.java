@@ -59,6 +59,9 @@ public class HelpRequestService {
     @Autowired
     private AutomaticAssignmentService automaticAssignmentService;
 
+    @Autowired
+    private ProviderResourceService providerResourceService;
+
     @Transactional
     public HelpRequest createRequest(HelpRequestDto dto) {
         User currentUser = userService.getCurrentUser();
@@ -111,6 +114,14 @@ public class HelpRequestService {
         Long assignedVolunteerId = null;
         Long assignedOrganizationId = null;
 
+        if (!role.equals("volunteer") && !role.equals("organization")) {
+            throw new UnauthorizedException("Only volunteers and organizations can accept help requests.");
+        }
+
+        HelpRequest request = getRequestById(requestId);
+        providerResourceService.requireUsableResource(
+                currentUser.getId(), request.getHelpType());
+
         if (role.equals("volunteer")) {
             Long volunteerId;
             try {
@@ -142,8 +153,6 @@ public class HelpRequestService {
             updated = helpRequestRepository.assignOrganization(requestId, organizationId, "ASSIGNED", "PENDING");
             assignedOrganizationId = organizationId;
 
-        } else {
-            throw new UnauthorizedException("Only volunteers and organizations can accept help requests.");
         }
 
         if (updated == 0) {
@@ -278,12 +287,19 @@ public class HelpRequestService {
 
     @Transactional(readOnly = true)
     public List<RankedRequestDTO> getRankedWithSuggestions(List<Volunteer> availableVolunteers) {
+        Map<String, Set<Long>> eligibleUserIdsByHelpType = new HashMap<>();
         return helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING").stream()
                 .map(request -> {
                     int score = request.getPriorityScore() != null
                             ? request.getPriorityScore()
                             : priorityScoreService.calculate(request);
-                    var nearest = geoMatchingService.findNearestVolunteer(request, availableVolunteers);
+                    String helpType = HelpTypeNormalizer.normalize(request.getHelpType());
+                    Set<Long> eligibleUserIds = eligibleUserIdsByHelpType.computeIfAbsent(
+                            helpType, providerResourceService::findEligibleProviderUserIds);
+                    List<Volunteer> resourceMatchedVolunteers = filterByProviderResource(
+                            availableVolunteers, eligibleUserIds);
+                    var nearest = geoMatchingService.findNearestVolunteer(
+                            request, resourceMatchedVolunteers);
                     return RankedRequestDTO.builder()
                             .request(request)
                             .priorityScore(score)
@@ -300,6 +316,17 @@ public class HelpRequestService {
                                     .orElse(null))
                             .build();
                 })
+                .toList();
+    }
+
+    private List<Volunteer> filterByProviderResource(List<Volunteer> volunteers,
+                                                     Set<Long> eligibleUserIds) {
+        if (volunteers == null || volunteers.isEmpty() || eligibleUserIds.isEmpty()) {
+            return List.of();
+        }
+        return volunteers.stream()
+                .filter(volunteer -> volunteer.getUser() != null)
+                .filter(volunteer -> eligibleUserIds.contains(volunteer.getUser().getId()))
                 .toList();
     }
 

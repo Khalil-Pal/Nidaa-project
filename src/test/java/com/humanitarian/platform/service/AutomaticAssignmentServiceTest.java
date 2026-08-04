@@ -4,6 +4,7 @@ import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.model.Psychologist;
+import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.HelpRequestRepository;
@@ -15,12 +16,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +36,8 @@ class AutomaticAssignmentServiceTest {
     @Mock private VolunteerRepository volunteerRepository;
     @Mock private PsychologistRepository psychologistRepository;
     @Mock private AssignmentRepository assignmentRepository;
-    @Mock private GeoMatchingService geoMatchingService;
+    @Spy private GeoMatchingService geoMatchingService = new GeoMatchingService();
+    @Mock private ProviderResourceService providerResourceService;
 
     @InjectMocks private AutomaticAssignmentService service;
 
@@ -40,25 +45,25 @@ class AutomaticAssignmentServiceTest {
     void nearestAvailableVolunteerIsClaimedAndRecorded() {
         HelpRequest request = HelpRequest.builder()
                 .id(10L)
+                .helpType("FOOD")
                 .latitude(55.75)
                 .longitude(37.62)
                 .status("PENDING")
                 .build();
         Volunteer volunteer = Volunteer.builder()
                 .id(20L)
+                .user(User.builder().id(200L).build())
                 .isAvailable(true)
                 .latitude(55.76)
                 .longitude(37.63)
                 .build();
 
+        when(providerResourceService.findEligibleProviderUserIds("FOOD"))
+                .thenReturn(Set.of(200L));
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(volunteer));
-        when(geoMatchingService.rankByDistance(request, List.of(volunteer)))
-                .thenReturn(List.of(volunteer));
         when(volunteerRepository.claimIfAvailable(20L)).thenReturn(1);
         when(helpRequestRepository.assignVolunteer(10L, 20L, "ASSIGNED", "PENDING"))
                 .thenReturn(1);
-        when(geoMatchingService.haversine(55.75, 37.62, 55.76, 37.63))
-                .thenReturn(1.3);
 
         assertTrue(service.assignNearestVolunteer(request));
 
@@ -67,6 +72,47 @@ class AutomaticAssignmentServiceTest {
         assertEquals("HELP_REQUEST", captor.getValue().getRequestType());
         assertEquals("AUTO_GEO", captor.getValue().getAssignmentSource());
         assertEquals(20L, captor.getValue().getVolunteerId());
+    }
+
+    @Test
+    void closerVolunteerWithoutRequestedResourceIsSkippedForFartherMatch() {
+        HelpRequest request = HelpRequest.builder()
+                .id(11L)
+                .helpType("WATER")
+                .latitude(55.75)
+                .longitude(37.62)
+                .status("PENDING")
+                .build();
+        Volunteer closerWrongResource = Volunteer.builder()
+                .id(21L)
+                .user(User.builder().id(201L).build())
+                .isAvailable(true)
+                .latitude(55.751)
+                .longitude(37.621)
+                .build();
+        Volunteer fartherRightResource = Volunteer.builder()
+                .id(22L)
+                .user(User.builder().id(202L).build())
+                .isAvailable(true)
+                .latitude(55.80)
+                .longitude(37.70)
+                .build();
+
+        when(providerResourceService.findEligibleProviderUserIds("WATER"))
+                .thenReturn(Set.of(202L));
+        when(volunteerRepository.findByIsAvailableTrue())
+                .thenReturn(List.of(closerWrongResource, fartherRightResource));
+        when(volunteerRepository.claimIfAvailable(22L)).thenReturn(1);
+        when(helpRequestRepository.assignVolunteer(11L, 22L, "ASSIGNED", "PENDING"))
+                .thenReturn(1);
+
+        assertTrue(service.assignNearestVolunteer(request));
+
+        verify(volunteerRepository, never()).claimIfAvailable(21L);
+        verify(volunteerRepository).claimIfAvailable(22L);
+        ArgumentCaptor<Assignment> captor = ArgumentCaptor.forClass(Assignment.class);
+        verify(assignmentRepository).save(captor.capture());
+        assertEquals(22L, captor.getValue().getVolunteerId());
     }
 
     @Test

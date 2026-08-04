@@ -31,19 +31,22 @@ public class AutomaticAssignmentService {
     private final PsychologistRepository psychologistRepository;
     private final AssignmentRepository assignmentRepository;
     private final GeoMatchingService geoMatchingService;
+    private final ProviderResourceService providerResourceService;
 
     public AutomaticAssignmentService(HelpRequestRepository helpRequestRepository,
                                       PsychologicalRequestRepository psychologicalRequestRepository,
                                       VolunteerRepository volunteerRepository,
                                       PsychologistRepository psychologistRepository,
                                       AssignmentRepository assignmentRepository,
-                                      GeoMatchingService geoMatchingService) {
+                                      GeoMatchingService geoMatchingService,
+                                      ProviderResourceService providerResourceService) {
         this.helpRequestRepository = helpRequestRepository;
         this.psychologicalRequestRepository = psychologicalRequestRepository;
         this.volunteerRepository = volunteerRepository;
         this.psychologistRepository = psychologistRepository;
         this.assignmentRepository = assignmentRepository;
         this.geoMatchingService = geoMatchingService;
+        this.providerResourceService = providerResourceService;
     }
 
     @Transactional
@@ -53,8 +56,15 @@ public class AutomaticAssignmentService {
             return false;
         }
 
+        var eligibleUserIds = providerResourceService
+                .findEligibleProviderUserIds(request.getHelpType());
+        List<Volunteer> resourceMatchedVolunteers = volunteerRepository.findByIsAvailableTrue()
+                .stream()
+                .filter(volunteer -> volunteer.getUser() != null)
+                .filter(volunteer -> eligibleUserIds.contains(volunteer.getUser().getId()))
+                .toList();
         List<Volunteer> candidates = geoMatchingService.rankByDistance(
-                request, volunteerRepository.findByIsAvailableTrue());
+                request, resourceMatchedVolunteers);
 
         for (Volunteer volunteer : candidates) {
             if (volunteerRepository.claimIfAvailable(volunteer.getId()) == 0) {
