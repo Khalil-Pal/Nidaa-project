@@ -50,10 +50,18 @@ public class SecurityConfig {
         DaoAuthenticationProvider p = new DaoAuthenticationProvider();
         p.setUserDetailsService(userDetailsService);
         p.setPasswordEncoder(passwordEncoder());
-        // The default pre-checks throw Disabled/LockedException before the
-        // password is compared, which would tell an unauthenticated caller that
-        // the account exists and what state it is in. AuthService.login performs
-        // those checks itself, after the password has been verified.
+        // PRE-AUTHENTICATION CHECKS ARE DISABLED ON PURPOSE (S-8, PA-1).
+        // The defaults throw Disabled/LockedException before the password is
+        // compared, which tells an unauthenticated caller that the account
+        // exists and what state it is in. Account state is therefore enforced
+        // in exactly two places, both after the caller has been verified:
+        //   1. AuthService.login()                 - after authenticate() succeeds
+        //   2. JwtAuthenticationFilter.isRevoked() - on every token-bearing request
+        // This provider has one caller (AuthService.login). Any new
+        // authentication path added later inherits NO account-state checking
+        // from here and must perform its own isActive / isLocked checks after
+        // credential verification, or deactivated and locked accounts will be
+        // able to sign in through it.
         p.setPreAuthenticationChecks(userDetails -> { });
         return p;
     }
