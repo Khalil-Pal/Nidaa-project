@@ -63,6 +63,8 @@ public class SecurityConfig {
                                 "/js/**", "/css/**", "/images/**").permitAll()
                         // Auth endpoints — no auth needed
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Landing-page statistics are read by logged-out visitors
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/public-stats").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/help-requests/ranked")
                         .hasAnyRole("ADMIN", "VOLUNTEER", "ORGANIZATION")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
