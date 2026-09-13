@@ -1,0 +1,87 @@
+# ================================================================
+# NIDAA PLATFORM  APPLICATION CONFIGURATION  (EXAMPLE)
+# ================================================================
+# Copy this file to application.properties in the same directory, then supply
+# the three required secrets through environment variables or a .env file at
+# the project root (see README "Configuration"):
+#
+#   DB_PASSWORD     PostgreSQL password
+#   JWT_SECRET      at least 32 random bytes, e.g. `openssl rand -base64 48`
+#   MAIL_PASSWORD   SMTP application password
+#
+# Startup fails fast if any of these is missing. Every other key has a safe
+# development default. application.properties itself is gitignored.
+# ================================================================
+
+server.port=${SERVER_PORT:8081}
+server.servlet.context-path=/
+
+# Secrets are read from environment variables (see README "Configuration").
+# For local development they may be placed in a gitignored .env file at the
+# project root; it is imported here as a plain properties file.
+spring.config.import=optional:file:.env[.properties]
+
+# Comma-separated list of browser origins allowed to call the API with credentials
+app.cors.allowed-origins=${CORS_ORIGINS:http://localhost:8081}
+
+# ==================== DATABASE ====================
+
+spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/Web_DB?stringtype=unspecified}
+spring.datasource.username=${DB_USERNAME:postgres}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.datasource.hikari.maximum-pool-size=10
+spring.datasource.hikari.minimum-idle=2
+spring.datasource.hikari.connection-timeout=30000
+spring.datasource.hikari.idle-timeout=600000
+spring.datasource.hikari.max-lifetime=1800000
+
+# ==================== JPA / HIBERNATE ====================
+
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+spring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults=false
+
+# ==================== JWT ====================
+jwt.secret=${JWT_SECRET}
+# Access token: 15 minutes
+jwt.expiration=${JWT_EXPIRATION:900000}
+# Refresh token: 7 days
+jwt.refresh-expiration=${JWT_REFRESH_EXPIRATION:604800000}
+jwt.header=Authorization
+jwt.prefix=Bearer
+
+# ==================== EMAIL ====================
+spring.mail.host=${MAIL_HOST:smtp.example.com}
+spring.mail.port=${MAIL_PORT:465}
+spring.mail.username=${MAIL_USERNAME:noreply@example.com}
+spring.mail.password=${MAIL_PASSWORD}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.ssl.enable=true
+spring.mail.properties.mail.smtp.starttls.enable=false
+spring.mail.properties.mail.smtp.starttls.required=false
+spring.mail.properties.mail.smtp.connectiontimeout=10000
+spring.mail.properties.mail.smtp.timeout=10000
+spring.mail.properties.mail.smtp.writetimeout=10000
+spring.mail.default-encoding=UTF-8
+
+nidaa.admin.email=${NIDAA_ADMIN_EMAIL:admin@example.com}
+
+# ==================== FILE UPLOAD ====================
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=50MB
+spring.servlet.multipart.enabled=true
+
+# ==================== LOGGING ====================
+logging.level.root=INFO
+logging.level.com.humanitarian.platform=DEBUG
+logging.level.org.hibernate.SQL=INFO
+logging.level.org.springframework.security=INFO
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+
+# ==================== ACTUATOR ====================
+management.endpoints.web.exposure.include=health,info

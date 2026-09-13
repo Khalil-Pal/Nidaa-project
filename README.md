@@ -287,6 +287,22 @@ been applied and should not acquire checksum drift.
 
 Use environment variables for credentials and secrets. Do not commit real database, JWT, or SMTP credentials.
 
+`src/main/resources/application.properties` is gitignored. Create it by copying the tracked template:
+
+```bash
+cp src/main/resources/application.properties.example src/main/resources/application.properties
+```
+
+Three values have **no default** and the application refuses to start without them: `DB_PASSWORD`, `JWT_SECRET` and `MAIL_PASSWORD`. Provide them as environment variables, or put them in a gitignored `.env` file at the project root, which the properties file imports automatically:
+
+```properties
+DB_PASSWORD=your-local-database-password
+JWT_SECRET=output-of: openssl rand -base64 48
+MAIL_PASSWORD=your-smtp-application-password
+```
+
+Browser origins allowed to call the API are set with `CORS_ORIGINS` (comma-separated, default `http://localhost:8081`).
+
 | Variable | Purpose | Typical local value |
 |---|---|---|
 | `DB_URL` | PostgreSQL JDBC URL | `jdbc:postgresql://127.0.0.1:5432/Web_DB?stringtype=unspecified` |
@@ -299,6 +315,7 @@ Use environment variables for credentials and secrets. Do not commit real databa
 | `MAIL_PORT` | SMTP port | `465` for SMTP over SSL |
 | `MAIL_USERNAME` | Sender account | Set locally |
 | `MAIL_PASSWORD` | SMTP or application password | Set locally |
+| `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API | `http://localhost:8081` |
 | `NIDAA_ADMIN_EMAIL` | Address receiving approval notifications | Set locally |
 | `SERVER_PORT` | HTTP port | `8081` |
 
