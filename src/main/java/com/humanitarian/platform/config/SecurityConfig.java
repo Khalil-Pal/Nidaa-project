@@ -2,6 +2,7 @@ package com.humanitarian.platform.config;
 
 import com.humanitarian.platform.security.JwtAuthenticationFilter;
 import com.humanitarian.platform.security.UserDetailsServiceImpl;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -67,13 +68,20 @@ public class SecurityConfig {
                 // frontend can attempt a refresh. Without an entry point Spring
                 // falls back to 403, which is reserved for authenticated callers
                 // that lack the role or do not own the record.
-                .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
-                    res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    res.setContentType("application/json");
-                    res.setCharacterEncoding("UTF-8");
-                    res.getWriter().write("{\"success\":false,\"message\":\"Authentication required.\"}");
-                }))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((req, res, ex) ->
+                                writeJson(res, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required."))
+                        // Written directly rather than via sendError(403): sendError
+                        // re-dispatches to /error, which would pass through this chain
+                        // again without the caller's authentication and turn the 403
+                        // into a 401 at the entry point above.
+                        .accessDeniedHandler((req, res, ex) ->
+                                writeJson(res, HttpServletResponse.SC_FORBIDDEN,
+                                        "Access denied. You don't have permission to perform this action.")))
                 .authorizeHttpRequests(auth -> auth
+                        // Let the container's error page render for other sendError()
+                        // paths instead of being blocked as an unauthenticated request
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         // Static files — no auth needed
                         .requestMatchers("/*.html", "/*.css", "/*.js", "/*.png",
                                 "/*.jpg", "/*.ico", "/*.svg", "/*.woff", "/*.woff2",
@@ -94,6 +102,14 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private static void writeJson(HttpServletResponse res, int status, String message)
+            throws java.io.IOException {
+        res.setStatus(status);
+        res.setContentType("application/json");
+        res.setCharacterEncoding("UTF-8");
+        res.getWriter().write("{\"success\":false,\"message\":\"" + message + "\"}");
     }
 
     @Bean
