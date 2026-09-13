@@ -71,6 +71,16 @@
         .btn-submit{width:100%;padding:13px;background:var(--blue);color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;transition:background .2s;font-family:'Inter',sans-serif;margin-top:8px}
         .btn-submit:hover{background:#1e40af}
         .btn-submit:disabled{background:#93c5fd;cursor:not-allowed}
+        .location-box{border:1.5px dashed #cbd5e1;border-radius:10px;padding:12px 14px;background:#f8fafc}
+        .location-box p{font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.5}
+        .location-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+        .btn-location{padding:8px 14px;border:1.5px solid var(--blue);background:white;color:var(--blue);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+        .btn-location:hover{background:#eff6ff}
+        .btn-location:disabled{opacity:.6;cursor:wait}
+        .btn-location.secondary{border-color:#cbd5e1;color:var(--muted)}
+        .location-status{font-size:12.5px;margin-top:10px;color:var(--muted)}
+        .location-status.ok{color:var(--green);font-weight:600}
+        .location-status.error{color:#dc2626}
 
         /* Contact Modal */
         .contact-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
@@ -207,6 +217,21 @@
             <div class="form-group">
                 <label>City / Region</label>
                 <input type="text" id="reqAddress" placeholder="e.g. Tripoli, Benghazi, Tunis..."/>
+            </div>
+            <div class="form-group">
+                <label>Location for matching (optional)</label>
+                <div class="location-box">
+                    <p>Sharing your device location lets us assign the nearest available volunteer or organization automatically. Your coordinates are used only to match this request and are shown only to the provider who accepts it.</p>
+                    <div class="location-actions">
+                        <button type="button" class="btn-location" id="useMyLocationBtn" onclick="useMyLocation()">
+                            <i class="fa fa-location-crosshairs"></i> Use my current location
+                        </button>
+                        <button type="button" class="btn-location secondary" id="clearLocationBtn" onclick="clearRequestLocation()" hidden>
+                            Remove location
+                        </button>
+                    </div>
+                    <div class="location-status" id="reqLocationStatus" role="status" aria-live="polite"></div>
+                </div>
             </div>
             <button type="submit" class="btn-submit" id="submitBtn">Submit Request</button>
         </form>
@@ -497,6 +522,86 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
     function closeModal() { document.getElementById('overlay').classList.remove('open'); }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
+    // ── Location for automatic matching (L-1) ──
+    // Automatic geo-matching only runs when the request carries coordinates.
+    // Without them the request is still created and handled manually.
+    const MANUAL_MATCH_TEXT = 'No location shared \u2014 this request will be matched manually by the Nidaa team.';
+    let requestCoords = null;   // { latitude, longitude, source: 'device' | 'saved' }
+
+    function renderRequestLocation() {
+        const status = document.getElementById('reqLocationStatus');
+        const clearBtn = document.getElementById('clearLocationBtn');
+        if (!requestCoords) {
+            status.textContent = MANUAL_MATCH_TEXT;
+            status.className = 'location-status';
+            clearBtn.hidden = true;
+            return;
+        }
+        const where = requestCoords.latitude.toFixed(4) + ', ' + requestCoords.longitude.toFixed(4);
+        status.textContent = requestCoords.source === 'saved'
+            ? 'Using the location saved in your Settings (' + where + '). The nearest available provider will be assigned automatically.'
+            : 'Location captured (' + where + '). The nearest available provider will be assigned automatically.';
+        status.className = 'location-status ok';
+        clearBtn.hidden = false;
+    }
+
+    function setRequestLocation(latitude, longitude, source) {
+        requestCoords = { latitude: Number(latitude), longitude: Number(longitude), source };
+        renderRequestLocation();
+    }
+
+    function clearRequestLocation() {
+        requestCoords = null;
+        renderRequestLocation();
+    }
+
+    function useMyLocation() {
+        const status = document.getElementById('reqLocationStatus');
+        const btn = document.getElementById('useMyLocationBtn');
+        if (!navigator.geolocation) {
+            status.textContent = 'Your browser cannot share its location. ' + MANUAL_MATCH_TEXT;
+            status.className = 'location-status error';
+            return;
+        }
+        btn.disabled = true;
+        status.textContent = 'Asking your browser for permission\u2026';
+        status.className = 'location-status';
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                btn.disabled = false;
+                setRequestLocation(position.coords.latitude, position.coords.longitude, 'device');
+            },
+            error => {
+                btn.disabled = false;
+                const why = error.code === error.PERMISSION_DENIED
+                    ? 'Location permission was declined.'
+                    : 'Your location could not be determined.';
+                requestCoords = requestCoords && requestCoords.source === 'saved' ? requestCoords : null;
+                if (requestCoords) { renderRequestLocation(); return; }
+                status.textContent = why + ' ' + MANUAL_MATCH_TEXT;
+                status.className = 'location-status error';
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+        );
+    }
+
+    // A beneficiary who saved a matching location in Settings gets it as the
+    // default, so their requests are auto-matched without a permission prompt.
+    async function prefillSavedLocation() {
+        if (userRole !== 'beneficiary') return;
+        try {
+            const res = await fetch(API + '/users/me/profile', { headers: authHeader() });
+            if (!res.ok) return;
+            const body = await res.json();
+            const profile = body.data || body;
+            if (profile && profile.latitude != null && profile.longitude != null) {
+                setRequestLocation(profile.latitude, profile.longitude, 'saved');
+            }
+        } catch (ignored) {}
+    }
+    renderRequestLocation();
+    prefillSavedLocation();
+
     document.getElementById('requestForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const title       = document.getElementById('reqTitle').value.trim();
@@ -523,7 +628,9 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
                     urgencyLevel: urgencyLevel,
                     description:  description || title,
                     numberOfPeople: numberOfPeople,
-                    address:       document.getElementById('reqAddress').value.trim() || null
+                    address:       document.getElementById('reqAddress').value.trim() || null,
+                    latitude:      requestCoords ? requestCoords.latitude  : null,
+                    longitude:     requestCoords ? requestCoords.longitude : null
                 })
             });
 
@@ -540,14 +647,20 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</
             allRequests.unshift(newReq);
             filterCards();
             closeModal();
+            const sentCoords = requestCoords;
             this.reset();
+            if (sentCoords && sentCoords.source === 'saved') { renderRequestLocation(); } else { clearRequestLocation(); }
 
-            // Success toast
+            // Success toast: say what matching did with the request
             const toast = document.createElement('div');
-            toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#059669;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px';
-            toast.textContent = '✅ Request saved successfully!';
+            toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#059669;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px;max-width:360px';
+            toast.textContent = newReq.status === 'ASSIGNED'
+                ? '\u2705 Request saved and matched to the nearest available provider.'
+                : sentCoords
+                    ? '\u2705 Request saved. No provider is available nearby right now; it stays in the queue and will be matched as soon as one is.'
+                    : '\u2705 Request saved. It will be matched manually by the Nidaa team.';
             document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3500);
+            setTimeout(() => toast.remove(), 6000);
 
         } catch (err) {
             alert('❌ Could not submit: ' + err.message);
