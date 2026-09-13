@@ -21,6 +21,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -172,6 +173,38 @@ class PsychologicalRequestSecurityTest extends SecuritySliceTest {
         mockMvc.perform(put("/api/psychological-requests/1/status").param("status", "CANCELLED"))
                 .andExpect(status().isOk());
         verify(psychologicalRequestRepository, never()).updateStatusNative(1L, "COMPLETED");
+    }
+
+    // -- input validation (B-2) -----------------------------------------------
+
+    @Test
+    @WithMockUser(roles = "BENEFICIARY")
+    void unknownCategoryIsRefusedNotStoredAsAnxiety() throws Exception {
+        actingAs(OWNER_ID, UserRole.BENEFICIARY);
+
+        mockMvc.perform(post("/api/psychological-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"supportType\":\"INDIVIDUAL\",\"category\":\"Panic attacks\",\"preferredFormat\":\"HOLOGRAM\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details.category").exists())
+                .andExpect(jsonPath("$.details.preferredFormat").exists());
+        verify(psychologicalRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "BENEFICIARY")
+    void displayLabelCategoryStillMapsToTheEnum() throws Exception {
+        actingAs(OWNER_ID, UserRole.BENEFICIARY);
+        when(psychologicalRequestRepository.save(any(PsychologicalRequest.class)))
+                .thenAnswer(inv -> { PsychologicalRequest r = inv.getArgument(0); r.setId(5L); return r; });
+
+        mockMvc.perform(post("/api/psychological-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"supportType\":\"INDIVIDUAL\",\"category\":\"Grief & Loss\",\"description\":\"x\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.category").value("GRIEF"))
+                .andExpect(jsonPath("$.data.urgencyLevel").value("MEDIUM"))
+                .andExpect(jsonPath("$.data.preferredFormat").value("CHAT"));
     }
 
     // -- role boundaries ------------------------------------------------------

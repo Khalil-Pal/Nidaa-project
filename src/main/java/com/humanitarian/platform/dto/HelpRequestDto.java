@@ -2,7 +2,6 @@ package com.humanitarian.platform.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -22,10 +21,16 @@ public class HelpRequestDto {
     @Size(max = 4000, message = "Description must be at most 4000 characters")
     private String description;
 
-    @NotNull(message = "Help type is required")
+    // Only the five matchable types are accepted from callers; OTHER exists in
+    // the database enum for legacy rows but can never be assigned (B-2).
+    @NotBlank(message = "Help type is required")
+    @Pattern(regexp = "(?i)\\s*(MEDICAL|FOOD|SHELTER|WATER|CLOTHING)\\s*",
+             message = "Help type must be one of: MEDICAL, FOOD, SHELTER, WATER, CLOTHING")
     private String helpType;
 
-    @NotNull(message = "Urgency level is required")
+    @NotBlank(message = "Urgency level is required")
+    @Pattern(regexp = "(?i)\\s*(LOW|MEDIUM|HIGH|CRITICAL)\\s*",
+             message = "Urgency level must be one of: LOW, MEDIUM, HIGH, CRITICAL")
     private String urgencyLevel;
 
     // Accept both "peopleCount" and "numberOfPeople" from frontend

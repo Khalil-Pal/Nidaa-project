@@ -269,13 +269,19 @@ public class HelpRequestService {
         return result;
     }
 
+    // Unknown urgency is an error, not MEDIUM: silently downgrading a
+    // mistyped CRITICAL in a triage system would be the worst possible default.
     private String mapUrgency(String raw) {
-        if (raw == null) return "MEDIUM";
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("Urgency level is required. Accepted values: LOW, MEDIUM, HIGH, CRITICAL");
+        }
         return switch (raw.toUpperCase().trim()) {
             case "CRITICAL" -> "CRITICAL";
             case "HIGH"     -> "HIGH";
+            case "MEDIUM"   -> "MEDIUM";
             case "LOW"      -> "LOW";
-            default         -> "MEDIUM";
+            default -> throw new IllegalArgumentException(
+                    "Unknown urgency level '" + raw + "'. Accepted values: LOW, MEDIUM, HIGH, CRITICAL");
         };
     }
 

@@ -223,8 +223,16 @@ public class PsychologicalRequestService {
                 .orElse(false);
     }
 
+    // The converters below canonicalise form input to the database enum
+    // labels. Unrecognised input is an error: a request must never be filed
+    // under a category, urgency or format the person did not choose.
+    // Optional fields (urgency, format) fall back to the column defaults
+    // only when absent, never when wrong.
+
     private String toCategory(String v) {
-        if (v == null) return "ANXIETY";
+        if (v == null || v.isBlank()) {
+            throw new IllegalArgumentException("Category is required. Accepted values: " + PsychologicalRequestDto.CATEGORIES);
+        }
         String u = v.toUpperCase().trim().replace(" & ","_AND_").replace(" ","_").replace("-","_");
         return switch (u) {
             case "ANXIETY"                             -> "ANXIETY";
@@ -234,32 +242,43 @@ public class PsychologicalRequestService {
             case "GRIEF_AND_LOSS","GRIEF_LOSS","GRIEF" -> "GRIEF";
             case "DOMESTIC_VIOLENCE","VIOLENCE"        -> "VIOLENCE";
             case "CRISIS_SUPPORT","CRISIS"             -> "CRISIS";
-            default                                    -> "ANXIETY";
+            case "CHILD"                               -> "CHILD";
+            case "OTHER"                               -> "OTHER";
+            default -> throw new IllegalArgumentException(
+                    "Unknown category '" + v + "'. Accepted values: " + PsychologicalRequestDto.CATEGORIES);
         };
     }
     private String toSupportType(String v) {
-        if (v == null) return "INDIVIDUAL";
+        if (v == null || v.isBlank()) {
+            throw new IllegalArgumentException("Support type is required. Accepted values: INDIVIDUAL, GROUP, CRISIS");
+        }
         return switch (v.toUpperCase().trim()) {
-            case "GROUP"  -> "GROUP";
-            case "CRISIS" -> "CRISIS";
-            default       -> "INDIVIDUAL";
+            case "INDIVIDUAL" -> "INDIVIDUAL";
+            case "GROUP"      -> "GROUP";
+            case "CRISIS"     -> "CRISIS";
+            default -> throw new IllegalArgumentException(
+                    "Unknown support type '" + v + "'. Accepted values: INDIVIDUAL, GROUP, CRISIS");
         };
     }
     private String toUrgency(String v) {
-        if (v == null) return "MEDIUM";
+        if (v == null || v.isBlank()) return "MEDIUM";   // column default
         return switch (v.toUpperCase().trim()) {
             case "CRITICAL" -> "CRITICAL";
             case "HIGH"     -> "HIGH";
+            case "MEDIUM"   -> "MEDIUM";
             case "LOW"      -> "LOW";
-            default         -> "MEDIUM";
+            default -> throw new IllegalArgumentException(
+                    "Unknown urgency level '" + v + "'. Accepted values: LOW, MEDIUM, HIGH, CRITICAL");
         };
     }
     private String toFormat(String v) {
-        if (v == null) return "CHAT";
+        if (v == null || v.isBlank()) return "CHAT";     // column default
         return switch (v.toUpperCase().trim()) {
+            case "CHAT"                  -> "CHAT";
             case "AUDIO","AUDIO_CALL"    -> "AUDIO";
             case "VIDEO","VIDEO_SESSION" -> "VIDEO";
-            default                      -> "CHAT";
+            default -> throw new IllegalArgumentException(
+                    "Unknown format '" + v + "'. Accepted values: CHAT, AUDIO, VIDEO");
         };
     }
 

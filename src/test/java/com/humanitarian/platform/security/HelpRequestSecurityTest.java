@@ -189,6 +189,23 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
                                 org.hamcrest.Matchers.containsString("frame-ancestors 'none'"))));
     }
 
+    // -- input validation (B-2) -----------------------------------------------
+
+    @Test
+    @WithMockUser(roles = "BENEFICIARY")
+    void unknownHelpTypeAndUrgencyAreRefusedWithFieldMessages() throws Exception {
+        actingAs(OWNER_ID, UserRole.BENEFICIARY);
+        String payload = "{\"title\":\"Groceries\",\"helpType\":\"GROCERIES\",\"urgencyLevel\":\"ASAP\"}";
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/help-requests")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details.helpType").exists())
+                .andExpect(jsonPath("$.details.urgencyLevel").exists());
+        verify(helpRequestRepository, never()).save(any());
+    }
+
     // -- listing --------------------------------------------------------------
 
     @Test
