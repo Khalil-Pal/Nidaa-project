@@ -417,7 +417,11 @@
   // Load recent requests table
   async function loadRecentRequests() {
     try {
-      const endpoint = (userRole === 'beneficiary') ? '/help-requests/my' : '/help-requests?page=0&size=10';
+      // Psychologists are not permitted to list material help requests; their
+      // table is headed "Pending Psychological Requests" and now shows those.
+      const endpoint = (userRole === 'beneficiary') ? '/help-requests/my'
+                     : (userRole === 'psychologist') ? '/psychological-requests/pending'
+                     : '/help-requests?page=0&size=10';
       const res = await fetch(`${API}${endpoint}`, { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
 
@@ -441,7 +445,7 @@
             <div class="req-title">${r.title || r.description?.substring(0,40) || 'Help Request'}</div>
             <div class="req-id">#${r.id || r.requestId || '—'} &nbsp;&#128205; ${r.address || 'Not specified'}</div>
           </td>
-          <td><span class="tag ${typeClass(r.helpType)}">${r.helpType || 'OTHER'}</span></td>
+          <td><span class="tag ${typeClass(r.helpType)}">${r.helpType || r.category || 'OTHER'}</span></td>
           <td><span class="tag ${statusClass(r.status)}">${r.status || 'PENDING'}</span></td>
         </tr>`).join('');
     } catch (e) {

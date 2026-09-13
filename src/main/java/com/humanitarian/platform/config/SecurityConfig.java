@@ -93,9 +93,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/dashboard/public-stats").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/help-requests/ranked")
                         .hasAnyRole("ADMIN", "VOLUNTEER", "ORGANIZATION")
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        // Everything else — just needs a valid JWT token
-                        // Method-level @PreAuthorize handles finer-grained role checks
+                        .requestMatchers("/api/v1/admin/**", "/api/admin/**").hasRole("ADMIN")
+                        // Coarse role rules by URL so that a controller method
+                        // missing its @PreAuthorize fails closed instead of opening
+                        // the endpoint to every logged-in user. Row-level ownership
+                        // is still enforced in the services.
+                        .requestMatchers(HttpMethod.GET, "/api/help-requests", "/api/help-requests/pending")
+                        .hasAnyRole("ADMIN", "VOLUNTEER", "ORGANIZATION")
+                        .requestMatchers(HttpMethod.POST, "/api/help-requests")
+                        .hasAnyRole("BENEFICIARY", "VOLUNTEER", "ORGANIZATION")
+                        .requestMatchers(HttpMethod.PUT, "/api/help-requests/*/status")
+                        .hasAnyRole("ADMIN", "BENEFICIARY", "VOLUNTEER", "ORGANIZATION")
+                        .requestMatchers("/api/psychological-requests/**")
+                        .hasAnyRole("BENEFICIARY", "PSYCHOLOGIST", "ADMIN")
+                        .requestMatchers("/api/provider-resources/**", "/api/provider-availability/**")
+                        .hasAnyRole("VOLUNTEER", "ORGANIZATION")
+                        // Everything else needs a valid JWT; @PreAuthorize narrows further
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
