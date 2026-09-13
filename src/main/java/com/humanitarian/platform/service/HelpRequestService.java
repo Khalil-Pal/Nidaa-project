@@ -170,7 +170,7 @@ public class HelpRequestService {
             throw new UnauthorizedException("Only volunteers and organizations can accept help requests.");
         }
 
-        HelpRequest request = getRequestById(requestId);
+        HelpRequest request = findOrThrow(requestId);
         // A provider who filed a request must not also deliver it, or they could
         // manufacture requests and self-assign to inflate their completion count.
         if (Objects.equals(request.getFiledByUserId(), currentUser.getId())) {
@@ -254,7 +254,7 @@ public class HelpRequestService {
             assignmentRepository.save(assignment);
         }
 
-        HelpRequest saved = getRequestById(requestId);
+        HelpRequest saved = findOrThrow(requestId);
         Map<String, Object> result = new HashMap<>();
         result.put("requestId",  requestId);
         result.put("status",     saved.getStatus());
@@ -300,9 +300,54 @@ public class HelpRequestService {
                 PageRequest.of(0, 50, Sort.by("createdAt").descending())).getContent();
     }
 
+    /**
+     * Returns the request only if the caller may see it: an admin, the
+     * beneficiary, whoever filed it for them, or the assigned provider.
+     * Anyone else gets 404 rather than 403, because confirming that the
+     * record exists would itself leak information.
+     */
+    @Transactional(readOnly = true)
     public HelpRequest getRequestById(Long id) {
+        HelpRequest request = findOrThrow(id);
+        User me = userService.getCurrentUser();
+        if (!canView(me, request)) {
+            throw new ResourceNotFoundException("Help request not found: " + id);
+        }
+        return request;
+    }
+
+    /** Unguarded lookup for flows that apply their own rule (accept, status change, delete). */
+    private HelpRequest findOrThrow(Long id) {
         return helpRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Help request not found: " + id));
+    }
+
+    private boolean canView(User me, HelpRequest request) {
+        return me.getRole() == UserRole.ADMIN
+                || Objects.equals(request.getBeneficiaryId(), me.getId())
+                || Objects.equals(request.getFiledByUserId(), me.getId())
+                || isAssignedVolunteer(me, request)
+                || isAssignedOrganization(me, request);
+    }
+
+    // Compares the caller's profile id to the assignee column; user ids and
+    // profile ids come from different sequences and must never be compared directly.
+    private boolean isAssignedVolunteer(User me, HelpRequest request) {
+        if (me.getRole() != UserRole.VOLUNTEER || request.getAssignedVolunteerId() == null) {
+            return false;
+        }
+        return volunteerRepository.findByUserId(me.getId())
+                .map(profile -> Objects.equals(profile.getId(), request.getAssignedVolunteerId()))
+                .orElse(false);
+    }
+
+    private boolean isAssignedOrganization(User me, HelpRequest request) {
+        if (me.getRole() != UserRole.ORGANIZATION || request.getAssignedOrganizationId() == null) {
+            return false;
+        }
+        return organizationRepository.findByUserId(me.getId())
+                .map(profile -> Objects.equals(profile.getId(), request.getAssignedOrganizationId()))
+                .orElse(false);
     }
 
     private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.of(
@@ -314,7 +359,7 @@ public class HelpRequestService {
 
     @Transactional
     public HelpRequest updateStatus(Long id, String status) {
-        HelpRequest request = getRequestById(id);
+        HelpRequest request = findOrThrow(id);
         User currentUser = userService.getCurrentUser();
         String role = currentUser.getRole().name().toLowerCase();
 
@@ -349,12 +394,12 @@ public class HelpRequestService {
             helpRequestRepository.updateStatusNative(id, next);
         }
 
-        return getRequestById(id);
+        return findOrThrow(id);
     }
 
     @Transactional
     public void deleteRequest(Long id) {
-        HelpRequest request = getRequestById(id);
+        HelpRequest request = findOrThrow(id);
         User currentUser = userService.getCurrentUser();
         if (!request.getBeneficiaryId().equals(currentUser.getId())) {
             throw new UnauthorizedException("You can only delete your own requests");

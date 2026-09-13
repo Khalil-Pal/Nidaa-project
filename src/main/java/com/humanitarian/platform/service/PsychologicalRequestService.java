@@ -5,6 +5,7 @@ import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.Psychologist;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.model.User;
+import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -68,7 +70,7 @@ public class PsychologicalRequestService {
     @Transactional
     public PsychologicalRequest acceptRequest(Long requestId) {
         User currentUser = userService.getCurrentUser();
-        PsychologicalRequest request = getRequestById(requestId);
+        PsychologicalRequest request = findOrThrow(requestId);
 
         // Must store psychologist_id (PK of psychologists table), not user_id
         // psychological_requests.assigned_psychologist_id → FK to psychologists.psychologist_id
@@ -106,7 +108,7 @@ public class PsychologicalRequestService {
                 .build();
         assignmentRepository.save(assignment);
 
-        return getRequestById(requestId);
+        return findOrThrow(requestId);
     }
 
     private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.of(
@@ -118,7 +120,7 @@ public class PsychologicalRequestService {
 
     @Transactional
     public PsychologicalRequest updateStatus(Long id, String status) {
-        PsychologicalRequest request = getRequestById(id);
+        PsychologicalRequest request = findOrThrow(id);
         User currentUser = userService.getCurrentUser();
         String role = currentUser.getRole().name().toLowerCase();
 
@@ -145,7 +147,7 @@ public class PsychologicalRequestService {
         if ("COMPLETED".equals(next) || "CANCELLED".equals(next)) {
             updateAssignmentStatus(id, next, LocalDateTime.now());
         }
-        return getRequestById(id);
+        return findOrThrow(id);
     }
 
     public List<PsychologicalRequest> getAllRequests() { return repo.findAll(); }
@@ -173,9 +175,39 @@ public class PsychologicalRequestService {
         return repo.findByAssignedPsychologistId(psychologistId);
     }
 
+    /**
+     * Returns the request only to an admin, the beneficiary or the assigned
+     * psychologist. Everyone else gets 404, never 403: on a mental-health
+     * record, confirming existence is itself a disclosure and would also
+     * undermine the isAnonymous protection in ContactInfoService.
+     */
+    @Transactional(readOnly = true)
     public PsychologicalRequest getRequestById(Long id) {
+        PsychologicalRequest request = findOrThrow(id);
+        User me = userService.getCurrentUser();
+        boolean allowed = me.getRole() == UserRole.ADMIN
+                || Objects.equals(request.getBeneficiaryId(), me.getId())
+                || isAssignedPsychologist(me, request);
+        if (!allowed) {
+            throw new ResourceNotFoundException("Request not found: " + id);
+        }
+        return request;
+    }
+
+    /** Unguarded lookup for flows that apply their own rule (accept, status change). */
+    private PsychologicalRequest findOrThrow(Long id) {
         return repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Request not found: " + id));
+    }
+
+    // Compares the caller's psychologist profile id, not the user id, to the assignee column.
+    private boolean isAssignedPsychologist(User me, PsychologicalRequest request) {
+        if (me.getRole() != UserRole.PSYCHOLOGIST || request.getAssignedPsychologistId() == null) {
+            return false;
+        }
+        return psychologistRepository.findByUserId(me.getId())
+                .map(profile -> Objects.equals(profile.getId(), request.getAssignedPsychologistId()))
+                .orElse(false);
     }
 
     private String toCategory(String v) {

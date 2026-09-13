@@ -111,6 +111,27 @@ class PsychologicalRequestSecurityTest extends SecuritySliceTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    @WithMockUser(roles = "PSYCHOLOGIST")
+    void assignedPsychologistCanReadOwnCase() throws Exception {
+        actingAs(PSYCHOLOGIST_USER_ID, UserRole.PSYCHOLOGIST);
+        psychologistProfile(PSYCHOLOGIST_USER_ID, PSYCHOLOGIST_PROFILE_ID);
+        storedRequest(1L, "ASSIGNED", PSYCHOLOGIST_PROFILE_ID);
+
+        mockMvc.perform(get("/api/psychological-requests/1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminCanReadAnyCase() throws Exception {
+        actingAs(99L, UserRole.ADMIN);
+        storedRequest(1L, "PENDING", null);
+
+        mockMvc.perform(get("/api/psychological-requests/1"))
+                .andExpect(status().isOk());
+    }
+
     // -- closing a case -------------------------------------------------------
 
     @Test

@@ -154,6 +154,49 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
                 .andExpect(jsonPath("$.data.id").value(1));
     }
 
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void volunteerCannotReadRequestAssignedToSomeoneElse() throws Exception {
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        volunteerProfile(VOLUNTEER_USER_ID, VOLUNTEER_PROFILE_ID);
+        storedRequest(1L, "ASSIGNED", OTHER_VOLUNTEER_PROFILE_ID);
+
+        mockMvc.perform(get("/api/help-requests/1"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void assignedVolunteerCanReadOwnAssignedRequest() throws Exception {
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        volunteerProfile(VOLUNTEER_USER_ID, VOLUNTEER_PROFILE_ID);
+        storedRequest(1L, "ASSIGNED", VOLUNTEER_PROFILE_ID);
+
+        mockMvc.perform(get("/api/help-requests/1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void filerCanReadRequestTheyFiled() throws Exception {
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        storedRequest(1L, "PENDING", null).setFiledByUserId(VOLUNTEER_USER_ID);
+
+        mockMvc.perform(get("/api/help-requests/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.filedByUserId").value(VOLUNTEER_USER_ID));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminCanReadAnyRequest() throws Exception {
+        actingAs(99L, UserRole.ADMIN);
+        storedRequest(1L, "ASSIGNED", OTHER_VOLUNTEER_PROFILE_ID);
+
+        mockMvc.perform(get("/api/help-requests/1"))
+                .andExpect(status().isOk());
+    }
+
     // -- status changes -------------------------------------------------------
 
     @Test
