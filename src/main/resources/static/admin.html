@@ -245,7 +245,7 @@
                 tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:20px">No location data yet — ask users to enter their city when submitting requests</td></tr>';
             } else {
                 tbody.innerHTML = regions.map(([region, count], i) =>
-                    `<tr><td><span class="rank-badge">${i + 1}</span></td><td>${region}</td><td><strong>${count}</strong></td></tr>`
+                    `<tr><td><span class="rank-badge">${i + 1}</span></td><td>${escHtml(region)}</td><td><strong>${Number(count)}</strong></td></tr>`
                 ).join('');
             }
 
@@ -268,7 +268,7 @@
                 roleGrid.innerHTML = roleEntries.map(([role, count]) => {
                     const cls = roleClassMap[role] || 'r-unknown';
                     const lbl = roleLabelMap[role] || role.charAt(0) + role.slice(1).toLowerCase();
-                    return `<div class="role-card ${cls}"><div class="r-count">${count}</div><div class="r-label">${lbl}</div></div>`;
+                    return `<div class="role-card ${cls}"><div class="r-count">${Number(count)}</div><div class="r-label">${escHtml(lbl)}</div></div>`;
                 }).join('');
             }
 

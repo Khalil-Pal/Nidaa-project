@@ -188,7 +188,7 @@ function render(){
         const tagLabel=s.status==='approved'?'✅ Approved':s.status==='rejected'?'❌ Rejected':'⏳ Pending';
         const initials=(s.authorName||'U').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
         return`<div class="story-card ${cardClass}" id="card-${s.id}">
-            ${s.photo?`<img class="story-photo" src="${s.photo}" alt="story photo" loading="lazy"/>`:''}
+            ${s.photo?`<img class="story-photo" src="${escHtml(s.photo)}" alt="story photo" loading="lazy"/>`:''}
             <div class="story-body">
                 <div class="story-card-header">
                     <div class="story-title">${escHtml(s.title||'Untitled')}</div>

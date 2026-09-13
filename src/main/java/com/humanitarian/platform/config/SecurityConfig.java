@@ -40,6 +40,20 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origins}")
     private List<String> allowedOrigins;
 
+    // External hosts are the three the pages actually load from: Google Fonts
+    // (stylesheet + font files), cdnjs (Font Awesome) and jsdelivr (Chart.js).
+    static final String CONTENT_SECURITY_POLICY = String.join("; ",
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
+            "img-src 'self' data: blob:",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'none'");
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -77,6 +91,15 @@ public class SecurityConfig {
                 .csrf(c -> c.disable())
                 .cors(c -> c.configurationSource(corsConfigurationSource()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Content-Security-Policy (S-2, layer 3). connect-src 'self' is the
+                // directive that breaks the audited exploit chain: an injected
+                // script can no longer send the token to another origin. script-src
+                // still needs 'unsafe-inline' because every page carries its script
+                // inline and ~200 onclick attributes; dropping it is a frontend
+                // refactor scheduled with the accessibility pass (F-5), which
+                // rewrites those handlers anyway. Stored XSS is stopped at the
+                // other two layers: escaping on render and validation on write.
+                .headers(h -> h.contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY)))
                 // No valid token (missing, malformed or expired) is 401 so the
                 // frontend can attempt a refresh. Without an entry point Spring
                 // falls back to 403, which is reserved for authenticated callers

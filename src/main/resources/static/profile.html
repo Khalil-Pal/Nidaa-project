@@ -471,7 +471,7 @@ function renderActivity(myPosts,saved){
     if(!items.length){el.innerHTML='<div class="empty-state"><i class="fa fa-clock-rotate-left"></i><p>No activity yet.</p></div>';return;}
     el.innerHTML=items.map(it=>`<div class="activity-item">
         <div class="act-icon" style="background:${it.bg}">${it.icon}</div>
-        <div><div class="act-text">${it.text}</div><div class="act-time">${timeAgo(it.time)}</div></div>
+        <div><div class="act-text">${escHtml(it.text)}</div><div class="act-time">${timeAgo(it.time)}</div></div>
     </div>`).join('');
 }
 
@@ -669,12 +669,12 @@ function renderProfileStories() {
         const sl = s.status === 'approved' ? '✅ Approved & Published' : s.status === 'rejected' ? '❌ Not Approved' : '⏳ Pending Review';
         return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
-                <span style="font-size:15px;font-weight:700">${s.title || 'Untitled'}</span>
+                <span style="font-size:15px;font-weight:700">${escHtml(s.title || 'Untitled')}</span>
                 <span style="font-size:11px;font-weight:700;padding:3px 12px;border-radius:100px;background:${sb};color:${sc}">${sl}</span>
             </div>
-            ${s.photo ? `<img src="${s.photo}" style="width:100%;max-height:130px;object-fit:cover;border-radius:9px;margin-bottom:10px"/>` : ''}
-            <p style="font-size:13px;color:var(--muted);line-height:1.6">${(s.text||'').slice(0,200)}${(s.text||'').length > 200 ? '…' : ''}</p>
-            ${s.adminNote ? `<div style="margin-top:8px;font-size:12px;background:#f8fafc;border-radius:8px;padding:8px 12px;color:var(--muted)"><b>Admin note:</b> ${s.adminNote}</div>` : ''}
+            ${s.photo ? `<img src="${escHtml(s.photo)}" style="width:100%;max-height:130px;object-fit:cover;border-radius:9px;margin-bottom:10px"/>` : ''}
+            <p style="font-size:13px;color:var(--muted);line-height:1.6">${escHtml((s.text||'').slice(0,200))}${(s.text||'').length > 200 ? '…' : ''}</p>
+            ${s.adminNote ? `<div style="margin-top:8px;font-size:12px;background:#f8fafc;border-radius:8px;padding:8px 12px;color:var(--muted)"><b>Admin note:</b> ${escHtml(s.adminNote)}</div>` : ''}
         </div>`;
     }).join('');
 }

@@ -267,12 +267,12 @@ function loadMyStories(){
         const statusLabel=s.status==='approved'?'✅ Approved & Published':s.status==='rejected'?'❌ Not Approved':'⏳ Pending Review';
         return`<div class="my-story-card">
             <div class="my-story-header">
-                <span style="font-size:15px;font-weight:700">${s.title||'Untitled'}</span>
+                <span style="font-size:15px;font-weight:700">${escHtml(s.title||'Untitled')}</span>
                 <span class="story-status ${statusClass}">${statusLabel}</span>
             </div>
-            ${s.photo?`<img src="${s.photo}" style="width:100%;max-height:140px;object-fit:cover;border-radius:10px;margin-bottom:10px"/>`:''}
-            <p style="font-size:13px;color:var(--muted);line-height:1.6">${s.text.slice(0,200)}${s.text.length>200?'…':''}</p>
-            ${s.adminNote?`<div style="margin-top:10px;font-size:12px;background:#f8fafc;border-radius:8px;padding:8px 12px;color:var(--muted)"><b>Admin note:</b> ${s.adminNote}</div>`:''}
+            ${s.photo?`<img src="${escHtml(s.photo)}" style="width:100%;max-height:140px;object-fit:cover;border-radius:10px;margin-bottom:10px"/>`:''}
+            <p style="font-size:13px;color:var(--muted);line-height:1.6">${escHtml((s.text||'').slice(0,200))}${(s.text||'').length>200?'…':''}</p>
+            ${s.adminNote?`<div style="margin-top:10px;font-size:12px;background:#f8fafc;border-radius:8px;padding:8px 12px;color:var(--muted)"><b>Admin note:</b> ${escHtml(s.adminNote)}</div>`:''}
         </div>`;
     }).join('');
 }

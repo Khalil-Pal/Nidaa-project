@@ -317,13 +317,13 @@
       list.innerHTML = reqs.map(r => `
         <div class="req-row">
           <div class="req-info">
-            <div class="title">${r.category||''} — ${r.preferredFormat||r.supportType||''}</div>
-            <div class="meta">Submitted ${fmtDate(r.createdAt)}${r.description?' · '+r.description.substring(0,40):''}</div>
+            <div class="title">${escHtml(r.category||'')} — ${escHtml(r.preferredFormat||r.supportType||'')}</div>
+            <div class="meta">Submitted ${escHtml(fmtDate(r.createdAt))}${r.description?' · '+escHtml(r.description.substring(0,40)):''}</div>
           </div>
           <div class="req-actions">
-            <span class="tag ${sc[r.status]||'status-pending'}">${r.status||'PENDING'}</span>
+            <span class="tag ${sc[r.status]||'status-pending'}">${escHtml(r.status||'PENDING')}</span>
             ${['ASSIGNED','COMPLETED'].includes((r.status||'').toUpperCase())
-              ? `<button class="btn-accept" onclick="openPsychContact(${r.id},'Psychologist Contact','${r.status||'ASSIGNED'}')">Contact Psychologist</button>`
+              ? `<button class="btn-accept" onclick="openPsychContact(${Number(r.id)},'Psychologist Contact',${jsString(r.status||'ASSIGNED')})">Contact Psychologist</button>`
               : ''}
           </div>
         </div>`).join('');
@@ -346,14 +346,14 @@
         return;
       }
       list.innerHTML = reqs.map(r => `
-        <div class="req-row" id="pr-${r.id}">
+        <div class="req-row" id="pr-${Number(r.id)}">
           <div class="req-info">
-            <div class="title">${r.category||''} — ${r.preferredFormat||''}</div>
-            <div class="meta">${fmtDate(r.createdAt)} · ${r.urgencyLevel||''}</div>
+            <div class="title">${escHtml(r.category||'')} — ${escHtml(r.preferredFormat||'')}</div>
+            <div class="meta">${escHtml(fmtDate(r.createdAt))} · ${escHtml(r.urgencyLevel||'')}</div>
           </div>
           <div class="req-actions">
-            <button class="btn-accept" onclick="startPsychWork(${r.id},this)">&#9654; Start Working</button>
-            <button class="btn-decline" onclick="document.getElementById('pr-${r.id}').remove()">Decline</button>
+            <button class="btn-accept" onclick="startPsychWork(${Number(r.id)},this)">&#9654; Start Working</button>
+            <button class="btn-decline" onclick="document.getElementById('pr-${Number(r.id)}').remove()">Decline</button>
           </div>
         </div>`).join('');
     } catch {
@@ -487,14 +487,14 @@
       }
       const sc = {PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
       list.innerHTML = reqs.map(r => `
-        <div class="req-row" id="as-${r.id}">
+        <div class="req-row" id="as-${Number(r.id)}">
           <div class="req-info">
-            <div class="title">${r.category||''} — ${r.preferredFormat||r.supportType||''}</div>
-            <div class="meta">Started ${fmtDate(r.createdAt)}${r.description?' · '+r.description.substring(0,40):''}</div>
+            <div class="title">${escHtml(r.category||'')} — ${escHtml(r.preferredFormat||r.supportType||'')}</div>
+            <div class="meta">Started ${escHtml(fmtDate(r.createdAt))}${r.description?' · '+escHtml(r.description.substring(0,40)):''}</div>
           </div>
           <div class="req-actions">
-            <span class="tag ${sc[r.status]||'status-assigned'}">${r.status||'ASSIGNED'}</span>
-            <button class="btn-accept" style="font-size:12px;padding:6px 12px" onclick="openPsychContact(${r.id},'${(r.category||'Session').replace(/'/g,'')}','${r.status||'ASSIGNED'}')">Contact & Status</button>
+            <span class="tag ${sc[r.status]||'status-assigned'}">${escHtml(r.status||'ASSIGNED')}</span>
+            <button class="btn-accept" style="font-size:12px;padding:6px 12px" onclick="openPsychContact(${Number(r.id)},${jsString(r.category||'Session')},${jsString(r.status||'ASSIGNED')})">Contact & Status</button>
           </div>
         </div>`).join('');
     } catch {

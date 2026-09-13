@@ -306,7 +306,7 @@
             const status = (r.status     || 'PENDING').toUpperCase();
             const title  = r.title       || 'Help Request';
             const desc   = r.description || r.desc    || '';
-            const id     = r.requestId   || r.id      || '';
+            const id     = Number(r.requestId || r.id) || '';
             const date   = formatDate(r.createdAt || r.date);
             const people = r.peopleCount || r.people || '';
 
@@ -326,20 +326,20 @@
 
             return `<div class="req-card">
                 <div class="card-badges">
-                    <span class="tag ${typeTag[type]   || 'tag-other'}">${type}</span>
-                    <span class="tag ${urgencyTag[urg] || ''}">${urg}</span>
-                    <span class="tag ${statusTag[status] || 'status-pending'}">${status}</span>
+                    <span class="tag ${typeTag[type]   || 'tag-other'}">${escHtml(type)}</span>
+                    <span class="tag ${urgencyTag[urg] || ''}">${escHtml(urg)}</span>
+                    <span class="tag ${statusTag[status] || 'status-pending'}">${escHtml(status)}</span>
                 </div>
-                <div class="card-title">${title}</div>
-                ${desc ? `<div class="card-desc">${desc.substring(0,120)}${desc.length>120?'...':''}</div>` : ''}
+                <div class="card-title">${escHtml(title)}</div>
+                ${desc ? `<div class="card-desc">${escHtml(desc.substring(0,120))}${desc.length>120?'...':''}</div>` : ''}
                 <div class="card-meta">
 
-${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${people}</span>` : ''}
-                    ${r.address ? `<span><i class="fa fa-location-dot" style="font-size:11px"></i> ${r.address}</span>` : ''}
+${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(people)}</span>` : ''}
+                    ${r.address ? `<span><i class="fa fa-location-dot" style="font-size:11px"></i> ${escHtml(r.address)}</span>` : ''}
                     <span><i class="fa fa-hashtag" style="font-size:11px"></i>${id}</span>
                 </div>
                 <div class="card-footer">
-                    <span class="card-date">${date}</span>
+                    <span class="card-date">${escHtml(date)}</span>
                     ${actionBtn}
                 </div>
             </div>`;

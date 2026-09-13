@@ -3,16 +3,23 @@ package com.humanitarian.platform.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
 public class HelpRequestDto {
 
+    // Rendered on the admin queue and provider lists: bounded and free of
+    // angle brackets so a stored-XSS payload is refused before it is stored,
+    // independently of the escaping on render (S-2).
     @NotBlank(message = "Title is required")
+    @Size(max = 200, message = "Title must be at most 200 characters")
+    @Pattern(regexp = "[^<>]*", message = "Title must not contain < or >")
     private String title;
 
     // Description is optional - some requests are simple
+    @Size(max = 4000, message = "Description must be at most 4000 characters")
     private String description;
 
     @NotNull(message = "Help type is required")
@@ -28,6 +35,7 @@ public class HelpRequestDto {
     private Boolean hasChildren;
     private Boolean hasElderly;
     private Boolean hasDisabled;
+    @Size(max = 500, message = "Address must be at most 500 characters")
     private String address;
     private Double latitude;
     private Double longitude;

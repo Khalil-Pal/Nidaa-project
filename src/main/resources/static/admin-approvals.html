@@ -126,7 +126,7 @@
   function showToast(msg, type='success') {
     const t = document.createElement('div');
     t.className = `toast ${type}`;
-    t.innerHTML = `<i class="fa fa-${type==='success'?'circle-check':'circle-exclamation'}"></i> ${msg}`;
+    t.innerHTML = `<i class="fa fa-${type==='success'?'circle-check':'circle-exclamation'}"></i> ${escHtml(msg)}`;
     document.body.appendChild(t);
     setTimeout(() => { t.style.opacity='0'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300); }, 3000);
   }
@@ -153,21 +153,21 @@
       const color = roleColors[role] || '#64748b';
       const pill  = rolePillClass[role] || '';
       return `
-            <div class="app-card" id="app-${u.id||u.userId}">
-                <div class="app-avatar" style="background:${color}">${initials}</div>
+            <div class="app-card" id="app-${escHtml(u.id||u.userId)}">
+                <div class="app-avatar" style="background:${color}">${escHtml(initials)}</div>
                 <div class="app-info">
-                    <div class="app-name">${u.fullName || '—'} <span class="role-pill ${pill}">${(u.role||'').toLowerCase()}</span></div>
+                    <div class="app-name">${escHtml(u.fullName || '—')} <span class="role-pill ${pill}">${escHtml((u.role||'').toLowerCase())}</span></div>
                     <div class="app-meta">
-                        <span><i class="fa fa-envelope"></i> ${u.email || '—'}</span>
-                        ${u.phone ? `<span><i class="fa fa-phone"></i> ${u.phone}</span>` : ''}
-                        <span><i class="fa fa-calendar"></i> Applied ${formatDate(u.createdAt)}</span>
+                        <span><i class="fa fa-envelope"></i> ${escHtml(u.email || '—')}</span>
+                        ${u.phone ? `<span><i class="fa fa-phone"></i> ${escHtml(u.phone)}</span>` : ''}
+                        <span><i class="fa fa-calendar"></i> Applied ${escHtml(formatDate(u.createdAt))}</span>
                     </div>
                 </div>
                 <div class="app-actions">
-                    <button class="btn-approve" onclick="approveUser(${u.id||u.userId}, this)">
+                    <button class="btn-approve" onclick="approveUser(${Number(u.id||u.userId)}, this)">
                         <i class="fa fa-check"></i> Approve
                     </button>
-                    <button class="btn-deny" onclick="denyUser(${u.id||u.userId}, this)">
+                    <button class="btn-deny" onclick="denyUser(${Number(u.id||u.userId)}, this)">
                         <i class="fa fa-xmark"></i> Deny
                     </button>
                 </div>
@@ -189,14 +189,14 @@
       const isActive = u.isActive === true || u.isActive === 'true';
       return `
             <div class="app-card">
-                <div class="app-avatar" style="background:${color}">${initials}</div>
+                <div class="app-avatar" style="background:${color}">${escHtml(initials)}</div>
                 <div class="app-info">
-                    <div class="app-name">${u.fullName || '—'} <span class="role-pill ${pill}">${(u.role||'').toLowerCase()}</span></div>
+                    <div class="app-name">${escHtml(u.fullName || '—')} <span class="role-pill ${pill}">${escHtml((u.role||'').toLowerCase())}</span></div>
                     <div class="app-meta">
-                        <span><i class="fa fa-envelope"></i> ${u.email || '—'}</span>
-                        ${u.phone ? `<span><i class="fa fa-phone"></i> ${u.phone}</span>` : ''}
+                        <span><i class="fa fa-envelope"></i> ${escHtml(u.email || '—')}</span>
+                        ${u.phone ? `<span><i class="fa fa-phone"></i> ${escHtml(u.phone)}</span>` : ''}
                         <span><i class="fa fa-circle" style="color:${isActive?'#059669':'#dc2626'};font-size:9px"></i> ${isActive?'Active':'Inactive'}</span>
-                        <span><i class="fa fa-calendar"></i> Joined ${formatDate(u.createdAt)}</span>
+                        <span><i class="fa fa-calendar"></i> Joined ${escHtml(formatDate(u.createdAt))}</span>
                     </div>
                 </div>
             </div>`;
@@ -211,7 +211,7 @@
       const users = Array.isArray(data) ? data : (data.data || []);
       renderPending(users);
     } catch (e) {
-      document.getElementById('pendingList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${e.message}</p></div>`;
+      document.getElementById('pendingList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${escHtml(e.message)}</p></div>`;
     }
   }
 
@@ -223,7 +223,7 @@
       const users = Array.isArray(data) ? data : (data.data || []);
       renderAllUsers(users);
     } catch (e) {
-      document.getElementById('allList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${e.message}</p></div>`;
+      document.getElementById('allList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${escHtml(e.message)}</p></div>`;
     }
   }
 

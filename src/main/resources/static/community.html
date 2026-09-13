@@ -477,7 +477,7 @@ function renderPosts(){
             </div>
             <div class="comments-wrap" id="cw-${p.id}">
                 ${comments.map(c=>`<div class="comment-item">
-                    <div class="comment-av" style="background:${roleColors[(c.role||'').toLowerCase()]||'#1d4ed8'}">${c.initials||'?'}</div>
+                    <div class="comment-av" style="background:${roleColors[(c.role||'').toLowerCase()]||'#1d4ed8'}">${escHtml(c.initials||'?')}</div>
                     <div class="comment-body"><div class="comment-author">${escHtml(c.author)}</div><div class="comment-text">${escHtml(c.text)}</div></div>
                 </div>`).join('')}
                 <div class="comment-input-row">

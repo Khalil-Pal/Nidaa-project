@@ -77,6 +77,17 @@ function escHtml(t) {
         .replace(/'/g, '&#039;');
 }
 
+/**
+ * A server-supplied string as a JavaScript string literal inside an inline
+ * handler attribute, e.g. onclick="open(${jsString(r.name)})". JSON quoting
+ * makes it a valid literal; the HTML escaping survives attribute decoding.
+ * escHtml() alone is not enough there, because the browser decodes entities
+ * before the handler is parsed as JavaScript.
+ */
+function jsString(value) {
+    return escHtml(JSON.stringify(String(value == null ? '' : value)));
+}
+
 /** Relative time for a timestamp in milliseconds. */
 function timeAgo(ts) {
     const d = Date.now() - ts, m = Math.floor(d / 60000);

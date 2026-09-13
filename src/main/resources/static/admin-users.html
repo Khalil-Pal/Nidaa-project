@@ -248,25 +248,25 @@
             const isActive = u.isActive === true || u.isActive === 'true';
             const uid      = u.id || u.userId || 0;
 
-            return `<tr onclick="openModal(${uid})">
+            return `<tr onclick="openModal(${Number(uid)})">
                 <td>
                     <div class="user-cell">
-                        <div class="user-av" style="background:${color}">${initials}</div>
+                        <div class="user-av" style="background:${color}">${escHtml(initials)}</div>
                         <div>
-                            <div class="user-name">${u.fullName || '—'}</div>
-                            <div class="user-email">${u.email || '—'}</div>
+                            <div class="user-name">${escHtml(u.fullName || '—')}</div>
+                            <div class="user-email">${escHtml(u.email || '—')}</div>
                         </div>
                     </div>
                 </td>
-                <td><span class="role-pill ${pill}">${(u.role||'').toLowerCase()}</span></td>
+                <td><span class="role-pill ${pill}">${escHtml((u.role||'').toLowerCase())}</span></td>
                 <td>
                     <span class="status-dot">
                         <span class="dot ${isActive?'dot-active':'dot-inactive'}"></span>
                         ${isActive ? 'Active' : 'Inactive'}
                     </span>
                 </td>
-                <td>${u.phone || '—'}</td>
-                <td>${formatDate(u.createdAt)}</td>
+                <td>${escHtml(u.phone || '—')}</td>
+                <td>${escHtml(formatDate(u.createdAt))}</td>
             </tr>`;
         }).join('');
     }
@@ -368,7 +368,7 @@
             document.getElementById('usersTableBody').innerHTML =
                 `<tr><td colspan="5" style="text-align:center;padding:40px;color:#dc2626">
                     <i class="fa fa-triangle-exclamation" style="font-size:24px;margin-bottom:8px;display:block"></i>
-                    Could not load users: ${e.message}
+                    Could not load users: ${escHtml(e.message)}
                 </td></tr>`;
         }
     }

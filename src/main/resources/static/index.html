@@ -390,7 +390,7 @@
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
     t.className = `toast ${type}`;
-    t.innerHTML = `<i class="fa fa-${type==='success'?'check-circle':type==='error'?'exclamation-circle':'info-circle'}" style="color:var(${type==='success'?'green':type==='error'?'red':'blue'})"></i> ${msg}`;
+    t.innerHTML = `<i class="fa fa-${type==='success'?'check-circle':type==='error'?'exclamation-circle':'info-circle'}" style="color:var(${type==='success'?'green':type==='error'?'red':'blue'})"></i> ${escHtml(msg)}`;
     c.appendChild(t);
     setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300); }, 3500);
   }
@@ -443,14 +443,15 @@
         const initials = (s.authorName || 'U').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
         const card = document.createElement('div');
         card.className = 'testimonial';
+        // Stories are beneficiary-written and shown to every visitor: escape everything.
         card.innerHTML =
-          (s.photo ? '<img class="story-img" src="' + s.photo + '" alt="story photo" loading="lazy"/>' : '') +
+          (s.photo ? '<img class="story-img" src="' + escHtml(s.photo) + '" alt="story photo" loading="lazy"/>' : '') +
           '<span class="story-badge">✨ Real Story</span>' +
           '<div class="t-stars">★★★★★</div>' +
-          '<p class="t-text">“' + (s.text || '').slice(0, 220) + ((s.text||'').length > 220 ? '…' : '') + '”</p>' +
-          '<div class="t-author"><div class="t-avatar">' + initials + '</div><div>' +
-          '<div class="t-name">' + (s.authorName || 'Community Member') + '</div>' +
-          '<div class="t-role">Beneficiary' + (s.location ? ' — ' + s.location : '') + '</div>' +
+          '<p class="t-text">“' + escHtml((s.text || '').slice(0, 220)) + ((s.text||'').length > 220 ? '…' : '') + '”</p>' +
+          '<div class="t-author"><div class="t-avatar">' + escHtml(initials) + '</div><div>' +
+          '<div class="t-name">' + escHtml(s.authorName || 'Community Member') + '</div>' +
+          '<div class="t-role">Beneficiary' + (s.location ? ' — ' + escHtml(s.location) : '') + '</div>' +
           '</div></div>';
         grid.appendChild(card);
       });

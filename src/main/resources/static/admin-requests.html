@@ -306,32 +306,32 @@
             const suggestionDistance = fmtDistance(r.distanceKm);
             const capacity = capacityIndicator(r);
             return `<tr onclick="openModal(${allRequests.indexOf(r)})">
-                <td style="color:var(--muted);font-size:12px">#${r.id||'—'}</td>
-                <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.title||'—'}</td>
+                <td style="color:var(--muted);font-size:12px">#${escHtml(r.id||'—')}</td>
+                <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.title||'—')}</td>
                 <td>${r.isCrisis ? '<i class="fa fa-triangle-exclamation crisis-icon" title="Crisis case"></i>' : ''}</td>
-                <td><span class="tag ${typeTagClass[type]||'tag-other'}">${type}</span></td>
+                <td><span class="tag ${typeTagClass[type]||'tag-other'}">${escHtml(type)}</span></td>
                 <td><span class="${priorityClass}">${priority !== null ? priority : '—'}</span></td>
-                <td><span class="tag ${statusClass[status]||'status-pending'}">${status}</span></td>
+                <td><span class="tag ${statusClass[status]||'status-pending'}">${escHtml(status)}</span></td>
                 <td>
                     <div class="user-cell">
-                        <span class="u-name">${r.requesterName||'—'}</span>
-                        <span class="u-email">${r.requesterEmail||''}</span>
+                        <span class="u-name">${escHtml(r.requesterName||'—')}</span>
+                        <span class="u-email">${escHtml(r.requesterEmail||'')}</span>
                     </div>
                 </td>
                 <td>
                     <div class="user-cell">
-                        <span class="u-name">${r.workerName||'—'}</span>
-                        <span class="u-email" style="color:${r.workerRole&&r.workerRole!=='—'?'var(--blue)':'var(--muted)'}">${r.workerRole&&r.workerRole!=='—'?r.workerRole:''}</span>
+                        <span class="u-name">${escHtml(r.workerName||'—')}</span>
+                        <span class="u-email" style="color:${r.workerRole&&r.workerRole!=='—'?'var(--blue)':'var(--muted)'}">${escHtml(r.workerRole&&r.workerRole!=='—'?r.workerRole:'')}</span>
                     </div>
                 </td>
                 <td>
                     <div class="suggestion-cell">
-                        <span class="suggestion-name">${r.suggestedVolunteerName||'N/A'}</span>
-                        <span class="suggestion-distance">${suggestionDistance}</span>
+                        <span class="suggestion-name">${escHtml(r.suggestedVolunteerName||'N/A')}</span>
+                        <span class="suggestion-distance">${escHtml(suggestionDistance)}</span>
                         ${capacity ? `<span class="capacity-badge ${capacity.className}">${capacity.text}</span>` : ''}
                     </div>
                 </td>
-                <td style="font-size:13px;color:var(--muted)">${fmtDate(r.createdAt)}</td>
+                <td style="font-size:13px;color:var(--muted)">${escHtml(fmtDate(r.createdAt))}</td>
             </tr>`;
         }).join('');
     }
@@ -453,7 +453,7 @@
             document.getElementById('requestsBody').innerHTML =
                 `<tr><td colspan="10" style="text-align:center;padding:40px;color:#dc2626">
                     <i class="fa fa-triangle-exclamation" style="font-size:24px;margin-bottom:8px;display:block"></i>
-                    Could not load: ${e.message}
+                    Could not load: ${escHtml(e.message)}
                 </td></tr>`;
         }
     }

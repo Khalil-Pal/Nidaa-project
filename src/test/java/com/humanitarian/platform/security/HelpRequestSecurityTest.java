@@ -148,6 +148,47 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    // -- stored XSS (S-2) -----------------------------------------------------
+
+    @Test
+    @WithMockUser(roles = "BENEFICIARY")
+    void titleWithMarkupIsRefusedBeforeItIsStored() throws Exception {
+        actingAs(OWNER_ID, UserRole.BENEFICIARY);
+        String payload = "{\"title\":\"<img src=x onerror=alert(1)>\",\"helpType\":\"FOOD\",\"urgencyLevel\":\"HIGH\"}";
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/help-requests")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details.title").exists());
+        verify(helpRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "BENEFICIARY")
+    void overlongTitleAndDescriptionAreRefused() throws Exception {
+        actingAs(OWNER_ID, UserRole.BENEFICIARY);
+        String payload = "{\"title\":\"" + "t".repeat(201) + "\",\"description\":\"" + "d".repeat(4001)
+                + "\",\"helpType\":\"FOOD\",\"urgencyLevel\":\"HIGH\"}";
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/help-requests")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details.title").exists())
+                .andExpect(jsonPath("$.details.description").exists());
+    }
+
+    @Test
+    void everyResponseCarriesAContentSecurityPolicy() throws Exception {
+        mockMvc.perform(get("/api/help-requests/1"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Content-Security-Policy", org.hamcrest.Matchers.allOf(
+                                org.hamcrest.Matchers.containsString("default-src 'self'"),
+                                org.hamcrest.Matchers.containsString("connect-src 'self'"),
+                                org.hamcrest.Matchers.containsString("frame-ancestors 'none'"))));
+    }
+
     // -- listing --------------------------------------------------------------
 
     @Test
