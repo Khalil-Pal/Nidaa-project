@@ -357,27 +357,27 @@ public class HelpRequestService {
             "CANCELLED", Set.of()
     );
 
+    // Targets each party may move a request to. Completion is reserved for the
+    // assigned provider (or an admin) because it is the delivery record; the
+    // beneficiary and the filer may only withdraw.
+    private static final Set<String> OWNER_TARGETS    = Set.of("CANCELLED");
+    private static final Set<String> PROVIDER_TARGETS = Set.of("COMPLETED", "CANCELLED");
+    private static final Set<String> ADMIN_TARGETS    = Set.of("ASSIGNED", "COMPLETED", "CANCELLED");
+
     @Transactional
     public HelpRequest updateStatus(Long id, String status) {
         HelpRequest request = findOrThrow(id);
         User currentUser = userService.getCurrentUser();
-        String role = currentUser.getRole().name().toLowerCase();
+        String current = request.getStatus();
+        String next = status.toUpperCase();
 
-        // Ownership check — only the right people can touch this request
-        boolean canUpdate = role.equals("admin")
-                || (role.equals("beneficiary") && request.getBeneficiaryId().equals(currentUser.getId()))
-                || role.equals("volunteer")
-                || role.equals("organization")
-                || role.equals("psychologist");
-
-        if (!canUpdate) {
+        // Authorization before transition validation, so an unrelated caller
+        // learns nothing about the request's current state.
+        if (!permittedTargets(currentUser, request).contains(next)) {
             throw new UnauthorizedException("You do not have permission to update this request.");
         }
 
         // Transition validation — no going backwards or into invalid states
-        String current = request.getStatus();
-        String next = status.toUpperCase();
-
         if (!VALID_TRANSITIONS.getOrDefault(current, Set.of()).contains(next)) {
             throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
         }
@@ -395,6 +395,20 @@ public class HelpRequestService {
         }
 
         return findOrThrow(id);
+    }
+
+    private Set<String> permittedTargets(User me, HelpRequest request) {
+        if (me.getRole() == UserRole.ADMIN) {
+            return ADMIN_TARGETS;
+        }
+        if (Objects.equals(request.getBeneficiaryId(), me.getId())
+                || Objects.equals(request.getFiledByUserId(), me.getId())) {
+            return OWNER_TARGETS;
+        }
+        if (isAssignedVolunteer(me, request) || isAssignedOrganization(me, request)) {
+            return PROVIDER_TARGETS;
+        }
+        return Set.of();
     }
 
     @Transactional

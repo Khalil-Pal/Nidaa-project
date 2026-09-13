@@ -85,6 +85,7 @@ public class HelpRequestController {
     }
 
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BENEFICIARY', 'VOLUNTEER', 'ORGANIZATION')")
     @Transactional
     public ResponseEntity<ApiResponse<HelpRequest>> updateStatus(
             @PathVariable Long id, @RequestParam String status) {

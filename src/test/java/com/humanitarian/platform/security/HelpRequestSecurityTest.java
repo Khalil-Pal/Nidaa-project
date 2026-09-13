@@ -248,6 +248,40 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
     }
 
     @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void filerCanCancelRequestTheyFiled() throws Exception {
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        storedRequest(1L, "PENDING", null).setFiledByUserId(VOLUNTEER_USER_ID);
+        when(helpRequestRepository.updateStatusCancelled(eq(1L), eq("CANCELLED"), any())).thenReturn(1);
+
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "CANCELLED"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void filerCannotCompleteRequestTheyFiled() throws Exception {
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        volunteerProfile(VOLUNTEER_USER_ID, VOLUNTEER_PROFILE_ID);
+        storedRequest(1L, "ASSIGNED", OTHER_VOLUNTEER_PROFILE_ID).setFiledByUserId(VOLUNTEER_USER_ID);
+
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
+                .andExpect(status().isForbidden());
+        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminCanCompleteAnyAssignedRequest() throws Exception {
+        actingAs(99L, UserRole.ADMIN);
+        storedRequest(1L, "ASSIGNED", OTHER_VOLUNTEER_PROFILE_ID);
+        when(helpRequestRepository.updateStatusCompleted(eq(1L), eq("COMPLETED"), any())).thenReturn(1);
+
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @WithMockUser(roles = "BENEFICIARY")
     void beneficiaryCannotCancelAnotherUsersRequest() throws Exception {
         actingAs(OTHER_BENEFICIARY_ID, UserRole.BENEFICIARY);

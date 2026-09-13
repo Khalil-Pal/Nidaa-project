@@ -89,8 +89,10 @@ public class PsychologicalRequestController {
     }
 
     // PUT /api/psychological-requests/{id}/status
+    // BENEFICIARY is admitted so an owner can withdraw their own case; the
+    // service limits them to CANCELLED.
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('PSYCHOLOGIST', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('BENEFICIARY', 'PSYCHOLOGIST', 'ADMIN')")
     public ResponseEntity<ApiResponse<PsychologicalRequest>> updateStatus(
             @PathVariable Long id, @RequestParam String status) {
         return ResponseEntity.ok(ApiResponse.success("Status updated",

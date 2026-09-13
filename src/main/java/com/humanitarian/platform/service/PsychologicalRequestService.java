@@ -118,27 +118,27 @@ public class PsychologicalRequestService {
         "CANCELLED", Set.of()
     );
 
+    // Only the assigned psychologist (or an admin) may close a case; the
+    // beneficiary may withdraw it. Volunteers and organizations have no role
+    // in psychological cases at all.
+    private static final Set<String> OWNER_TARGETS        = Set.of("CANCELLED");
+    private static final Set<String> PSYCHOLOGIST_TARGETS = Set.of("COMPLETED", "CANCELLED");
+    private static final Set<String> ADMIN_TARGETS        = Set.of("ASSIGNED", "COMPLETED", "CANCELLED");
+
     @Transactional
     public PsychologicalRequest updateStatus(Long id, String status) {
         PsychologicalRequest request = findOrThrow(id);
         User currentUser = userService.getCurrentUser();
-        String role = currentUser.getRole().name().toLowerCase();
+        String current = request.getStatus();
+        String next = status.toUpperCase();
 
-        // Ownership check
-        boolean canUpdate = role.equals("admin")
-            || (role.equals("beneficiary") && request.getBeneficiaryId().equals(currentUser.getId()))
-            || role.equals("psychologist")
-            || role.equals("volunteer")
-            || role.equals("organization");
-
-        if (!canUpdate) {
+        // Authorization before transition validation, so an unrelated caller
+        // learns nothing about the case's current state.
+        if (!permittedTargets(currentUser, request).contains(next)) {
             throw new UnauthorizedException("You do not have permission to update this request.");
         }
 
         // Transition validation
-        String current = request.getStatus();
-        String next = status.toUpperCase();
-
         if (!VALID_TRANSITIONS.getOrDefault(current, Set.of()).contains(next)) {
             throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
         }
@@ -148,6 +148,19 @@ public class PsychologicalRequestService {
             updateAssignmentStatus(id, next, LocalDateTime.now());
         }
         return findOrThrow(id);
+    }
+
+    private Set<String> permittedTargets(User me, PsychologicalRequest request) {
+        if (me.getRole() == UserRole.ADMIN) {
+            return ADMIN_TARGETS;
+        }
+        if (Objects.equals(request.getBeneficiaryId(), me.getId())) {
+            return OWNER_TARGETS;
+        }
+        if (isAssignedPsychologist(me, request)) {
+            return PSYCHOLOGIST_TARGETS;
+        }
+        return Set.of();
     }
 
     public List<PsychologicalRequest> getAllRequests() { return repo.findAll(); }

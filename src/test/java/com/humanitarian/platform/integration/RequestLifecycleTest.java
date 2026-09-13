@@ -6,6 +6,7 @@ import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
+import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.UserRepository;
@@ -74,6 +75,9 @@ class RequestLifecycleTest {
             return request;
         });
         when(jdbc.queryForObject(anyString(), eq(Long.class), eq(volunteer.getId()))).thenReturn(20L);
+        // S-5: completing requires the caller to be the assigned volunteer, resolved by profile id
+        when(volunteerRepository.findByUserId(volunteer.getId()))
+                .thenReturn(Optional.of(Volunteer.builder().id(20L).build()));
         when(volunteerRepository.claimIfAvailable(20L)).thenReturn(1);
         when(providerResourceService.reserveForAssignment(volunteer.getId(), "FOOD", 3))
                 .thenReturn(Optional.of(new ProviderCapacityReservation(
@@ -95,6 +99,7 @@ class RequestLifecycleTest {
                 .beneficiaryId(beneficiary.getId())
                 .title("Need food")
                 .status("ASSIGNED")
+                .assignedVolunteerId(20L)
                 .build();
         HelpRequest completed = HelpRequest.builder()
                 .id(10L)

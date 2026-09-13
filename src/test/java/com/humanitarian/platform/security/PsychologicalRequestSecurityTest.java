@@ -159,6 +159,21 @@ class PsychologicalRequestSecurityTest extends SecuritySliceTest {
         verify(psychologicalRequestRepository).updateStatusNative(eq(1L), eq("COMPLETED"));
     }
 
+    @Test
+    @WithMockUser(roles = "BENEFICIARY")
+    void beneficiaryCanWithdrawOwnCaseButNotCloseIt() throws Exception {
+        actingAs(OWNER_ID, UserRole.BENEFICIARY);
+        storedRequest(1L, "ASSIGNED", PSYCHOLOGIST_PROFILE_ID);
+
+        mockMvc.perform(put("/api/psychological-requests/1/status").param("status", "COMPLETED"))
+                .andExpect(status().isForbidden());
+
+        when(psychologicalRequestRepository.updateStatusNative(1L, "CANCELLED")).thenReturn(1);
+        mockMvc.perform(put("/api/psychological-requests/1/status").param("status", "CANCELLED"))
+                .andExpect(status().isOk());
+        verify(psychologicalRequestRepository, never()).updateStatusNative(1L, "COMPLETED");
+    }
+
     // -- role boundaries ------------------------------------------------------
 
     @Test
