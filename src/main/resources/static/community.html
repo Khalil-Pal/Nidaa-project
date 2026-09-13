@@ -262,10 +262,8 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
     </div>
 </div>
 
+<script src="/js/nidaa-common.js"></script>
 <script>
-const API='/api';
-function authHeader(){return{'Authorization':'Bearer '+localStorage.getItem('token'),'Content-Type':'application/json'};}
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');window.location.href='login.html';}
 if(!localStorage.getItem('token'))window.location.href='login.html';
 
 const user       =JSON.parse(localStorage.getItem('user')||'{}');
@@ -349,17 +347,6 @@ function updateCharCount(){
     el.className='char-count'+(len>900?' over':len>750?' warn':'');
 }
 
-function timeAgo(ts){
-    const d=Date.now()-ts,m=Math.floor(d/60000);
-    if(m<1)return'Just now';
-    if(m<60)return m+'m ago';
-    const h=Math.floor(m/60);
-    if(h<24)return h+'h ago';
-    const dy=Math.floor(h/24);
-    if(dy<30)return dy+'d ago';
-    return Math.floor(dy/30)+'mo ago';
-}
-function escHtml(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
 
 function normalizePost(raw){
     const author=raw.authorName||'Unknown user';
@@ -731,51 +718,6 @@ function showToast(msg,bg,col){
     setTimeout(()=>t.remove(),2500);
 }
 
-function buildSidebar(){
-    const nav=document.getElementById('sidebarNav');
-    const pages={
-        beneficiary:[
-            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
-            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
-            {href:'psychological.html',icon:'fa-brain',label:'Psychological Support'},
-            {href:'submit-story.html',icon:'fa-pen-to-square',label:'Share My Story'},
-            {href:'profile.html',icon:'fa-user',label:'My Profile'},
-            {href:'settings.html',icon:'fa-gear',label:'Settings'}
-        ],
-        volunteer:[
-            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
-            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
-            {href:'community.html',icon:'fa-users',label:'Community'},
-            {href:'profile.html',icon:'fa-user',label:'My Profile'},
-            {href:'settings.html',icon:'fa-gear',label:'Settings'}
-        ],
-        psychologist:[
-            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
-            {href:'community.html',icon:'fa-users',label:'Community'},
-            {href:'psychological.html',icon:'fa-brain',label:'Psychological Support'},
-            {href:'profile.html',icon:'fa-user',label:'My Profile'},
-            {href:'settings.html',icon:'fa-gear',label:'Settings'}
-        ],
-        organization:[
-            {href:'dashboard.html',icon:'fa-gauge',label:'Dashboard'},
-            {href:'help-requests.html',icon:'fa-hand-holding-heart',label:'Help Requests'},
-            {href:'community.html',icon:'fa-users',label:'Community'},
-            {href:'profile.html',icon:'fa-user',label:'My Profile'},
-            {href:'settings.html',icon:'fa-gear',label:'Settings'}
-        ],
-        admin:[
-            {href:'admin-requests.html',icon:'fa-list-check',label:'All Requests'},
-            {href:'admin.html',icon:'fa-chart-bar',label:'Analytics'},
-            {href:'admin-approvals.html',icon:'fa-user-check',label:'Approvals'},
-            {href:'admin-users.html',icon:'fa-users',label:'All Users'},
-            {href:'admin-stories.html',icon:'fa-newspaper',label:'Stories'},
-            {href:'community.html',icon:'fa-comments',label:'Community'},
-            {href:'settings.html',icon:'fa-gear',label:'Settings'}
-        ]
-    };
-    const links=pages[userRole]||pages['beneficiary'];
-    nav.innerHTML=links.map(p=>`<a href="${p.href}" class="nav-item${p.href==='community.html'?' active':''}"><i class="fa ${p.icon}"></i> ${p.label}</a>`).join('');
-}
 
 buildSidebar();
 loadPosts(true);

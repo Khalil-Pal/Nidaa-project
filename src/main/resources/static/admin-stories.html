@@ -68,15 +68,7 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display
     <div class="sidebar-logo">
         <a href="admin-requests.html"><img src="nidaa-logo-nobg.jpg" alt="Nidaa"/></a>
     </div>
-    <nav class="sidebar-nav" id="sidebarNav">
-        <a href="admin-requests.html" class="nav-item"><i class="fa fa-list-check"></i> All Requests</a>
-        <a href="admin.html" class="nav-item"><i class="fa fa-chart-bar"></i> Analytics</a>
-        <a href="admin-approvals.html" class="nav-item"><i class="fa fa-user-check"></i> Approvals</a>
-        <a href="admin-users.html" class="nav-item"><i class="fa fa-users"></i> All Users</a>
-        <a href="admin-stories.html" class="nav-item active"><i class="fa fa-newspaper"></i> Stories</a>
-        <a href="community.html" class="nav-item"><i class="fa fa-comments"></i> Community</a>
-        <a href="settings.html" class="nav-item"><i class="fa fa-gear"></i> Settings</a>
-    </nav>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
 </aside>
 
 <div class="main">
@@ -111,13 +103,12 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display
     </div>
 </div>
 
+<script src="/js/nidaa-common.js"></script>
 <script>
-const API='http://localhost:8081/api';
-function authHeader(){return{'Authorization':'Bearer '+localStorage.getItem('token'),'Content-Type':'application/json'};}
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');window.location.href='login.html';}
 if(!localStorage.getItem('token'))window.location.href='login.html';
 
 const user   =JSON.parse(localStorage.getItem('user')||'{}');
+buildSidebar('admin-stories.html');
 const role   =(user.role||'').toLowerCase();
 if(role!=='admin')window.location.href='login.html';
 document.getElementById('topbarName').textContent=(user.fullName||'Admin').split(' ')[0];
@@ -135,15 +126,6 @@ function setFilter(f,btn){
     render();
 }
 
-function timeAgo(ts){
-    const d=Date.now()-ts,m=Math.floor(d/60000);
-    if(m<1)return'Just now';
-    if(m<60)return m+'m ago';
-    const h=Math.floor(m/60);
-    if(h<24)return h+'h ago';
-    return Math.floor(h/24)+'d ago';
-}
-function escHtml(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function approve(id){
     const stories=getStories();
