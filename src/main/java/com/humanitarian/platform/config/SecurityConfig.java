@@ -2,6 +2,7 @@ package com.humanitarian.platform.config;
 
 import com.humanitarian.platform.security.JwtAuthenticationFilter;
 import com.humanitarian.platform.security.UserDetailsServiceImpl;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -62,6 +63,16 @@ public class SecurityConfig {
                 .csrf(c -> c.disable())
                 .cors(c -> c.configurationSource(corsConfigurationSource()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // No valid token (missing, malformed or expired) is 401 so the
+                // frontend can attempt a refresh. Without an entry point Spring
+                // falls back to 403, which is reserved for authenticated callers
+                // that lack the role or do not own the record.
+                .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
+                    res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    res.setContentType("application/json");
+                    res.setCharacterEncoding("UTF-8");
+                    res.getWriter().write("{\"success\":false,\"message\":\"Authentication required.\"}");
+                }))
                 .authorizeHttpRequests(auth -> auth
                         // Static files — no auth needed
                         .requestMatchers("/*.html", "/*.css", "/*.js", "/*.png",
