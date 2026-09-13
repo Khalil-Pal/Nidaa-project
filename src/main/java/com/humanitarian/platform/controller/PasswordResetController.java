@@ -1,6 +1,8 @@
 package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.service.PasswordResetService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,21 +15,24 @@ import java.util.Map;
 
 public class PasswordResetController {
 
+    private static final Logger log = LoggerFactory.getLogger(PasswordResetController.class);
+
     @Autowired
     private PasswordResetService passwordResetService;
 
     // POST /api/auth/forgot-password
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, Object>> forgotPassword(@RequestBody Map<String, String> body) {
-        Map<String, Object> res = new LinkedHashMap<>();
+        // Always the same 200 and message, whether or not the account exists
+        // and whether or not the email could be sent (failures are logged).
         try {
-            String msg = passwordResetService.sendResetCode(body.get("email"));
-            res.put("success", true);
-            res.put("message", msg);
+            passwordResetService.sendResetCode(body.get("email"));
         } catch (Exception e) {
-            res.put("success", false);
-            res.put("message", e.getMessage());
+            log.error("Password reset request failed", e);
         }
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("success", true);
+        res.put("message", PasswordResetService.RESET_REQUEST_RESPONSE);
         return ResponseEntity.ok(res);
     }
 

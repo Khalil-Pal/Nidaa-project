@@ -50,6 +50,11 @@ public class SecurityConfig {
         DaoAuthenticationProvider p = new DaoAuthenticationProvider();
         p.setUserDetailsService(userDetailsService);
         p.setPasswordEncoder(passwordEncoder());
+        // The default pre-checks throw Disabled/LockedException before the
+        // password is compared, which would tell an unauthenticated caller that
+        // the account exists and what state it is in. AuthService.login performs
+        // those checks itself, after the password has been verified.
+        p.setPreAuthenticationChecks(userDetails -> { });
         return p;
     }
 

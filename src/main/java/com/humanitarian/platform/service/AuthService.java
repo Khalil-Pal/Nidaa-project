@@ -205,9 +205,32 @@ public class AuthService {
             }
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("No account found with this email."));
+        // The password is verified before anything about the account is
+        // revealed. An unknown address and a wrong password produce the same
+        // 401, with no attempt counter, so the response cannot be used to
+        // discover who has an account. DaoAuthenticationProvider hides
+        // UsernameNotFoundException and runs a dummy hash for unknown users,
+        // which also keeps the timing similar.
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword()));
+        } catch (BadCredentialsException ex) {
+            failedAttempts.merge(email,
+                    new FailedAttempt(1, LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES)),
+                    (old, n) -> new FailedAttempt(old.count + 1, LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES)));
+            if (failedAttempts.get(email).count >= MAX_ATTEMPTS) {
+                throw new BusinessException(
+                        "Too many failed login attempts. Try again in " + LOCKOUT_MINUTES + " minutes.");
+            }
+            throw new BadCredentialsException("Invalid email or password.");
+        }
 
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
+
+        // Account-state messages are safe here: the caller has just proven
+        // they know the password.
         if (!user.getIsActive()) {
             if (ROLES_REQUIRING_APPROVAL.contains(user.getRole())) {
                 throw new BusinessException(
@@ -219,23 +242,6 @@ public class AuthService {
 
         if (user.getIsLocked()) {
             throw new BusinessException("Your account is locked. Contact support.");
-        }
-
-        Authentication authentication;
-        try {
-            authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, request.getPassword()));
-        } catch (BadCredentialsException ex) {
-            failedAttempts.merge(email,
-                    new FailedAttempt(1, LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES)),
-                    (old, n) -> new FailedAttempt(old.count + 1, LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES)));
-            int remaining = MAX_ATTEMPTS - failedAttempts.get(email).count;
-            if (remaining > 0) {
-                throw new BusinessException("Invalid password. " + remaining + " attempt(s) remaining.");
-            } else {
-                throw new BusinessException(
-                        "Too many failed login attempts. Try again in " + LOCKOUT_MINUTES + " minutes.");
-            }
         }
 
         failedAttempts.remove(email);

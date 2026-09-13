@@ -51,16 +51,22 @@ public class PasswordResetService {
     @Value("${spring.mail.username:}")
     private String senderEmail;
 
+    /** The only message the forgot-password endpoint ever returns. */
+    public static final String RESET_REQUEST_RESPONSE =
+            "If an account exists for that address, a reset code has been sent.";
+
     // Step 1: Send reset code to email
     @Transactional
-    public String sendResetCode(String email) {
-        String normalizedEmail = email.toLowerCase().trim();
+    public void sendResetCode(String email) {
+        String normalizedEmail = email == null ? "" : email.toLowerCase().trim();
 
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("No account found with this email address."));
-
-        if (!user.getIsActive()) {
-            throw new BusinessException("This account is not active. Please contact support.");
+        // Unknown or inactive addresses return silently: the caller always
+        // receives RESET_REQUEST_RESPONSE, so the endpoint cannot be used to
+        // find out who has an account.
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
+        if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
+            log.info("Password reset requested for an unknown or inactive address");
+            return;
         }
 
         // Clean up expired tokens first
@@ -81,8 +87,6 @@ public class PasswordResetService {
         tokenRepository.save(token);
 
         sendResetEmail(user, code);
-
-        return "Reset code sent to " + maskEmail(email);
     }
 
     // Step 2: Verify the code
