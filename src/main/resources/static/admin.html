@@ -187,7 +187,7 @@
     // ── LOAD STATS ──────────────────────────────────────────────────────────
     async function loadStats() {
         try {
-            const res = await fetch(API + '/admin/stats', { headers: authHeader() });
+            const res = await apiFetch(API + '/admin/stats', { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const stats = await res.json();
 

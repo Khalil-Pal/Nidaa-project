@@ -33,15 +33,85 @@ function authHeader() {
     };
 }
 
+/** Stores the token pair and user summary returned by login, registration or refresh. */
+function storeSession(data) {
+    localStorage.setItem('token', data.token);
+    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+    if (data.userId) {
+        localStorage.setItem('user', JSON.stringify({
+            id: data.userId,
+            email: data.email,
+            fullName: data.fullName,
+            role: data.role,
+            isActive: data.isActive
+        }));
+    }
+}
+
+/** Forgets the session in this browser and, unless told otherwise, goes to the login page. */
+function endSession(redirect = true) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    if (redirect) window.location.href = 'login.html';
+}
+
+// One refresh at a time: several requests failing with 401 together share
+// the same refresh call instead of each rotating the refresh token.
+let refreshInFlight = null;
+
 /**
- * fetch() for API calls: prefixes the API base, attaches the bearer token and
- * JSON content type, and lets the caller override or add headers.
- * Token refresh on 401 is added in F-4.
+ * Exchanges the stored refresh token for a new pair. Resolves true when the
+ * session was renewed. The server rotates the refresh token on every call,
+ * so the new one replaces the old immediately.
  */
-async function apiFetch(path, options = {}) {
-    const url = /^https?:\/\//.test(path) ? path : API + (path.startsWith('/') ? path : '/' + path);
+function refreshSession() {
+    if (refreshInFlight) return refreshInFlight;
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) return Promise.resolve(false);
+    refreshInFlight = (async () => {
+        try {
+            const res = await fetch(API + '/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            });
+            if (!res.ok) return false;
+            const data = await res.json();
+            if (!data || !data.token) return false;
+            storeSession(data);
+            return true;
+        } catch (e) {
+            return false;
+        } finally {
+            refreshInFlight = null;
+        }
+    })();
+    return refreshInFlight;
+}
+
+/**
+ * fetch() for API calls. Prefixes the API base (paths that already start
+ * with /api are left alone), attaches the bearer token and JSON content
+ * type, and lets the caller override or add headers.
+ *
+ * On 401 the access token has expired or been revoked: the session is
+ * refreshed once and the request retried with the new token. If the refresh
+ * fails the browser session is cleared and the user is sent to the login
+ * page, so a 15-minute access token never logs anyone out mid-task while
+ * their 7-day refresh token is still valid.
+ */
+async function apiFetch(path, options = {}, retried = false) {
+    let url = path;
+    if (!/^https?:\/\//.test(path) && !path.startsWith(API + '/') && path !== API) {
+        url = API + (path.startsWith('/') ? path : '/' + path);
+    }
     const headers = Object.assign({}, authHeader(), options.headers || {});
-    return fetch(url, Object.assign({}, options, { headers }));
+    const res = await fetch(url, Object.assign({}, options, { headers }));
+    if (res.status !== 401 || retried) return res;
+    if (await refreshSession()) return apiFetch(path, options, true);
+    endSession(true);
+    return res;
 }
 
 /**
@@ -61,10 +131,7 @@ async function logout() {
             // The browser session is cleared regardless; the token expires on its own.
         }
     }
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    window.location.href = 'login.html';
+    endSession(true);
 }
 
 /** Escapes text for insertion into innerHTML. Use for every server- or user-supplied string. */

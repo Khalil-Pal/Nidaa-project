@@ -364,7 +364,7 @@ function normalizePost(raw){
 }
 
 async function fetchJson(url,options={}){
-    const response=await fetch(url,{...options,headers:{...authHeader(),...(options.headers||{})}});
+    const response=await apiFetch(url,{...options,headers:{...authHeader(),...(options.headers||{})}});
     let payload={};
     try{payload=await response.json();}catch{}
     if(!response.ok)throw new Error(payload.message||'The community request failed.');
@@ -661,11 +661,11 @@ async function loadMembers(){
     try{
         let members=[];
         if(userRole==='admin'){
-            const res=await fetch(API+'/admin/users',{headers:authHeader()});
+            const res=await apiFetch(API+'/admin/users',{headers:authHeader()});
             if(res.ok){const d=await res.json();const all=d.data||d||[];members=all.filter(m=>{const r=(m.role||'').toLowerCase();return r==='volunteer'||r==='psychologist'||r==='organization';}).slice(0,6);}
         }
         if(!members.length){
-            const res=await fetch(API+'/dashboard/stats',{headers:authHeader()});
+            const res=await apiFetch(API+'/dashboard/stats',{headers:authHeader()});
             if(res.ok){
                 const d=await res.json();const s=d.data||d||{};
                 const vc=s.totalVolunteers||s.volunteers||0;

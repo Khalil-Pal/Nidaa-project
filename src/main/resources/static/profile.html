@@ -490,9 +490,9 @@ async function loadProviderSummary(){
     card.hidden=false;
 
     try{
-        const resourceRequest=fetch(`${API}/provider-resources/me`,{headers:authHeader()}).then(readProfileApiData);
+        const resourceRequest=apiFetch(`${API}/provider-resources/me`,{headers:authHeader()}).then(readProfileApiData);
         const occupationRequest=userRole==='volunteer'
-            ?fetch(`${API}/volunteers/me/occupation`,{headers:authHeader()}).then(readProfileApiData)
+            ?apiFetch(`${API}/volunteers/me/occupation`,{headers:authHeader()}).then(readProfileApiData)
             :Promise.resolve(null);
         const [resources,occupation]=await Promise.all([resourceRequest,occupationRequest]);
 

@@ -274,12 +274,8 @@
                 document.getElementById('registerBtn').disabled = true;
                 return;
             }
-            // Active user (beneficiary) — save token and go to dashboard
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify({
-                id: data.userId, email: data.email, fullName: data.fullName,
-                role: data.role, isActive: data.isActive, pendingApproval: false
-            }));
+            // Active user (beneficiary) — save the token pair and go to dashboard
+            storeSession(data);
             window.location.href = 'dashboard.html';
         } catch (err) {
             showAlert(err.message);

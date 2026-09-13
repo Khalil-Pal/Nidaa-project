@@ -205,7 +205,7 @@
 
   async function loadPending() {
     try {
-      const res  = await fetch(API + '/admin/pending', { headers: authHeader() });
+      const res  = await apiFetch(API + '/admin/pending', { headers: authHeader() });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const users = Array.isArray(data) ? data : (data.data || []);
@@ -217,7 +217,7 @@
 
   async function loadAllUsers() {
     try {
-      const res  = await fetch(API + '/admin/users', { headers: authHeader() });
+      const res  = await apiFetch(API + '/admin/users', { headers: authHeader() });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const users = Array.isArray(data) ? data : (data.data || []);
@@ -235,7 +235,7 @@
     if (denyBtn) denyBtn.disabled = true;
 
     try {
-      const res = await fetch(API + '/admin/approve/' + userId, { method: 'PUT', headers: authHeader() });
+      const res = await apiFetch(API + '/admin/approve/' + userId, { method: 'PUT', headers: authHeader() });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       showToast('✅ Application approved! Confirmation email sent.');
       // Remove card smoothly
@@ -257,7 +257,7 @@
     if (approveBtn) approveBtn.disabled = true;
 
     try {
-      const res = await fetch(API + '/admin/reject/' + userId, { method: 'PUT', headers: authHeader() });
+      const res = await apiFetch(API + '/admin/reject/' + userId, { method: 'PUT', headers: authHeader() });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       showToast('Application denied and user notified.', 'success');
       const card = document.getElementById('app-' + userId);

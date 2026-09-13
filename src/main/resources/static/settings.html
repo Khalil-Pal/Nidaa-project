@@ -369,7 +369,7 @@
 
     async function loadAccountProfile() {
         try {
-            const response = await fetch(API + '/users/me/profile', { headers: authHeader() });
+            const response = await apiFetch(API + '/users/me/profile', { headers: authHeader() });
             const profile = await readApiData(response);
             if (profile.phone) document.getElementById('phone').value = profile.phone;
             if (profile.fullName) {
@@ -579,7 +579,7 @@
             const longitude = readCoordinate('matchingLongitude', 'Longitude', -180, 180);
             button.disabled = true;
             setMatchingLocationStatus('Saving...');
-            const response = await fetch(`${API}/users/me/profile`, {
+            const response = await apiFetch(`${API}/users/me/profile`, {
                 method: 'PUT',
                 headers: authHeader(),
                 body: JSON.stringify({
@@ -653,7 +653,7 @@
         toggle.disabled = true;
         document.getElementById('providerAvailabilityStatus').textContent = 'Loading availability...';
         try {
-            const response = await fetch(`${API}/provider-availability/me`, {
+            const response = await apiFetch(`${API}/provider-availability/me`, {
                 headers: authHeader()
             });
             renderProviderAvailability(await readApiData(response));
@@ -670,7 +670,7 @@
         toggle.disabled = true;
         availableNowButton.disabled = true;
         try {
-            const response = await fetch(`${API}/provider-availability/me`, {
+            const response = await apiFetch(`${API}/provider-availability/me`, {
                 method: 'PUT',
                 headers: authHeader(),
                 body: JSON.stringify({ available })
@@ -700,10 +700,10 @@
         syncAllProviderServiceRows();
 
         try {
-            const resourceRequest = fetch(`${API}/provider-resources/me`, { headers: authHeader() })
+            const resourceRequest = apiFetch(`${API}/provider-resources/me`, { headers: authHeader() })
                 .then(readApiData);
             const occupationRequest = userRole === 'volunteer'
-                ? fetch(`${API}/volunteers/me/occupation`, { headers: authHeader() }).then(readApiData)
+                ? apiFetch(`${API}/volunteers/me/occupation`, { headers: authHeader() }).then(readApiData)
                 : Promise.resolve(null);
             const [resources, occupation] = await Promise.all([resourceRequest, occupationRequest]);
 
@@ -782,7 +782,7 @@
                 let response;
                 if (state.enabled) {
                     const normalized = normalizedProviderService(state);
-                    response = await fetch(`${API}/provider-resources`, {
+                    response = await apiFetch(`${API}/provider-resources`, {
                         method: 'PUT',
                         headers: authHeader(),
                         body: JSON.stringify({
@@ -793,7 +793,7 @@
                         })
                     });
                 } else {
-                    response = await fetch(`${API}/provider-resources/${encodeURIComponent(service.key)}`, {
+                    response = await apiFetch(`${API}/provider-resources/${encodeURIComponent(service.key)}`, {
                         method: 'DELETE',
                         headers: authHeader()
                     });
@@ -805,7 +805,7 @@
             if (userRole === 'volunteer') {
                 const occupation = document.getElementById('occupationInput').value.trim();
                 if (occupation !== occupationBaseline) {
-                    const response = await fetch(`${API}/volunteers/me/occupation`, {
+                    const response = await apiFetch(`${API}/volunteers/me/occupation`, {
                         method: 'PUT',
                         headers: authHeader(),
                         body: JSON.stringify({ occupation })
@@ -836,7 +836,7 @@
         const newPhone = document.getElementById('phone').value.trim();
         if (!newName) { showMsg('error', 'Name cannot be empty.'); return; }
         try {
-            const res = await fetch(`${API}/users/me/profile`, {
+            const res = await apiFetch(`${API}/users/me/profile`, {
                 method: 'PUT',
                 headers: authHeader(),
                 body: JSON.stringify({ fullName: newName, phone: newPhone })
@@ -892,7 +892,7 @@
 
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(API + '/users/change-password/request', {
+            const res = await apiFetch(API + '/users/change-password/request', {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + token,
@@ -972,7 +972,7 @@
         btn.innerHTML = '<span class="spinner"></span>';
 
         try {
-            const res = await fetch(`${API}/users/change-password/confirm`, {
+            const res = await apiFetch(`${API}/users/change-password/confirm`, {
                 method: 'POST', headers: authHeader(),
                 body: JSON.stringify({ code: code, newPassword: _savedNewPw })
             });
@@ -1005,7 +1005,7 @@
         const newPw   = _savedNewPw;
         if (!current || !newPw) { closeModal(); showMsg('error', 'Please fill the form again.'); return; }
         try {
-            const res = await fetch(`${API}/users/change-password/request`, {
+            const res = await apiFetch(`${API}/users/change-password/request`, {
                 method: 'POST', headers: authHeader(),
                 body: JSON.stringify({ currentPassword: current, newPassword: newPw })
             });
@@ -1027,7 +1027,7 @@
         if (!password) { showMsg('error', 'Enter your current password to delete the account.'); return; }
         if (!confirm('Are you absolutely sure you want to delete your account? This cannot be undone.')) return;
         try {
-            const res = await fetch(`${API}/users/me`, {
+            const res = await apiFetch(`${API}/users/me`, {
                 method: 'DELETE',
                 headers: { ...authHeader(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password })

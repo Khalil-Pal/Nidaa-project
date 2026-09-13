@@ -163,15 +163,9 @@
                 throw new Error('Server returned incomplete authentication data. Please contact support.');
             }
 
-            // Save ALL user fields correctly so every page shows the right name
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify({
-                id:       data.userId,
-                email:    data.email,
-                fullName: data.fullName,
-                role:     data.role,
-                isActive: data.isActive
-            }));
+            // Save the token pair and user summary so every page shows the right
+            // name and apiFetch() can renew the access token silently
+            storeSession(data);
 
             // Admin goes to their own landing page, everyone else to dashboard
             const role = (data.role || '').toLowerCase();

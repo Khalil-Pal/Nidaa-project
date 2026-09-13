@@ -232,7 +232,7 @@
   async function checkProviderSetup() {
     if (!isProvider || localStorage.getItem(providerBannerKey) === 'true') return;
     try {
-      const response = await fetch(`${API}/provider-resources/me`, { headers: authHeader() });
+      const response = await apiFetch(`${API}/provider-resources/me`, { headers: authHeader() });
       if (!response.ok) return;
       const payload = await response.json();
       const resources = payload.data ?? payload;
@@ -343,7 +343,7 @@
   // Load real stats from API
   async function loadStats() {
     try {
-      const res = await fetch(`${API}/dashboard/stats`, { headers: authHeader() });
+      const res = await apiFetch(`${API}/dashboard/stats`, { headers: authHeader() });
       if (!res.ok) return;
       const data = await res.json();
       document.getElementById('statTotal').textContent = data.total ?? 0;
@@ -369,7 +369,7 @@
       const endpoint = (userRole === 'beneficiary') ? '/help-requests/my'
                      : (userRole === 'psychologist') ? '/psychological-requests/pending'
                      : '/help-requests?page=0&size=10';
-      const res = await fetch(`${API}${endpoint}`, { headers: authHeader() });
+      const res = await apiFetch(`${API}${endpoint}`, { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
 
       const data = await res.json();

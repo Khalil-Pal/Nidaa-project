@@ -335,7 +335,7 @@
         btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Deleting...';
 
         try {
-            const res = await fetch(API + '/admin/users/' + currentModalUserId, {
+            const res = await apiFetch(API + '/admin/users/' + currentModalUserId, {
                 method: 'DELETE', headers: authHeader()
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -359,7 +359,7 @@
 
     async function loadUsers() {
         try {
-            const res  = await fetch(API + '/admin/users', { headers: authHeader() });
+            const res  = await apiFetch(API + '/admin/users', { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             allUsers   = Array.isArray(data) ? data : (data.data || []);

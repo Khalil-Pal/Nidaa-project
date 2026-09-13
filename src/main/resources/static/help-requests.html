@@ -367,7 +367,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
         try {
             // Beneficiary sees only their own requests
             const endpoint = userRole === 'beneficiary' ? '/help-requests/my' : '/help-requests?page=0&size=100';
-            const res  = await fetch(API + endpoint, { headers: authHeader() });
+            const res  = await apiFetch(API + endpoint, { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             // Backend wraps in ApiResponse{ data: Page{ content:[...] } } or ApiResponse{ data: [...] }
@@ -391,7 +391,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
         btn.disabled = true;
         btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Starting...';
         try {
-            const res = await fetch(API + '/help-requests/' + id + '/assign', {
+            const res = await apiFetch(API + '/help-requests/' + id + '/assign', {
                 method: 'PUT', headers: authHeader()
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -426,7 +426,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
             buildStatusOptions(req.status || 'ASSIGNED');
         }
         try {
-            const res = await fetch(API + '/help-requests/' + id + '/contact', { headers: authHeader() });
+            const res = await apiFetch(API + '/help-requests/' + id + '/contact', { headers: authHeader() });
             if (!res.ok) {
                 const error = await res.json().catch(() => ({}));
                 throw new Error(error.message || 'Contact is not available');
@@ -493,7 +493,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
         const updateBtn = document.querySelector('.btn-update-status');
         if (updateBtn) { updateBtn.disabled = true; updateBtn.textContent = 'Updating...'; }
         try {
-            const res = await fetch(API + '/help-requests/' + currentContactRequestId + '/status?status=' + status, {
+            const res = await apiFetch(API + '/help-requests/' + currentContactRequestId + '/status?status=' + status, {
                 method: 'PUT', headers: authHeader()
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -588,7 +588,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
     async function prefillSavedLocation() {
         if (userRole !== 'beneficiary') return;
         try {
-            const res = await fetch(API + '/users/me/profile', { headers: authHeader() });
+            const res = await apiFetch(API + '/users/me/profile', { headers: authHeader() });
             if (!res.ok) return;
             const body = await res.json();
             const profile = body.data || body;
@@ -617,7 +617,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
         btn.textContent = 'Submitting...';
 
         try {
-            const res = await fetch(API + '/help-requests', {
+            const res = await apiFetch(API + '/help-requests', {
                 method: 'POST',
                 headers: authHeader(),
                 body: JSON.stringify({

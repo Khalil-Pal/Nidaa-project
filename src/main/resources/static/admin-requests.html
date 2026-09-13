@@ -444,7 +444,7 @@
 
     async function loadRequests() {
         try {
-            const res  = await fetch(API + '/v1/admin/dashboard/ranked', { headers: authHeader() });
+            const res  = await apiFetch(API + '/v1/admin/dashboard/ranked', { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             allRequests = normalizeRankedDashboard(data.data || data || {});

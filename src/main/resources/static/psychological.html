@@ -305,7 +305,7 @@
     const list = document.getElementById('myRequestsList');
     if (!list) return;
     try {
-      const res  = await fetch(API + '/psychological-requests/my', { headers: authHeader() });
+      const res  = await apiFetch(API + '/psychological-requests/my', { headers: authHeader() });
       if (!res.ok) throw new Error();
       const data = await res.json();
       const reqs = Array.isArray(data) ? data : (data.data || []);
@@ -337,7 +337,7 @@
     const list = document.getElementById('pendingRequestsList');
     if (!list) return;
     try {
-      const res  = await fetch(API + '/psychological-requests/pending', { headers: authHeader() });
+      const res  = await apiFetch(API + '/psychological-requests/pending', { headers: authHeader() });
       if (!res.ok) throw new Error();
       const data = await res.json();
       const reqs = Array.isArray(data) ? data : (data.data || []);
@@ -377,7 +377,7 @@
     };
 
     try {
-      const res = await fetch(API + '/psychological-requests', {
+      const res = await apiFetch(API + '/psychological-requests', {
         method: 'POST', headers: authHeader(), body: JSON.stringify(payload)
       });
       if (!res.ok) {
@@ -401,7 +401,7 @@
     btn.disabled = true;
     btn.textContent = 'Starting...';
     try {
-      const res = await fetch(API + '/psychological-requests/' + id + '/accept', { method: 'PUT', headers: authHeader() });
+      const res = await apiFetch(API + '/psychological-requests/' + id + '/accept', { method: 'PUT', headers: authHeader() });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
         throw new Error(error.message || 'HTTP ' + res.status);
@@ -442,7 +442,7 @@
     if (userRole === 'psychologist') buildPsychStatusOptions(status);
     document.getElementById('psychContactOverlay').classList.add('open');
     try {
-      const res = await fetch(API + '/psychological-requests/' + id + '/contact', { headers: authHeader() });
+      const res = await apiFetch(API + '/psychological-requests/' + id + '/contact', { headers: authHeader() });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
         throw new Error(error.message || 'Contact is not available');
@@ -477,7 +477,7 @@
     const list = document.getElementById('activeSessionsList');
     if (!list) return;
     try {
-      const res  = await fetch(API + '/psychological-requests/my-assigned', { headers: authHeader() });
+      const res  = await apiFetch(API + '/psychological-requests/my-assigned', { headers: authHeader() });
       if (!res.ok) throw new Error();
       const data = await res.json();
       const reqs = Array.isArray(data) ? data : (data.data || []);
@@ -546,7 +546,7 @@
     const btn = document.querySelector('.btn-psych-update');
     if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
     try {
-      const res = await fetch(API + '/psychological-requests/' + currentPsychRequestId + '/status?status=' + status, {
+      const res = await apiFetch(API + '/psychological-requests/' + currentPsychRequestId + '/status?status=' + status, {
         method: 'PUT', headers: authHeader()
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);

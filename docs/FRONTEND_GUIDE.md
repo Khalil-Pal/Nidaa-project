@@ -33,7 +33,12 @@ After login, the browser stores the access token and a safe user summary in
 Role-specific pages inspect the stored user role for navigation and visibility, but
 the backend remains authoritative and repeats all role/ownership checks.
 
-Logout removes the token and user summary before returning to the login page.
+Login stores the access token, the refresh token and the user summary. Every API
+call goes through `apiFetch()`: when the 15-minute access token expires the call
+receives 401, the module exchanges the refresh token for a new pair once (concurrent
+calls share that one exchange), and retries. Only when the refresh itself fails is the
+session cleared and the user sent to the login page. Logout revokes the refresh token
+on the server, then removes the token pair and user summary.
 
 ## Shared Module
 
@@ -271,6 +276,12 @@ As an administrator, open `admin-requests.html` with ranked material requests th
 exercise sufficient, insufficient, and qualitative provider capacities. Verify the
 table badge and modal detail show the same state, and that psychological requests do
 not display a capacity badge.
+
+The shared module has its own tests, run with plain Node (no framework):
+
+```bash
+node src/test/js/nidaa-common.test.js
+```
 
 Run a JavaScript syntax check after editing inline scripts:
 
