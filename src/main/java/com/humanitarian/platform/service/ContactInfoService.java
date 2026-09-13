@@ -53,7 +53,11 @@ public class ContactInfoService {
                         "Help request not found: " + requestId));
         User currentUser = userService.getCurrentUser();
 
-        if (Objects.equals(request.getBeneficiaryId(), currentUser.getId())) {
+        // The beneficiary and whoever filed for them both coordinate delivery
+        // with the assigned provider; the provider is given the beneficiary's
+        // contact, never the filer's.
+        if (Objects.equals(request.getBeneficiaryId(), currentUser.getId())
+                || Objects.equals(request.getFiledByUserId(), currentUser.getId())) {
             return getAssignedMaterialProvider(request);
         }
 
@@ -63,7 +67,7 @@ public class ContactInfoService {
         }
 
         throw new UnauthorizedException(
-                "Only the requester or assigned provider can view this contact information.");
+                "Only the requester, the filer or the assigned provider can view this contact information.");
     }
 
     @Transactional(readOnly = true)

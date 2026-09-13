@@ -26,10 +26,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import com.humanitarian.platform.model.UserRole;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -71,6 +73,9 @@ public class HelpRequestService {
     @Transactional
     public HelpRequest createRequest(HelpRequestDto dto) {
         User currentUser = userService.getCurrentUser();
+        User beneficiary = resolveBeneficiary(dto, currentUser);
+        Long filedByUserId = Objects.equals(beneficiary.getId(), currentUser.getId())
+                ? null : currentUser.getId();
 
         String helpType = HelpTypeNormalizer.normalize(dto.getHelpType());
         String urgency  = mapUrgency(dto.getUrgencyLevel());
@@ -87,7 +92,8 @@ public class HelpRequestService {
                 ? dto.getDescription() : dto.getTitle();
 
         HelpRequest request = HelpRequest.builder()
-                .beneficiaryId(currentUser.getId())
+                .beneficiaryId(beneficiary.getId())
+                .filedByUserId(filedByUserId)
                 .title(dto.getTitle().trim())
                 .description(desc)
                 .helpType(helpType)
@@ -109,6 +115,47 @@ public class HelpRequestService {
     }
 
     /**
+     * Decides who the request is for (ON-1). A beneficiary always files for
+     * themselves. A volunteer or organization may name another person by email,
+     * in which case that person's account is reused or created and the caller
+     * becomes the filer.
+     */
+    private User resolveBeneficiary(HelpRequestDto dto, User currentUser) {
+        if (!dto.targetsAnotherPerson()) {
+            return currentUser;
+        }
+        if (currentUser.getRole() != UserRole.VOLUNTEER
+                && currentUser.getRole() != UserRole.ORGANIZATION) {
+            throw new BusinessException(
+                    "Only volunteers and organizations can file a request on someone else's behalf.");
+        }
+        if (dto.getBeneficiaryEmail() == null || dto.getBeneficiaryEmail().isBlank()) {
+            throw new BusinessException(
+                    "beneficiaryEmail is required when filing on someone else's behalf.");
+        }
+        String email = dto.getBeneficiaryEmail().toLowerCase().trim();
+        if (email.equalsIgnoreCase(currentUser.getEmail())) {
+            throw new BusinessException("Leave the beneficiary fields empty to file for yourself.");
+        }
+
+        User existing = userRepository.findByEmail(email).orElse(null);
+        if (existing != null) {
+            if (existing.getRole() != UserRole.BENEFICIARY) {
+                throw new BusinessException(
+                        "That email belongs to a " + existing.getRole().name().toLowerCase()
+                                + " account, not a beneficiary.");
+            }
+            return existing;
+        }
+        if (dto.getBeneficiaryName() == null || dto.getBeneficiaryName().isBlank()) {
+            throw new BusinessException(
+                    "beneficiaryName is required when the person does not have an account yet.");
+        }
+        return userService.createUnverifiedBeneficiary(
+                dto.getBeneficiaryName(), email, dto.getBeneficiaryPhone());
+    }
+
+    /**
      * Assigns the current user (volunteer or organization) to a help request.
      * All FK lookups and repository calls happen here — the controller just calls this.
      */
@@ -124,6 +171,11 @@ public class HelpRequestService {
         }
 
         HelpRequest request = getRequestById(requestId);
+        // A provider who filed a request must not also deliver it, or they could
+        // manufacture requests and self-assign to inflate their completion count.
+        if (Objects.equals(request.getFiledByUserId(), currentUser.getId())) {
+            throw new BusinessException("You cannot accept a request you filed on someone's behalf.");
+        }
         providerResourceService.requireUsableResource(
                 currentUser.getId(), request.getHelpType(), request.getPeopleCount());
 

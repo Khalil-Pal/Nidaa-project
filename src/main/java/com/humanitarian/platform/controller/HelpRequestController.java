@@ -62,11 +62,13 @@ public class HelpRequestController {
             "       urgency_level::text AS \"urgencyLevel\"," +
             "       status, address, people_count AS \"peopleCount\"," +
             "       has_children AS \"hasChildren\"," +
+            "       beneficiary_id   AS \"beneficiaryId\"," +
+            "       filed_by_user_id AS \"filedByUserId\"," +
             "       created_at   AS \"createdAt\"" +
             " FROM help_requests" +
-            " WHERE beneficiary_id = ?" +
+            " WHERE beneficiary_id = ? OR filed_by_user_id = ?" +
             " ORDER BY created_at DESC LIMIT 50",
-            me.getId());
+            me.getId(), me.getId());
         return ResponseEntity.ok(ApiResponse.success("My requests", rows));
     }
 

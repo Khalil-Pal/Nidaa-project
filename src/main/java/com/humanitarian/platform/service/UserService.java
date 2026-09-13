@@ -9,12 +9,14 @@ import com.humanitarian.platform.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -24,6 +26,36 @@ public class UserService {
 
     @Autowired
     private ProfileRepository profileRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    /**
+     * Creates a BENEFICIARY account for a person a provider is filing a help
+     * request for (ON-1). Mirrors the account created by
+     * AuthService.verifyRegistration but skips the email step: the person has
+     * not proven control of the address, so is_verified stays false. The
+     * password is random and never disclosed; the person claims the account
+     * later through the password-reset flow, which requires is_active.
+     */
+    @Transactional
+    public User createUnverifiedBeneficiary(String fullName, String email, String phone) {
+        String normalizedEmail = email.toLowerCase().trim();
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new BusinessException("An account already exists for " + normalizedEmail);
+        }
+        User user = User.builder()
+                .fullName(fullName.trim())
+                .email(normalizedEmail)
+                .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .phone(phone == null || phone.isBlank() ? null : phone.trim())
+                .role(UserRole.BENEFICIARY)
+                .isVerified(false)
+                .isActive(true)
+                .isLocked(false)
+                .build();
+        return userRepository.save(user);
+    }
 
     // Get currently logged in user
     public User getCurrentUser() {

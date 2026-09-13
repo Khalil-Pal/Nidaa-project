@@ -14,6 +14,7 @@ psql -U postgres -d Web_DB -f database/migrations/V5__provider_availability_pref
 psql -U postgres -d Web_DB -f database/migrations/V6__provider_capacity_reservations.sql
 psql -U postgres -d Web_DB -f database/migrations/V7__assignment_assignee_constraints.sql
 psql -U postgres -d Web_DB -f database/migrations/V8__drop_legacy_volunteer_coordinates.sql
+psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
 ```
 
 ## Versions
@@ -38,6 +39,10 @@ psql -U postgres -d Web_DB -f database/migrations/V8__drop_legacy_volunteer_coor
 - `V8` removes the obsolete volunteer coordinate columns after all provider
   matching moved to `profiles`. It aborts instead of discarding any unexpected
   non-null legacy coordinates.
+- `V13` adds `help_requests.filed_by_user_id` for requests a volunteer or
+  organization files on a beneficiary's behalf, with an index and a check that
+  the filer is never the beneficiary. Existing rows stay NULL (self-filed).
+  Idempotent; safe to rerun.
 
 V1 through V8 were applied in order to a genuinely empty verification database.
 Its normalized schema dump matched the migrated development database with zero

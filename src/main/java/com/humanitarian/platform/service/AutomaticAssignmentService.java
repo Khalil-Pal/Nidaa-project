@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class AutomaticAssignmentService {
@@ -69,15 +70,20 @@ public class AutomaticAssignmentService {
                 .findEligibleProviderCapacityAssessments(
                         request.getHelpType(), request.getPeopleCount());
         var eligibleUserIds = eligibleProviders.keySet();
+        // The provider who filed the request on someone's behalf is never a
+        // candidate for delivering it (see HelpRequestService.assignToMe).
+        Long filer = request.getFiledByUserId();
         List<Volunteer> resourceMatchedVolunteers = volunteerRepository.findByIsAvailableTrue()
                 .stream()
                 .filter(volunteer -> volunteer.getUser() != null)
                 .filter(volunteer -> eligibleUserIds.contains(volunteer.getUser().getId()))
+                .filter(volunteer -> !Objects.equals(volunteer.getUser().getId(), filer))
                 .toList();
         List<Organization> resourceMatchedOrganizations = organizationRepository.findByIsAvailableTrue()
                 .stream()
                 .filter(organization -> organization.getUser() != null)
                 .filter(organization -> eligibleUserIds.contains(organization.getUser().getId()))
+                .filter(organization -> !Objects.equals(organization.getUser().getId(), filer))
                 .toList();
         List<GeoMatchingService.ProviderMatch> candidates =
                 geoMatchingService.rankProvidersByDistance(

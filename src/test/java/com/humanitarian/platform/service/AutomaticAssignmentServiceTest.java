@@ -33,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -321,6 +323,61 @@ class AutomaticAssignmentServiceTest {
         assertEquals("PSYCHOLOGICAL_REQUEST", captor.getValue().getRequestType());
         assertEquals("AUTO_CRISIS", captor.getValue().getAssignmentSource());
         assertEquals(41L, captor.getValue().getPsychologistId());
+    }
+
+    @Test
+    void providerWhoFiledTheRequestIsNeverMatchedToIt() {
+        HelpRequest request = request(14L, "FOOD");
+        request.setFiledByUserId(205L);
+        Volunteer filerAndClosest = Volunteer.builder()
+                .id(25L)
+                .user(userAt(205L, "Filing Volunteer", 55.751, 37.621))
+                .isAvailable(true)
+                .build();
+        Volunteer farther = Volunteer.builder()
+                .id(26L)
+                .user(userAt(206L, "Other Volunteer", 55.80, 37.70))
+                .isAvailable(true)
+                .build();
+
+        when(providerResourceService.findEligibleProviderCapacityAssessments("FOOD", 1))
+                .thenReturn(capacities(205L, 206L));
+        when(providerResourceService.reserveForAssignment(206L, "FOOD", 1))
+                .thenReturn(Optional.of(reservation(206L, "FOOD", null)));
+        when(volunteerRepository.findByIsAvailableTrue())
+                .thenReturn(List.of(filerAndClosest, farther));
+        when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of());
+        when(volunteerRepository.claimIfAvailable(26L)).thenReturn(1);
+        when(helpRequestRepository.assignVolunteer(14L, 26L, "ASSIGNED", "PENDING"))
+                .thenReturn(1);
+
+        assertTrue(service.assignNearestProvider(request));
+
+        verify(volunteerRepository, never()).claimIfAvailable(25L);
+        ArgumentCaptor<Assignment> captor = ArgumentCaptor.forClass(Assignment.class);
+        verify(assignmentRepository).save(captor.capture());
+        assertEquals(26L, captor.getValue().getVolunteerId());
+    }
+
+    @Test
+    void requestStaysPendingWhenTheOnlyCandidateIsTheFiler() {
+        HelpRequest request = request(15L, "WATER");
+        request.setFiledByUserId(207L);
+        Volunteer filer = Volunteer.builder()
+                .id(27L)
+                .user(userAt(207L, "Filing Volunteer", 55.751, 37.621))
+                .isAvailable(true)
+                .build();
+
+        when(providerResourceService.findEligibleProviderCapacityAssessments("WATER", 1))
+                .thenReturn(capacities(207L));
+        when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(filer));
+        when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of());
+
+        assertFalse(service.assignNearestProvider(request));
+
+        verify(volunteerRepository, never()).claimIfAvailable(anyLong());
+        verify(assignmentRepository, never()).save(any());
     }
 
     private HelpRequest request(Long id, String helpType) {

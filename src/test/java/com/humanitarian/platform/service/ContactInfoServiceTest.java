@@ -69,6 +69,53 @@ class ContactInfoServiceTest {
     }
 
     @Test
+    void filerSeesAssignedProviderContactNotTheBeneficiary() {
+        HelpRequest request = HelpRequest.builder()
+                .id(12L)
+                .beneficiaryId(1L)
+                .filedByUserId(4L)
+                .assignedVolunteerId(100L)
+                .status("ASSIGNED")
+                .build();
+        User filer = user(4L, UserRole.ORGANIZATION, "Filing Organization");
+        User assignedVolunteerUser = user(2L, UserRole.VOLUNTEER, "Assigned Volunteer");
+        Volunteer assignedProfile = Volunteer.builder().id(100L).user(assignedVolunteerUser).build();
+        when(helpRequestRepository.findById(12L)).thenReturn(Optional.of(request));
+        when(userService.getCurrentUser()).thenReturn(filer);
+        when(volunteerRepository.findById(100L)).thenReturn(Optional.of(assignedProfile));
+
+        ContactInfoResponse response = service.getHelpRequestContact(12L);
+
+        assertEquals("Assigned Volunteer", response.getName());
+        assertEquals("VOLUNTEER", response.getContactRole());
+        verify(userRepository, never()).findById(1L);
+    }
+
+    @Test
+    void assignedProviderSeesBeneficiaryContactNotTheFiler() {
+        HelpRequest request = HelpRequest.builder()
+                .id(13L)
+                .beneficiaryId(1L)
+                .filedByUserId(4L)
+                .assignedVolunteerId(100L)
+                .status("ASSIGNED")
+                .build();
+        User volunteer = user(2L, UserRole.VOLUNTEER, "Assigned Volunteer");
+        User beneficiary = user(1L, UserRole.BENEFICIARY, "Request Owner");
+        Volunteer profile = Volunteer.builder().id(100L).user(volunteer).build();
+        when(helpRequestRepository.findById(13L)).thenReturn(Optional.of(request));
+        when(userService.getCurrentUser()).thenReturn(volunteer);
+        when(volunteerRepository.findByUserId(2L)).thenReturn(Optional.of(profile));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(beneficiary));
+
+        ContactInfoResponse response = service.getHelpRequestContact(13L);
+
+        assertEquals("Request Owner", response.getName());
+        assertEquals("BENEFICIARY", response.getContactRole());
+        verify(userRepository, never()).findById(4L);
+    }
+
+    @Test
     void assignedVolunteerCanViewMaterialRequesterContact() {
         HelpRequest request = HelpRequest.builder()
                 .id(11L)

@@ -19,6 +19,11 @@ public class HelpRequest {
     @Column(name = "beneficiary_id", nullable = false)
     private Long beneficiaryId;
 
+    // Volunteer or organization that filed this request on the beneficiary's
+    // behalf; NULL when the beneficiary filed it themselves (V13).
+    @Column(name = "filed_by_user_id")
+    private Long filedByUserId;
+
     @Column(name = "title")
     private String title;
 
