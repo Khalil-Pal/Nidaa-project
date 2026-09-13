@@ -93,16 +93,34 @@ public class PasswordResetService {
         sendResetEmail(user, code);
     }
 
-    // Step 2: Verify the code
+    /** Wrong codes tolerated per token before it is discarded (S-9). */
+    public static final int MAX_CODE_ATTEMPTS = 5;
+
+    // Step 2: Verify the code. Every wrong code counts against the token, and
+    // the fifth one deletes it, so the 6-character code cannot be brute-forced
+    // within its 15-minute lifetime.
+    @Transactional
     public boolean verifyCode(String email, String code) {
-        String normalizedEmail = email.toLowerCase().trim();
+        String normalizedEmail = email == null ? "" : email.toLowerCase().trim();
+        String submitted = code == null ? "" : code.trim().toUpperCase();
         return tokenRepository.findByEmail(normalizedEmail)
                 .map(token -> {
                     if (LocalDateTime.now().isAfter(token.getExpiresAt())) {
                         tokenRepository.deleteByEmail(normalizedEmail);
                         return false;
                     }
-                    return token.getCode().equals(code.trim().toUpperCase());
+                    if (token.getCode().equals(submitted)) {
+                        return true;
+                    }
+                    int attempts = (token.getAttempts() == null ? 0 : token.getAttempts()) + 1;
+                    if (attempts >= MAX_CODE_ATTEMPTS) {
+                        tokenRepository.deleteByEmail(normalizedEmail);
+                        log.warn("Reset token discarded after {} wrong codes", attempts);
+                    } else {
+                        token.setAttempts(attempts);
+                        tokenRepository.save(token);
+                    }
+                    return false;
                 })
                 .orElse(false);
     }

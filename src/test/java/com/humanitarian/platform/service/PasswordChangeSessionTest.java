@@ -58,6 +58,47 @@ class PasswordChangeSessionTest {
         verify(refreshTokenRepository).deleteByEmail("owner@example.com");
     }
 
+    // -- S-9: reset codes may be guessed at most five times ---------------------
+
+    @Test
+    void fifthWrongResetCodeDiscardsTheToken() {
+        PasswordResetToken token = token("owner@example.com", "ABC123");
+        token.setAttempts(3);
+        when(tokenRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(token));
+
+        org.junit.jupiter.api.Assertions.assertFalse(resetService.verifyCode("owner@example.com", "WRONG1"));
+        org.junit.jupiter.api.Assertions.assertEquals(4, token.getAttempts());
+        verify(tokenRepository).save(token);
+
+        org.junit.jupiter.api.Assertions.assertFalse(resetService.verifyCode("owner@example.com", "WRONG2"));
+        verify(tokenRepository).deleteByEmail("owner@example.com");
+    }
+
+    @Test
+    void correctResetCodeDoesNotCountAsAnAttempt() {
+        PasswordResetToken token = token("owner@example.com", "ABC123");
+        when(tokenRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(token));
+
+        org.junit.jupiter.api.Assertions.assertTrue(resetService.verifyCode("owner@example.com", "abc123"));
+        org.junit.jupiter.api.Assertions.assertEquals(0, token.getAttempts());
+        verify(tokenRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void fifthWrongChangeCodeDiscardsTheToken() {
+        when(userService.getCurrentUser()).thenReturn(account());
+        PasswordResetToken token = token("CHANGE:owner@example.com", "ZZZ999");
+        token.setAttempts(4);
+        when(tokenRepository.findByEmail("CHANGE:owner@example.com")).thenReturn(Optional.of(token));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.humanitarian.platform.exception.BusinessException.class,
+                () -> changeService.confirmPasswordChange("nope", "new-password"));
+
+        verify(tokenRepository).deleteByEmail("CHANGE:owner@example.com");
+        verify(userRepository, org.mockito.Mockito.never()).updatePassword(any(), any(), any());
+    }
+
     @Test
     void confirmPasswordChangeInvalidatesAccessAndRefreshTokens() {
         when(userService.getCurrentUser()).thenReturn(account());

@@ -24,4 +24,10 @@ public class PasswordResetToken {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    // Wrong codes submitted against this token (V10); the token is deleted
+    // once PasswordResetService.MAX_CODE_ATTEMPTS is reached.
+    @Column(name = "attempts", nullable = false)
+    @Builder.Default
+    private Integer attempts = 0;
 }

@@ -31,7 +31,8 @@ import static org.mockito.Mockito.when;
         "jwt.secret=" + SecuritySliceTest.TEST_JWT_SECRET,
         "jwt.expiration=900000",
         "jwt.refresh-expiration=604800000",
-        "app.cors.allowed-origins=http://localhost:8081"
+        "app.cors.allowed-origins=http://localhost:8081",
+        "app.ratelimit.enabled=false"
 })
 abstract class SecuritySliceTest {
 

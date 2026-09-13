@@ -60,7 +60,9 @@ public class AuthService {
             UserRole.ORGANIZATION
     );
 
-    // Brute force protection
+    // Brute force protection. Keyed by (email, client IP) so one address cannot
+    // lock an account for everyone else, and swept on every read so the map is
+    // bounded by 15 minutes of distinct failing pairs rather than growing forever.
     private final Map<String, FailedAttempt> failedAttempts = new ConcurrentHashMap<>();
     private static final int MAX_ATTEMPTS    = 5;
     private static final int LOCKOUT_MINUTES = 15;
@@ -190,19 +192,16 @@ public class AuthService {
     // ── LOGIN ────────────────────────────────────────────────────────────────
 
     @Transactional
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request, String clientIp) {
         String email = request.getEmail().toLowerCase().trim();
+        String lockoutKey = email + "|" + (clientIp == null ? "?" : clientIp);
         logger.info("Login attempt: {}", email);
 
         // Brute force check
-        FailedAttempt attempt = failedAttempts.get(email);
+        FailedAttempt attempt = failedAttemptFor(lockoutKey);
         if (attempt != null && attempt.count >= MAX_ATTEMPTS) {
-            if (LocalDateTime.now().isBefore(attempt.lockedUntil)) {
-                throw new BusinessException(
-                        "Too many failed login attempts. Try again in " + LOCKOUT_MINUTES + " minutes.");
-            } else {
-                failedAttempts.remove(email);
-            }
+            throw new BusinessException(
+                    "Too many failed login attempts. Try again in " + LOCKOUT_MINUTES + " minutes.");
         }
 
         // The password is verified before anything about the account is
@@ -216,10 +215,10 @@ public class AuthService {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, request.getPassword()));
         } catch (BadCredentialsException ex) {
-            failedAttempts.merge(email,
+            failedAttempts.merge(lockoutKey,
                     new FailedAttempt(1, LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES)),
                     (old, n) -> new FailedAttempt(old.count + 1, LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES)));
-            if (failedAttempts.get(email).count >= MAX_ATTEMPTS) {
+            if (failedAttempts.get(lockoutKey).count >= MAX_ATTEMPTS) {
                 throw new BusinessException(
                         "Too many failed login attempts. Try again in " + LOCKOUT_MINUTES + " minutes.");
             }
@@ -244,7 +243,7 @@ public class AuthService {
             throw new BusinessException("Your account is locked. Contact support.");
         }
 
-        failedAttempts.remove(email);
+        failedAttempts.remove(lockoutKey);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         userRepository.updateLastLogin(user.getId(), LocalDateTime.now()); // native SQL
@@ -361,6 +360,13 @@ public class AuthService {
     }
 
     // Inner class for brute force tracking
+    /** Drops every expired lockout entry, then returns the live entry for this key, if any. */
+    private FailedAttempt failedAttemptFor(String key) {
+        LocalDateTime now = LocalDateTime.now();
+        failedAttempts.entrySet().removeIf(e -> !now.isBefore(e.getValue().lockedUntil));
+        return failedAttempts.get(key);
+    }
+
     private static class FailedAttempt {
         final int count;
         final LocalDateTime lockedUntil;

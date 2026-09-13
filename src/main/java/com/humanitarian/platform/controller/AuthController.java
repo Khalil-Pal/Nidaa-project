@@ -6,6 +6,7 @@ import com.humanitarian.platform.dto.VerifyRegistrationRequest;
 import com.humanitarian.platform.dto.LoginRequest;
 import com.humanitarian.platform.dto.RegisterRequest;
 import com.humanitarian.platform.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -35,8 +36,9 @@ public class AuthController {
 
     // POST /api/auth/login
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        AuthResponse response = authService.login(request);
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
+                                              HttpServletRequest http) {
+        AuthResponse response = authService.login(request, http.getRemoteAddr());
         return ResponseEntity.ok(response);
     }
 

@@ -109,6 +109,15 @@ public class PasswordChangeService {
         }
 
         if (!token.getCode().equalsIgnoreCase(code.trim())) {
+            // Same budget as the reset flow (S-9): the fifth wrong code discards the token
+            int attempts = (token.getAttempts() == null ? 0 : token.getAttempts()) + 1;
+            if (attempts >= PasswordResetService.MAX_CODE_ATTEMPTS) {
+                tokenRepository.deleteByEmail(key);
+                throw new BusinessException(
+                        "Too many incorrect codes. Please start the password change again.");
+            }
+            token.setAttempts(attempts);
+            tokenRepository.save(token);
             throw new BusinessException("Incorrect verification code.");
         }
 

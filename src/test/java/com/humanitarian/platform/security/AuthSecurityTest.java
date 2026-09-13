@@ -166,6 +166,32 @@ class AuthSecurityTest extends SecuritySliceTest {
                 .andExpect(jsonPath("$.message").value(containsStringIgnoringCase("pending admin approval")));
     }
 
+    @Test
+    void lockoutIsPerEmailAndAddressSoOneAttackerCannotLockEveryoneOut() throws Exception {
+        knownAccount(UserRole.BENEFICIARY, true, false);
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/auth/login")
+                            .with(r -> { r.setRemoteAddr("203.0.113.9"); return r; })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(login(KNOWN, "wrong-password")));
+        }
+        // the attacker's address is now locked for this email
+        mockMvc.perform(post("/api/auth/login")
+                        .with(r -> { r.setRemoteAddr("203.0.113.9"); return r; })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(login(KNOWN, RIGHT_PASSWORD)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsStringIgnoringCase("too many failed")));
+
+        // the real owner, from their own address, still gets in
+        mockMvc.perform(post("/api/auth/login")
+                        .with(r -> { r.setRemoteAddr("198.51.100.4"); return r; })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(login(KNOWN, RIGHT_PASSWORD)))
+                .andExpect(status().isOk());
+    }
+
     // -- S-8: forgot password -------------------------------------------------
 
     @Test
