@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
     @Autowired private UserRepository                 userRepository;
+    @Autowired private com.humanitarian.platform.service.UserService userService;
     @Autowired private HelpRequestRepository          helpRequestRepository;
     @Autowired private PsychologicalRequestRepository psychRepository;
     @Autowired private JdbcTemplate                   jdbc;
@@ -29,7 +30,7 @@ public class AdminController {
 
     @GetMapping("/pending")
     public ResponseEntity<?> getPendingUsers() {
-        List<Map<String, Object>> users = userRepository.findByIsActiveFalse().stream().map(u -> {
+        List<Map<String, Object>> users = userRepository.findByIsActiveFalseAndDeletedAtIsNull().stream().map(u -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id",        u.getId());
             m.put("fullName",  u.getFullName());
@@ -70,9 +71,9 @@ public class AdminController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         String name = user.getFullName(), email = user.getEmail();
-        userRepository.delete(user);
+        userService.deleteAccount(userId);   // anonymise in place (D-2), never a hard delete
         sendEmail(email, "[Nidaa] Your account has been removed",
-                "Dear " + name + ",\n\nYour Nidaa account has been permanently deleted.\n\nContact: supp0rtnidaa@yandex.ru\n— Nidaa Team");
+                "Dear " + name + ",\n\nYour Nidaa account has been closed and your personal details removed.\n\nContact: supp0rtnidaa@yandex.ru\n— Nidaa Team");
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("success", true); res.put("message", "Deleted");
         return ResponseEntity.ok(res);

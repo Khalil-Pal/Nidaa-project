@@ -5,6 +5,7 @@ import com.humanitarian.platform.model.Profile;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.ProfileRepository;
+import com.humanitarian.platform.repository.RefreshTokenRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,48 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    /**
+     * Soft-deletes an account (D-2): personal data is replaced in place and the
+     * row stays so requests, assignments and messages keep their history. The
+     * profile's address, coordinates, bio and avatar go too, since a home
+     * address identifies a person as surely as a name. Every session ends.
+     */
+    @Transactional
+    public void deleteAccount(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        if (user.getDeletedAt() != null) {
+            throw new BusinessException("This account has already been deleted.");
+        }
+        String email = user.getEmail();
+        if (userRepository.softDelete(userId, java.time.LocalDateTime.now()) == 0) {
+            throw new BusinessException("This account has already been deleted.");
+        }
+        profileRepository.findByUserId(userId).ifPresent(profile -> {
+            profile.setAddress(null);
+            profile.setLatitude(null);
+            profile.setLongitude(null);
+            profile.setBio(null);
+            profile.setAvatarUrl(null);
+            profileRepository.save(profile);
+        });
+        refreshTokenRepository.deleteByEmail(email);
+    }
+
+    /** Self-deletion requires the caller to prove they hold the password. */
+    @Transactional
+    public void deleteOwnAccount(String password) {
+        User me = getCurrentUser();
+        if (password == null || password.isBlank()
+                || !passwordEncoder.matches(password, me.getPasswordHash())) {
+            throw new BusinessException("Enter your current password to delete the account.");
+        }
+        deleteAccount(me.getId());
+    }
 
     /**
      * Creates a BENEFICIARY account for a person a provider is filing a help

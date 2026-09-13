@@ -72,6 +72,17 @@ class AdminSecurityTest extends SecuritySliceTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    void adminDeleteIsASoftDelete() throws Exception {
+        when(userRepository.findById(5L)).thenReturn(Optional.of(user(5L, UserRole.VOLUNTEER)));
+
+        mockMvc.perform(delete("/api/admin/users/5"))
+                .andExpect(status().isOk());
+        verify(userService).deleteAccount(5L);
+        verify(userRepository, never()).delete(any(User.class));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     void adminCanListUsers() throws Exception {
         when(userRepository.findAll()).thenReturn(List.of(user(1L, UserRole.ADMIN)));
 

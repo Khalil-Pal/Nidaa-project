@@ -295,7 +295,11 @@
         <div class="settings-card danger-zone">
             <div class="card-title"><i class="fa fa-triangle-exclamation"></i> Danger Zone</div>
             <div class="card-body">
-                <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Deleting your account will permanently remove all your data including requests and history. This cannot be undone.</p>
+                <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Deleting your account removes your name, email, phone and address. Records of help given or received are kept without your identity. This cannot be undone.</p>
+                <div class="form-group">
+                    <label for="deletePassword">Confirm with your current password</label>
+                    <input type="password" id="deletePassword" autocomplete="current-password" placeholder="Current password">
+                </div>
                 <button class="btn btn-danger" onclick="deleteAccount()"><i class="fa fa-trash"></i> Delete My Account</button>
             </div>
         </div>
@@ -1020,12 +1024,23 @@
         if (e.target === this) closeModal();
     });
 
-    function deleteAccount() {
+    async function deleteAccount() {
+        const password = document.getElementById('deletePassword').value;
+        if (!password) { showMsg('error', 'Enter your current password to delete the account.'); return; }
         if (!confirm('Are you absolutely sure you want to delete your account? This cannot be undone.')) return;
-        if (!confirm('Last warning: all your data will be permanently deleted. Continue?')) return;
-        fetch(`${API}/users/me`, { method: 'DELETE', headers: authHeader() })
-            .then(() => { localStorage.clear(); window.location.href = 'index.html'; })
-            .catch(() => { showMsg('error', 'Could not delete account. Contact supp0rtnidaa@yandex.ru'); });
+        try {
+            const res = await fetch(`${API}/users/me`, {
+                method: 'DELETE',
+                headers: { ...authHeader(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) { showMsg('error', data.message || 'Could not delete account.'); return; }
+            localStorage.clear();
+            window.location.href = 'index.html';
+        } catch (e) {
+            showMsg('error', 'Could not delete account. Contact supp0rtnidaa@yandex.ru');
+        }
     }
 
 

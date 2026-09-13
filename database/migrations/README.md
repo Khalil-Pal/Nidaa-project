@@ -16,6 +16,7 @@ psql -U postgres -d Web_DB -f database/migrations/V7__assignment_assignee_constr
 psql -U postgres -d Web_DB -f database/migrations/V8__drop_legacy_volunteer_coordinates.sql
 psql -U postgres -d Web_DB -f database/migrations/V9__token_invalidation.sql
 psql -U postgres -d Web_DB -f database/migrations/V10__reset_attempt_limit.sql
+psql -U postgres -d Web_DB -f database/migrations/V11__soft_delete_users.sql
 psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
 ```
 
@@ -46,6 +47,9 @@ psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
   Idempotent; safe to rerun.
 - `V10` adds `password_reset_tokens.attempts`; a reset token is deleted after
   five wrong codes. Idempotent; safe to rerun.
+- `V11` makes `users.phone` nullable and drops its UNIQUE constraint so an
+  account can be anonymised in place (soft delete) and households can share a
+  number. Idempotent; safe to rerun.
 - `V13` adds `help_requests.filed_by_user_id` for requests a volunteer or
   organization files on a beneficiary's behalf, with an index and a check that
   the filer is never the beneficiary. Existing rows stay NULL (self-filed).
@@ -73,8 +77,8 @@ migrations have been applied:
    python -c "import bcrypt; print(bcrypt.hashpw(b'ChangeMe-Now!', bcrypt.gensalt(10)).decode())"
    ```
 
-2. Insert the user with that hash. The `phone` column is `NOT NULL` (see D-6 in
-   the remediation brief); until that changes, supply a placeholder.
+2. Insert the user with that hash. `phone` is optional once V11 has been
+   applied; on an older schema supply a placeholder.
 
    ```sql
    INSERT INTO users (email, password_hash, phone, full_name, role,

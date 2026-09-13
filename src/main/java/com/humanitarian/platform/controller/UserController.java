@@ -1,6 +1,7 @@
 package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.dto.ApiResponse;
+import com.humanitarian.platform.dto.DeleteAccountRequest;
 import com.humanitarian.platform.dto.UserProfileDto;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
@@ -76,12 +77,14 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(message, null));
     }
 
-    // DELETE /api/users/me — delete own account
+    // DELETE /api/users/me — anonymise own account; requires the current password (D-2)
     @DeleteMapping("/me")
-    public ResponseEntity<ApiResponse<?>> deleteMyAccount() {
-        User user = userService.getCurrentUser();
-        userRepository.delete(user);
-        return ResponseEntity.ok(ApiResponse.success("Account deleted", null));
+    public ResponseEntity<ApiResponse<?>> deleteMyAccount(
+            @Valid @RequestBody DeleteAccountRequest request) {
+        userService.deleteOwnAccount(request.getPassword());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Your account has been deleted. Your personal details were removed; "
+                        + "records of help given or received are kept without your identity.", null));
     }
 
     // GET /api/users/{id}
