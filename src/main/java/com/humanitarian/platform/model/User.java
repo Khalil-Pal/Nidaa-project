@@ -62,6 +62,12 @@ public class User {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    // Access tokens issued before this instant are rejected (set on password
+    // change/reset, V9). NULL until the first such event.
+    @JsonIgnore
+    @Column(name = "tokens_valid_from")
+    private LocalDateTime tokensValidFrom;
+
     @JsonIgnore
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Profile profile;

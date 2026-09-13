@@ -3,6 +3,7 @@ package com.humanitarian.platform.service;
 import com.humanitarian.platform.model.PasswordResetToken;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.repository.PasswordResetTokenRepository;
+import com.humanitarian.platform.repository.RefreshTokenRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,9 @@ public class PasswordResetService {
 
     @Autowired
     private PasswordResetTokenRepository tokenRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -118,7 +122,13 @@ public class PasswordResetService {
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
-        userRepository.updatePassword(user.getId(), passwordEncoder.encode(newPassword)); // native SQL
+        // New password, and every existing session ends: access tokens issued
+        // before now are rejected by the JWT filter, refresh tokens are deleted.
+        // A password reset is the canonical "my account was compromised" step,
+        // so leaving an attacker's tokens alive would defeat its purpose.
+        userRepository.updatePassword(user.getId(), passwordEncoder.encode(newPassword),
+                LocalDateTime.now()); // native SQL
+        refreshTokenRepository.deleteByEmail(normalizedEmail);
 
         // Remove the used token
         tokenRepository.deleteByEmail(normalizedEmail);

@@ -16,6 +16,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -41,6 +44,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String email = jwtUtils.getEmailFromToken(jwt);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
+                if (isRevoked(jwt, userDetails)) {
+                    // Leave the request anonymous; the entry point answers 401 and
+                    // the client's refresh attempt fails because refresh tokens
+                    // were deleted at the same time.
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities());
@@ -55,6 +66,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * A signature-valid token is still refused when the account has been
+     * deactivated or locked since it was issued, or when it was issued before
+     * the account's tokens_valid_from (set on password change/reset, S-7).
+     * Both instants are compared at whole-second precision because a JWT
+     * "iat" claim has no sub-second part.
+     */
+    private boolean isRevoked(String jwt, UserDetails userDetails) {
+        if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
+            logger.warn("Rejected token for inactive or locked account {}", userDetails.getUsername());
+            return true;
+        }
+        if (!(userDetails instanceof NidaaUserDetails details) || details.getTokensValidFrom() == null) {
+            return false;
+        }
+        Date issuedAt = jwtUtils.getIssuedAtFromToken(jwt);
+        if (issuedAt == null) {
+            return true;
+        }
+        long issuedAtSecond = issuedAt.getTime() / 1000;
+        long validFromSecond = details.getTokensValidFrom()
+                .truncatedTo(ChronoUnit.SECONDS)
+                .atZone(ZoneId.systemDefault())
+                .toEpochSecond();
+        if (issuedAtSecond < validFromSecond) {
+            logger.warn("Rejected token issued before password change for {}", userDetails.getUsername());
+            return true;
+        }
+        return false;
     }
 
     // Extract token from Authorization header

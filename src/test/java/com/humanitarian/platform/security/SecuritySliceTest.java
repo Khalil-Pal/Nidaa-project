@@ -39,6 +39,7 @@ abstract class SecuritySliceTest {
             "nidaa-security-slice-test-secret-nidaa-security-slice-test-secret";
 
     @Autowired protected MockMvc mockMvc;
+    @Autowired protected JwtUtils jwtUtils;
 
     @MockBean protected UserDetailsServiceImpl userDetailsService;
     @MockBean protected UserService userService;

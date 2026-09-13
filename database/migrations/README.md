@@ -14,6 +14,7 @@ psql -U postgres -d Web_DB -f database/migrations/V5__provider_availability_pref
 psql -U postgres -d Web_DB -f database/migrations/V6__provider_capacity_reservations.sql
 psql -U postgres -d Web_DB -f database/migrations/V7__assignment_assignee_constraints.sql
 psql -U postgres -d Web_DB -f database/migrations/V8__drop_legacy_volunteer_coordinates.sql
+psql -U postgres -d Web_DB -f database/migrations/V9__token_invalidation.sql
 psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
 ```
 
@@ -39,6 +40,9 @@ psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
 - `V8` removes the obsolete volunteer coordinate columns after all provider
   matching moved to `profiles`. It aborts instead of discarding any unexpected
   non-null legacy coordinates.
+- `V9` adds `users.tokens_valid_from`. Access tokens issued before it are
+  rejected, so changing or resetting a password ends every existing session.
+  Idempotent; safe to rerun.
 - `V13` adds `help_requests.filed_by_user_id` for requests a volunteer or
   organization files on a beneficiary's behalf, with an index and a check that
   the filer is never the beneficiary. Existing rows stay NULL (self-filed).

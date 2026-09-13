@@ -106,6 +106,48 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
         verify(helpRequestRepository, never()).findById(anyLong());
     }
 
+    // -- token revocation (S-7) -----------------------------------------------
+
+    private String freshTokenFor(String email, java.time.LocalDateTime tokensValidFrom) {
+        NidaaUserDetails details = new NidaaUserDetails(email, "{noop}x", true, true,
+                List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_BENEFICIARY")),
+                tokensValidFrom);
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(details);
+        return jwtUtils.generateToken(email);
+    }
+
+    @Test
+    void tokenIssuedBeforePasswordChangeIsRejected() throws Exception {
+        String token = freshTokenFor("owner@example.com",
+                java.time.LocalDateTime.now().plusMinutes(5));  // password changed "after" this token
+
+        mockMvc.perform(get("/api/help-requests/1").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+        verify(helpRequestRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void tokenIssuedAfterPasswordChangeIsAccepted() throws Exception {
+        actingAs(OWNER_ID, UserRole.BENEFICIARY);
+        storedRequest(1L, "PENDING", null);
+        String token = freshTokenFor("owner@example.com",
+                java.time.LocalDateTime.now().minusMinutes(5));
+
+        mockMvc.perform(get("/api/help-requests/1").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void tokenForDeactivatedAccountIsRejected() throws Exception {
+        NidaaUserDetails disabled = new NidaaUserDetails("gone@example.com", "{noop}x", false, true,
+                List.of(), null);
+        when(userDetailsService.loadUserByUsername("gone@example.com")).thenReturn(disabled);
+        String token = jwtUtils.generateToken("gone@example.com");
+
+        mockMvc.perform(get("/api/help-requests/1").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+    }
+
     // -- listing --------------------------------------------------------------
 
     @Test

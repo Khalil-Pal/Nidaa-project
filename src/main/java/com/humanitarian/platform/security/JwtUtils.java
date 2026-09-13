@@ -56,6 +56,16 @@ public class JwtUtils {
                 .getSubject();
     }
 
+    // Issued-at of an ACCESS token, used to reject tokens that predate a password change
+    public Date getIssuedAtFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getIssuedAt();
+    }
+
     // Validate ACCESS token
     public boolean validateToken(String token) {
         try {

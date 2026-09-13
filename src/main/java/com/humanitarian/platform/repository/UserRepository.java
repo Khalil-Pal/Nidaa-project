@@ -49,9 +49,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
             nativeQuery = true)
     void updateLastLogin(@Param("userId") Long userId, @Param("lastLogin") java.time.LocalDateTime lastLogin);
 
+    /**
+     * Replaces the password and, in the same statement, invalidates every
+     * access token issued before {@code changedAt} (see JwtAuthenticationFilter).
+     */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE users SET password_hash = :hash WHERE user_id = :userId",
-            nativeQuery = true)
-    void updatePassword(@Param("userId") Long userId, @Param("hash") String hash);
+    @Query(value = "UPDATE users SET password_hash = :hash, tokens_valid_from = :changedAt "
+            + "WHERE user_id = :userId", nativeQuery = true)
+    void updatePassword(@Param("userId") Long userId,
+                        @Param("hash") String hash,
+                        @Param("changedAt") java.time.LocalDateTime changedAt);
 }

@@ -24,14 +24,13 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                         "User not found with email: " + email));
 
         // Convert our User to Spring Security UserDetails
-        return new org.springframework.security.core.userdetails.User(
+        return new NidaaUserDetails(
                 user.getEmail(),
                 user.getPasswordHash(),
-                user.getIsActive(),
-                true,
-                true,
-                !user.getIsLocked(),
-                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                Boolean.TRUE.equals(user.getIsActive()),
+                !Boolean.TRUE.equals(user.getIsLocked()),
+                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
+                user.getTokensValidFrom()
         );
     }
 }
