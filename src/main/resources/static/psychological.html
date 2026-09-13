@@ -159,12 +159,12 @@
     <div class="categories-section">
       <h3 class="section-title">What are you seeking support for?</h3>
       <div class="pills">
-        <span class="pill pill-anxiety active" onclick="togglePill(this)">Anxiety</span>
-        <span class="pill pill-depression" onclick="togglePill(this)">Depression</span>
-        <span class="pill pill-ptsd" onclick="togglePill(this)">PTSD</span>
-        <span class="pill pill-grief" onclick="togglePill(this)">Grief &amp; Loss</span>
-        <span class="pill pill-violence" onclick="togglePill(this)">Domestic Violence</span>
-        <span class="pill pill-crisis" onclick="togglePill(this)">Crisis Support</span>
+        <span class="pill pill-anxiety active" data-value="ANXIETY" onclick="togglePill(this)">Anxiety</span>
+        <span class="pill pill-depression" data-value="DEPRESSION" onclick="togglePill(this)">Depression</span>
+        <span class="pill pill-ptsd" data-value="PTSD" onclick="togglePill(this)">PTSD</span>
+        <span class="pill pill-grief" data-value="GRIEF" onclick="togglePill(this)">Grief &amp; Loss</span>
+        <span class="pill pill-violence" data-value="VIOLENCE" onclick="togglePill(this)">Domestic Violence</span>
+        <span class="pill pill-crisis" data-value="CRISIS" onclick="togglePill(this)">Crisis Support</span>
       </div>
       <button class="btn-request" onclick="openModal()">Request Support Session</button>
     </div>
@@ -215,8 +215,12 @@
       <div class="form-group">
         <label>Support Category</label>
         <select id="supportCategory">
-          <option>Anxiety</option><option>Depression</option><option>PTSD</option>
-          <option>Grief &amp; Loss</option><option>Domestic Violence</option><option>Crisis Support</option>
+          <option value="ANXIETY">Anxiety</option>
+          <option value="DEPRESSION">Depression</option>
+          <option value="PTSD">PTSD</option>
+          <option value="GRIEF">Grief &amp; Loss</option>
+          <option value="VIOLENCE">Domestic Violence</option>
+          <option value="CRISIS">Crisis Support</option>
         </select>
       </div>
       <div class="form-group">

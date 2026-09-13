@@ -185,9 +185,10 @@ public class PsychologicalRequestService {
             case "ANXIETY"                             -> "ANXIETY";
             case "DEPRESSION"                          -> "DEPRESSION";
             case "PTSD"                                -> "PTSD";
-            case "GRIEF_AND_LOSS","GRIEF_LOSS","GRIEF" -> "GRIEF_AND_LOSS";
-            case "DOMESTIC_VIOLENCE","VIOLENCE"        -> "DOMESTIC_VIOLENCE";
-            case "CRISIS_SUPPORT","CRISIS"             -> "ANXIETY";
+            // Labels must match the psychological_category enum in V1 exactly
+            case "GRIEF_AND_LOSS","GRIEF_LOSS","GRIEF" -> "GRIEF";
+            case "DOMESTIC_VIOLENCE","VIOLENCE"        -> "VIOLENCE";
+            case "CRISIS_SUPPORT","CRISIS"             -> "CRISIS";
             default                                    -> "ANXIETY";
         };
     }
