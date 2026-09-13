@@ -43,6 +43,58 @@ V1 through V8 were applied in order to a genuinely empty verification database.
 Its normalized schema dump matched the migrated development database with zero
 differences.
 
+## Creating the First Administrator
+
+`POST /api/auth/register` refuses the `ADMIN` role (it would otherwise hand out
+an admin token to anyone who can receive a verification email). Administrators
+are therefore created directly in the database. Do this once, after the
+migrations have been applied:
+
+1. Generate a BCrypt hash of the chosen password. Any BCrypt tool works; the hash
+   must start with `$2a$`, `$2b$` or `$2y$`. Two options:
+
+   ```bash
+   # Apache htpasswd (part of apache2-utils / httpd-tools)
+   htpasswd -nbBC 10 "" 'ChangeMe-Now!' | tr -d ':\n'
+
+   # Python (pip install bcrypt)
+   python -c "import bcrypt; print(bcrypt.hashpw(b'ChangeMe-Now!', bcrypt.gensalt(10)).decode())"
+   ```
+
+2. Insert the user with that hash. The `phone` column is `NOT NULL` (see D-6 in
+   the remediation brief); until that changes, supply a placeholder.
+
+   ```sql
+   INSERT INTO users (email, password_hash, phone, full_name, role,
+                      is_verified, is_active, is_locked)
+   VALUES ('admin@example.org',
+           '$2a$10$REPLACE_WITH_THE_HASH_FROM_STEP_1',
+           '+000000000',
+           'Platform Administrator',
+           'ADMIN',
+           true, true, false);
+   ```
+
+3. Log in through the normal `POST /api/auth/login` endpoint and change the
+   password immediately from the Settings page.
+
+Alternatively, if the `pgcrypto` extension is available, PostgreSQL can hash the
+password itself:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+INSERT INTO users (email, password_hash, phone, full_name, role,
+                   is_verified, is_active, is_locked)
+VALUES ('admin@example.org',
+        crypt('ChangeMe-Now!', gen_salt('bf', 10)),
+        '+000000000',
+        'Platform Administrator',
+        'ADMIN',
+        true, true, false);
+```
+
+Never keep the plaintext password in a script or shell history.
+
 ## V4 Mandatory Preflight
 
 V4 is a shipped migration and intentionally remains byte-for-byte unchanged. Before

@@ -29,6 +29,6 @@ public class RegisterRequest {
     @Size(max = 20, message = "Phone number is too long")
     private String phone;
 
-    @NotNull(message = "Role is required. Accepted values: BENEFICIARY, VOLUNTEER, PSYCHOLOGIST, ORGANIZATION, ADMIN")
+    @NotNull(message = "Role is required. Accepted values: BENEFICIARY, VOLUNTEER, PSYCHOLOGIST, ORGANIZATION")
     private UserRole role;
 }

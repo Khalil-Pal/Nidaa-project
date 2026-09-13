@@ -49,6 +49,17 @@ public class AuthService {
             UserRole.ORGANIZATION
     );
 
+    // Roles a visitor may pick for themselves. ADMIN is deliberately absent:
+    // it needs no approval, so allowing it here would hand out admin tokens
+    // to anyone who could receive a verification email. The first admin is
+    // inserted directly in the database (see database/migrations/README.md).
+    private static final Set<UserRole> SELF_REGISTERABLE = Set.of(
+            UserRole.BENEFICIARY,
+            UserRole.VOLUNTEER,
+            UserRole.PSYCHOLOGIST,
+            UserRole.ORGANIZATION
+    );
+
     // Brute force protection
     private final Map<String, FailedAttempt> failedAttempts = new ConcurrentHashMap<>();
     private static final int MAX_ATTEMPTS    = 5;
@@ -77,6 +88,10 @@ public class AuthService {
      */
     @Transactional
     public Map<String, Object> register(RegisterRequest request) {
+        if (request.getRole() == null || !SELF_REGISTERABLE.contains(request.getRole())) {
+            throw new BusinessException("This role cannot be self-registered.");
+        }
+
         logger.info("Registration request: {}", request.getEmail());
 
         String email = request.getEmail().toLowerCase().trim();
