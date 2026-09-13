@@ -1,24 +1,34 @@
 package com.humanitarian.platform.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * Handles @Valid annotation errors — field level validation failures.
@@ -104,35 +114,62 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles all other runtime exceptions. Picks a sensible status code from the
-     * message text so legitimate "not found" responses come back as 404 and
-     * unexpected database/JPA failures come back as 500 instead of being masked
-     * as 400 (which used to make every backend error look like a validation bug).
+     * A path variable or query parameter of the wrong type (e.g. a non-numeric id).
      */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntimeException(
-            RuntimeException ex) {
-        String msg = ex.getMessage() == null ? "" : ex.getMessage();
-        String lower = msg.toLowerCase();
-        HttpStatus status;
-        if (lower.contains("not found")) {
-            status = HttpStatus.NOT_FOUND;
-        } else if (lower.contains("no longer available") || lower.contains("already")
-                || lower.contains("invalid") || lower.contains("must ")) {
-            status = HttpStatus.BAD_REQUEST;
-        } else {
-            status = HttpStatus.INTERNAL_SERVER_ERROR;
-        }
-        return buildResponse(status, msg.isEmpty() ? status.getReasonPhrase() : msg, null);
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST,
+                "Invalid value for parameter '" + ex.getName() + "'.", null);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingParameter(
+            MissingServletRequestParameterException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST,
+                "Missing required parameter '" + ex.getParameterName() + "'.", null);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex) {
+        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED,
+                "Method " + ex.getMethod() + " is not supported for this endpoint.", null);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResource(NoResourceFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Resource not found.", null);
     }
 
     /**
-     * Catch-all handler for any unexpected exceptions.
+     * Unique or foreign-key violations. The database message names tables,
+     * columns and constraints, so it is logged, never returned.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(
+            DataIntegrityViolationException ex) {
+        String ref = reference();
+        log.warn("Data integrity violation [ref={}]: {}", ref, ex.getMostSpecificCause().getMessage());
+        return buildResponse(HttpStatus.CONFLICT,
+                "The request conflicts with existing data. Reference: " + ref, null);
+    }
+
+    /**
+     * Catch-all. The client gets a reference to quote; the stack trace goes to
+     * the log under that reference. Exception text is never returned: Hibernate
+     * and PostgreSQL messages expose schema details.
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+        String ref = reference();
+        log.error("Unhandled exception [ref={}]", ref, ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred: " + ex.getMessage(), null);
+                "An unexpected error occurred. Reference: " + ref, null);
+    }
+
+    private static String reference() {
+        return UUID.randomUUID().toString().substring(0, 8);
     }
 
 
