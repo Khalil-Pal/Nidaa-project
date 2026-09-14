@@ -72,12 +72,6 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
-        <!-- Spring WebSocket - чат в реальном времени -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-
         <!-- === БАЗА ДАННЫХ === -->
 
         <!-- PostgreSQL драйвер - подключение к PostgreSQL -->
