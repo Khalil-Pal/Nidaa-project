@@ -31,6 +31,8 @@ Repository: [github.com/Khalil-Pal/Nidaa-project](https://github.com/Khalil-Pal/
 - [Frontend guide](docs/FRONTEND_GUIDE.md): pages, role navigation, browser state, API calls, shared layout, local-only features, debugging, and test checklists.
 - [Security](docs/SECURITY.md): assets, threat model, the controls and where each is enforced, the audit findings with their fixes, and the limitations kept by choice.
 - [Future work](FUTURE_WORK.md): follow-ups identified during remediation and deliberately deferred.
+- [Database](docs/DATABASE.md): schema inventory (triggers, functions, views) and computed-and-stored values; data dictionary and ERD to follow.
+- [Gate records](docs/gates/): PASS/FAIL evidence for every phase gate; tooling in [scripts/gate](scripts/gate/README.md).
 
 ## Core Capabilities
 
