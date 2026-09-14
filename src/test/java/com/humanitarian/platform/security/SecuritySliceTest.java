@@ -44,6 +44,7 @@ abstract class SecuritySliceTest {
 
     @MockBean protected UserDetailsServiceImpl userDetailsService;
     @MockBean protected UserService userService;
+    @MockBean protected com.humanitarian.platform.service.AdminAuditService adminAudit;
 
     protected static User user(long id, UserRole role) {
         return User.builder()

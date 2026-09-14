@@ -10,8 +10,7 @@ import com.humanitarian.platform.repository.OrganizationRepository;
 import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,21 +30,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserApprovalService {
 
-    private static final Logger log = LoggerFactory.getLogger(UserApprovalService.class);
-
     private final UserRepository userRepository;
     private final VolunteerRepository volunteerRepository;
     private final PsychologistRepository psychologistRepository;
     private final OrganizationRepository organizationRepository;
+    private final AdminAuditService adminAudit;
 
     public UserApprovalService(UserRepository userRepository,
                                VolunteerRepository volunteerRepository,
                                PsychologistRepository psychologistRepository,
-                               OrganizationRepository organizationRepository) {
+                               OrganizationRepository organizationRepository,
+                               AdminAuditService adminAudit) {
         this.userRepository = userRepository;
         this.volunteerRepository = volunteerRepository;
         this.psychologistRepository = psychologistRepository;
         this.organizationRepository = organizationRepository;
+        this.adminAudit = adminAudit;
     }
 
     @Transactional
@@ -78,7 +78,7 @@ public class UserApprovalService {
             }
             default -> { /* beneficiaries and admins have no profile row */ }
         }
-        log.info("Approved {} application for user {}", user.getRole(), userId);
+        adminAudit.record("USER_APPROVED", "USER", userId, Map.of("role", user.getRole().name()));
         return user;
     }
 
@@ -94,7 +94,7 @@ public class UserApprovalService {
             throw new BusinessException("This account is already active; deactivate or delete it instead.");
         }
         userRepository.delete(user);
-        log.info("Rejected {} application for user {}", user.getRole(), userId);
+        adminAudit.record("USER_REJECTED", "USER", userId, Map.of("role", user.getRole().name()));
         return user;
     }
 }

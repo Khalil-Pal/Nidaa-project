@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 class UserServiceTest {
 
     @Mock private UserRepository userRepository;
+    @Mock private com.humanitarian.platform.service.AdminAuditService adminAudit;
     @Mock private ProfileRepository profileRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private com.humanitarian.platform.repository.RefreshTokenRepository refreshTokenRepository;
@@ -52,6 +53,8 @@ class UserServiceTest {
         when(profileRepository.findByUserId(9L)).thenReturn(java.util.Optional.of(profile));
 
         service.deleteAccount(9L);
+        org.mockito.Mockito.verify(adminAudit).record(org.mockito.ArgumentMatchers.eq("USER_DELETED"),
+                org.mockito.ArgumentMatchers.eq("USER"), org.mockito.ArgumentMatchers.eq(9L), org.mockito.ArgumentMatchers.any());
 
         verify(userRepository).softDelete(eq(9L), any(java.time.LocalDateTime.class));
         verify(userRepository, never()).delete(any(User.class));

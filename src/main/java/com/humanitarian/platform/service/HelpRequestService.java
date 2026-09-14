@@ -22,6 +22,8 @@ import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.exception.UnauthorizedException;
 import com.humanitarian.platform.util.RequestTransitions;
 import com.humanitarian.platform.util.HelpTypeNormalizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,8 @@ import java.util.Set;
 
 @Service
 public class HelpRequestService {
+
+    private static final Logger log = LoggerFactory.getLogger(HelpRequestService.class);
 
     @Autowired
     private HelpRequestRepository helpRequestRepository;
@@ -71,6 +75,9 @@ public class HelpRequestService {
 
     @Autowired
     private ProviderResourceService providerResourceService;
+
+    @Autowired
+    private AdminAuditService adminAudit;
 
     @Transactional
     public HelpRequest createRequest(HelpRequestDto dto) {
@@ -255,6 +262,9 @@ public class HelpRequestService {
                     .build();
             assignmentRepository.save(assignment);
         }
+        log.info("Request {} assigned manually to {} {} by user {}", requestId,
+                assignedVolunteerId != null ? "volunteer" : "organization",
+                assignedVolunteerId != null ? assignedVolunteerId : assignedOrganizationId, currentUser.getId());
 
         HelpRequest saved = findOrThrow(requestId);
         Map<String, Object> result = new HashMap<>();
@@ -405,6 +415,10 @@ public class HelpRequestService {
         }
         if ("COMPLETED".equals(next) || "CANCELLED".equals(next)) {
             updateAssignmentStatus(id, next, statusChangedAt);
+        }
+        log.info("Request {} {} -> {} by user {} ({})", id, current, next, currentUser.getId(), currentUser.getRole());
+        if (currentUser.getRole() == UserRole.ADMIN) {
+            adminAudit.record("REQUEST_STATUS_CHANGED", "HELP_REQUEST", id, Map.of("from", current, "to", next));
         }
 
         return findOrThrow(id);

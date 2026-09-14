@@ -10,11 +10,16 @@ import com.humanitarian.platform.repository.OrganizationRepository;
 import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
+import com.humanitarian.platform.service.AdminAuditService;
 import com.humanitarian.platform.service.UserApprovalService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * and that gave every approved provider a 5.0 rating (fixed in V18).
  */
 @EnabledIf(value = PersistenceTestSupport.CONDITION, disabledReason = "nidaa_test database not reachable")
-@Import(UserApprovalService.class)
+@Import({UserApprovalService.class, AdminAuditService.class})
 class UserApprovalPersistenceTest extends PersistenceTestSupport {
 
     @Autowired private UserApprovalService approvalService;
@@ -54,6 +59,29 @@ class UserApprovalPersistenceTest extends PersistenceTestSupport {
         Volunteer v = volunteerRepository.findByUserId(u.getId()).orElseThrow();
         assertTrue(v.getIsAvailable());
         assertNull(v.getRating(), "unrated, not 5.0");
+    }
+
+    @Test
+    void approvalIsWrittenToActivityLogsWithTheActor() {
+        User admin = newUser(UserRole.ADMIN, "approve-actor@example.test");
+        User u = pending(UserRole.PSYCHOLOGIST, "approve-audited@example.test");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(admin.getEmail(), null, List.of()));
+        try {
+            approvalService.approve(u.getId());
+            em.flush(); em.clear();
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+
+        Object[] row = (Object[]) em.getEntityManager()
+                .createNativeQuery("SELECT user_id, action, entity_type, entity_id, CAST(details AS text) FROM activity_logs "
+                        + "WHERE entity_type = 'USER' AND entity_id = :id")
+                .setParameter("id", u.getId()).getSingleResult();
+        assertEquals(admin.getId(), ((Number) row[0]).longValue());
+        assertEquals("USER_APPROVED", row[1]);
+        assertEquals(u.getId(), ((Number) row[3]).longValue());
+        assertTrue(String.valueOf(row[4]).contains("PSYCHOLOGIST"), "details jsonb holds the role: " + row[4]);
     }
 
     @Test

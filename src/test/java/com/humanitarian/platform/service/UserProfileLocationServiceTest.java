@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 class UserProfileLocationServiceTest {
 
     @Mock private UserRepository userRepository;
+    @Mock private com.humanitarian.platform.service.AdminAuditService adminAudit;
     @Mock private ProfileRepository profileRepository;
 
     @InjectMocks private UserService service;

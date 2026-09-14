@@ -6,6 +6,8 @@ import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.service.PriorityScoreService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -18,6 +20,8 @@ import java.util.Random;
 @Component
 @Profile("dev")
 public class DataSeeder implements CommandLineRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
     private static final String[] TYPES = {"MEDICAL", "FOOD", "SHELTER", "WATER", "CLOTHING"};
     private static final double[][] CLUSTERS = {
@@ -51,7 +55,7 @@ public class DataSeeder implements CommandLineRunner {
                 .orElse(null);
 
         if (beneficiaryId == null) {
-            System.out.println("DataSeeder: skipped sample help requests because no users exist.");
+            log.info("Skipped sample help requests because no users exist.");
             return;
         }
 
@@ -83,7 +87,7 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         helpRequestRepository.saveAll(requests);
-        System.out.println("DataSeeder: inserted 500 sample help requests.");
+        log.info("Inserted {} sample help requests.", requests.size());
     }
 
     private String weightedUrgency(Random random) {

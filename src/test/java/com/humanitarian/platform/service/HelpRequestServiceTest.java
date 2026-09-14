@@ -49,6 +49,7 @@ class HelpRequestServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private UserService userService;
     @Mock private JdbcTemplate jdbc;
+    @Mock private com.humanitarian.platform.service.AdminAuditService adminAudit;
     @Mock private PriorityScoreService priorityScoreService;
     @Mock private GeoMatchingService geoMatchingService;
     @Mock private AssignmentRepository assignmentRepository;

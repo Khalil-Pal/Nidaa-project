@@ -322,6 +322,7 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isOk());
         verify(helpRequestRepository).updateStatusCompleted(eq(1L), eq("COMPLETED"), any(), eq("ASSIGNED"));
+        verify(adminAudit, never()).record(anyString(), anyString(), anyLong(), any());
     }
 
     @Test
@@ -379,6 +380,8 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isOk());
+        // C-4: an administrator overriding a request's status is written to activity_logs
+        verify(adminAudit).record(eq("REQUEST_STATUS_CHANGED"), eq("HELP_REQUEST"), eq(1L), any());
     }
 
     @Test

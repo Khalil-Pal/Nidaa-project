@@ -90,9 +90,16 @@ public class AutomaticAssignmentService {
         List<GeoMatchingService.ProviderMatch> candidates =
                 geoMatchingService.rankProvidersByDistance(
                         request, resourceMatchedVolunteers, resourceMatchedOrganizations);
+        if (candidates.isEmpty()) {
+            logger.info("Request {} ({}, {} people) stays PENDING: {} providers have the resource, none available in range",
+                    request.getId(), request.getHelpType(), request.getPeopleCount(), eligibleProviders.size());
+            return false;
+        }
 
         for (GeoMatchingService.ProviderMatch candidate : candidates) {
             if (!claim(candidate)) {
+                logger.debug("Request {}: {} {} already claimed, trying next", request.getId(),
+                        candidate.providerType(), candidate.providerId());
                 continue;
             }
 
@@ -100,6 +107,8 @@ public class AutomaticAssignmentService {
                     candidate.userId(), request.getHelpType(), request.getPeopleCount());
             if (reservationResult.isEmpty()) {
                 release(candidate);
+                logger.debug("Request {}: {} {} lost its capacity before reservation, trying next", request.getId(),
+                        candidate.providerType(), candidate.providerId());
                 continue;
             }
             ProviderCapacityReservation reservation = reservationResult.get();
@@ -131,9 +140,15 @@ public class AutomaticAssignmentService {
                             candidate.providerType().name().toLowerCase(Locale.ROOT),
                             candidate.distanceKm()))
                     .build());
+            logger.info("Request {} auto-assigned to {} {} at {} km ({} of {} candidates tried)",
+                    request.getId(), candidate.providerType(), candidate.providerId(),
+                    String.format(Locale.ROOT, "%.2f", candidate.distanceKm()),
+                    candidates.indexOf(candidate) + 1, candidates.size());
             return true;
         }
 
+        logger.info("Request {} stays PENDING: all {} candidates were claimed or out of capacity first",
+                request.getId(), candidates.size());
         return false;
     }
 
@@ -200,6 +215,8 @@ public class AutomaticAssignmentService {
                     .assignedAt(LocalDateTime.now())
                     .notes("Automatically routed to a verified on-duty psychologist")
                     .build());
+            logger.info("Crisis request {} routed to psychologist {} ({} open cases)",
+                    request.getId(), psychologist.getId(), openCases.getOrDefault(psychologist.getId(), 0L));
             return true;
         }
 

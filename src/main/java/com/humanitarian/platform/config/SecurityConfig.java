@@ -4,6 +4,8 @@ import com.humanitarian.platform.security.JwtAuthenticationFilter;
 import com.humanitarian.platform.security.UserDetailsServiceImpl;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -30,6 +32,8 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Autowired private UserDetailsServiceImpl userDetailsService;
     @Autowired private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -111,9 +115,13 @@ public class SecurityConfig {
                         // re-dispatches to /error, which would pass through this chain
                         // again without the caller's authentication and turn the 403
                         // into a 401 at the entry point above.
-                        .accessDeniedHandler((req, res, ex) ->
-                                writeJson(res, HttpServletResponse.SC_FORBIDDEN,
-                                        "Access denied. You don't have permission to perform this action.")))
+                        .accessDeniedHandler((req, res, ex) -> {
+                            log.warn("Access denied for {} on {} {}",
+                                    req.getUserPrincipal() == null ? "anonymous" : req.getUserPrincipal().getName(),
+                                    req.getMethod(), req.getRequestURI());
+                            writeJson(res, HttpServletResponse.SC_FORBIDDEN,
+                                    "Access denied. You don't have permission to perform this action.");
+                        }))
                 .authorizeHttpRequests(auth -> auth
                         // Let the container's error page render for other sendError()
                         // paths instead of being blocked as an unauthenticated request

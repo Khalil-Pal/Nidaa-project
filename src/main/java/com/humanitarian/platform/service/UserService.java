@@ -7,6 +7,8 @@ import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.ProfileRepository;
 import com.humanitarian.platform.repository.RefreshTokenRepository;
 import com.humanitarian.platform.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,10 +19,13 @@ import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -34,6 +39,9 @@ public class UserService {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private AdminAuditService adminAudit;
+
     /**
      * Soft-deletes an account (D-2): personal data is replaced in place and the
      * row stays so requests, assignments and messages keep their history. The
@@ -44,6 +52,13 @@ public class UserService {
     public void deleteAccount(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        anonymise(user);
+        adminAudit.record("USER_DELETED", "USER", userId, Map.of("role", user.getRole().name()));
+    }
+
+    /** Anonymise-in-place (D-2): the row stays for the aid history, the person is gone from it. */
+    private void anonymise(User user) {
+        Long userId = user.getId();
         if (user.getDeletedAt() != null) {
             throw new BusinessException("This account has already been deleted.");
         }
@@ -70,7 +85,8 @@ public class UserService {
                 || !passwordEncoder.matches(password, me.getPasswordHash())) {
             throw new BusinessException("Enter your current password to delete the account.");
         }
-        deleteAccount(me.getId());
+        anonymise(me);
+        log.info("User {} deleted their own account", me.getId());
     }
 
     /**
@@ -171,7 +187,10 @@ public class UserService {
     public User toggleUserActive(Long userId) {
         User user = getUserById(userId);
         user.setIsActive(!user.getIsActive());
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        adminAudit.record(Boolean.TRUE.equals(saved.getIsActive()) ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+                "USER", userId, Map.of("role", saved.getRole().name()));
+        return saved;
     }
 
     // Search users by name

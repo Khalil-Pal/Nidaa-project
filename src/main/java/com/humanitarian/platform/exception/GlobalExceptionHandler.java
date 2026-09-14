@@ -2,6 +2,7 @@ package com.humanitarian.platform.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.humanitarian.platform.dto.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -108,7 +109,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
-            AccessDeniedException ex) {
+            AccessDeniedException ex, HttpServletRequest request) {
+        logDenied(request, ex.getMessage());
         return buildResponse(HttpStatus.FORBIDDEN,
                 "Access denied. You don't have permission to perform this action.", null);
     }
@@ -189,8 +191,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUnauthorized(UnauthorizedException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {
+        logDenied(request, ex.getMessage());
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), null);
+    }
+
+    /** Authorization failures are the first thing to look for after an incident, so every one is logged (C-4). */
+    private static void logDenied(HttpServletRequest request, String reason) {
+        log.warn("Access denied for {} on {} {}: {}",
+                request.getUserPrincipal() == null ? "anonymous" : request.getUserPrincipal().getName(),
+                request.getMethod(), request.getRequestURI(), reason);
     }
 
     /**

@@ -44,6 +44,7 @@ class RequestLifecycleTest {
     @Mock private UserRepository userRepository;
     @Mock private UserService userService;
     @Mock private JdbcTemplate jdbc;
+    @Mock private com.humanitarian.platform.service.AdminAuditService adminAudit;
     @Mock private AssignmentRepository assignmentRepository;
     @Mock private VolunteerRepository volunteerRepository;
     @Mock private AutomaticAssignmentService automaticAssignmentService;

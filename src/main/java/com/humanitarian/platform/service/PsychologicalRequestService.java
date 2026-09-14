@@ -40,6 +40,7 @@ public class PsychologicalRequestService {
     @Autowired private AssignmentRepository           assignmentRepository;
     @Autowired private PsychologistRepository         psychologistRepository;
     @Autowired private AutomaticAssignmentService     automaticAssignmentService;
+    @Autowired private AdminAuditService              adminAudit;
 
     @Transactional
     public PsychologicalRequest createRequest(PsychologicalRequestDto dto) {
@@ -54,9 +55,14 @@ public class PsychologicalRequestService {
         boolean crisis = assessment.isCrisis()
                 || crisisDetectorService.detect(dto.getSupportType(), description);
         boolean needsReview = !crisis && assessment.needsReview();
-        if (crisis || needsReview) {
-            logger.info("Psychological request from user {} scored {} ({}) on terms {}",
-                    user.getId(), assessment.score(), crisis ? "CRISIS" : "REVIEW", assessment.matchedTerms());
+        // Score and match count only: the matched terms are fragments of what the
+        // person wrote, and the log is not the place for them.
+        if (crisis) {
+            logger.warn("CRISIS detected for user {}: score {} on {} term(s); routing to an on-duty psychologist",
+                    user.getId(), assessment.score(), assessment.matchedTerms().size());
+        } else if (needsReview) {
+            logger.info("Psychological request from user {} flagged for review: score {} on {} term(s)",
+                    user.getId(), assessment.score(), assessment.matchedTerms().size());
         }
 
         PsychologicalRequest r = PsychologicalRequest.builder()
@@ -96,6 +102,7 @@ public class PsychologicalRequestService {
         if (updated == 0) {
             throw new ConflictException("Request is no longer available or already assigned.");
         }
+        logger.info("Case {} accepted by psychologist {} (user {})", requestId, psychologistId, currentUser.getId());
 
         Assignment assignment = Assignment.builder()
                 .psychologicalRequestId(requestId)
@@ -149,6 +156,10 @@ public class PsychologicalRequestService {
         }
         if ("COMPLETED".equals(next) || "CANCELLED".equals(next)) {
             updateAssignmentStatus(id, next, LocalDateTime.now());
+        }
+        logger.info("Case {} {} -> {} by user {} ({})", id, current, next, currentUser.getId(), currentUser.getRole());
+        if (currentUser.getRole() == UserRole.ADMIN) {
+            adminAudit.record("REQUEST_STATUS_CHANGED", "PSYCHOLOGICAL_REQUEST", id, Map.of("from", current, "to", next));
         }
         return findOrThrow(id);
     }
