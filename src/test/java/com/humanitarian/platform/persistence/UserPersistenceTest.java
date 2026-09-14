@@ -115,6 +115,33 @@ class UserPersistenceTest extends PersistenceTestSupport {
     }
 
     @Test
+    void approvalShapedProviderRowsPersist() {
+        // AdminController.approveUser inserts exactly these columns. Before V16
+        // psychologists.specialization and organizations.registration_number were
+        // NOT NULL, so approving either role failed on a fresh schema (Gate 3).
+        User psy = newUser(UserRole.PSYCHOLOGIST, "approve-psy@example.test");
+        User org = newUser(UserRole.ORGANIZATION, "approve-org@example.test");
+        org.setFullName("Approved Aid Org");
+
+        em.getEntityManager().createNativeQuery(
+                        "INSERT INTO psychologists (user_id, is_on_duty) VALUES (:id, true)")
+                .setParameter("id", psy.getId()).executeUpdate();
+        em.getEntityManager().createNativeQuery(
+                        "INSERT INTO organizations (user_id, official_name, is_verified) VALUES (:id, :name, false)")
+                .setParameter("id", org.getId()).setParameter("name", org.getFullName()).executeUpdate();
+        em.getEntityManager().createNativeQuery(
+                        "INSERT INTO volunteers (user_id, is_available) VALUES (:id, true)")
+                .setParameter("id", newUser(UserRole.VOLUNTEER, "approve-vol@example.test").getId()).executeUpdate();
+
+        assertEquals(1L, em.getEntityManager()
+                .createNativeQuery("SELECT count(*) FROM psychologists WHERE user_id = :id")
+                .setParameter("id", psy.getId()).getSingleResult());
+        assertEquals(1L, em.getEntityManager()
+                .createNativeQuery("SELECT count(*) FROM organizations WHERE user_id = :id")
+                .setParameter("id", org.getId()).getSingleResult());
+    }
+
+    @Test
     void filerMayNotBeTheBeneficiary() {
         User volunteer = newUser(UserRole.VOLUNTEER, "filer@example.test");
         HelpRequest selfFiled = HelpRequest.builder()

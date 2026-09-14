@@ -20,6 +20,7 @@ psql -U postgres -d Web_DB -f database/migrations/V11__soft_delete_users.sql
 psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
 psql -U postgres -d Web_DB -f database/migrations/V14__crisis_review_flag.sql
 psql -U postgres -d Web_DB -f database/migrations/V15__drop_priority_triggers.sql
+psql -U postgres -d Web_DB -f database/migrations/V16__provider_profile_optional_columns.sql
 ```
 
 ## Versions
@@ -63,6 +64,11 @@ psql -U postgres -d Web_DB -f database/migrations/V15__drop_priority_triggers.sq
   documented model in `PriorityScoreService` and silently overrode every score
   the application computed. Scores already in the table are refreshed by the
   scheduler within 30 minutes. Idempotent; safe to rerun.
+- `V16` makes `psychologists.specialization` and `organizations.registration_number`
+  nullable. Admin approval inserts the profile row with only what registration
+  collects, and both columns were NOT NULL without defaults, so approving a
+  psychologist or an organization always failed on a fresh schema. Idempotent;
+  safe to rerun.
 
 V1 through V8 were applied in order to a genuinely empty verification database.
 Its normalized schema dump matched the migrated development database with zero
