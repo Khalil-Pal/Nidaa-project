@@ -47,14 +47,31 @@ class CrisisDetectorServiceTest {
         assertTrue(a.score() >= CrisisDetectorService.CRISIS_THRESHOLD);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "I have been self-harming again",
+            "she found me self-harmed",
+            "suicidality has been on my mind",
+            "I keep thinking about killing myself",
+            "I thought about ending my life last night",
+            "Мысли о суициде не уходят",            // dative of суицид
+            "думаю о самоубийстве каждый день",      // prepositional of самоубийство
+            "суицидальные мысли",
+            "أفكر في الانتحار",                      // definite article
+            "الانتحار هو الحل الوحيد"
+    })
+    void inflectedHighTierFormsAreStillCrisis(String description) {
+        // On a crisis detector, missing an inflected form is the failure that
+        // matters most, so HIGH terms are stems rather than exact words.
+        assertEquals(Level.CRISIS, service.assess("INDIVIDUAL", description).level(), description);
+    }
+
     @Test
-    void inflectedFormsAreNotMatchedBecauseBoundariesAreExact() {
-        // Known limitation, kept visible: "суициде" (dative) is not "суицид",
-        // and "self-harming" is not "self harm". Stemming would widen recall at
-        // the cost of the substring false positives this task removes; a future
-        // language-aware pass can revisit.
-        assertEquals(Level.NONE, service.assess("INDIVIDUAL", "Мысли о суициде не уходят").level());
-        assertEquals(Level.NONE, service.assess("INDIVIDUAL", "I have been self-harming again").level());
+    void stemsDoNotBleedIntoUnrelatedWords() {
+        // "self" must still be the exact word: "selfish harmony" is not self-harm,
+        // and a MED word inside a longer word ("hopelessly") is not a MED term.
+        assertEquals(Level.NONE, service.assess("INDIVIDUAL", "selfish harmony at home").level());
+        assertEquals(Level.NONE, service.assess("INDIVIDUAL", "my life ended a chapter").level());
     }
 
     // -- MED tier: flagged for review, not routed -----------------------------

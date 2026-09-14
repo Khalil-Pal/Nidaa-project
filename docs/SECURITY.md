@@ -186,10 +186,11 @@ Chosen deliberately and documented, rather than gaps:
    escaping and validation, and `connect-src 'self'` blocks exfiltration, but a
    strict `script-src 'self'` needs the handler rewrite planned with the
    accessibility pass (F-5).
-2. **No negation or stemming in crisis detection.** "I am not suicidal" scores as a
-   crisis (the safer error), and inflected forms such as "суициде" or
-   "self-harming" do not match. The review band exists so borderline text reaches a
-   human without automatic routing.
+2. **No negation handling in crisis detection.** "I am not suicidal" scores as a
+   crisis, which is the safer error. HIGH-tier terms are stems, so inflected forms
+   ("suicidality", "self-harming", "суициде", "الانتحار") do match; MED-tier terms
+   are exact words. The review band exists so borderline text reaches a human
+   without automatic routing.
 3. **Refresh-token rotation is per account.** Two browser tabs that both refresh
    will log the slower one out. Per-device tokens would fix this at the cost of a
    token table per session.

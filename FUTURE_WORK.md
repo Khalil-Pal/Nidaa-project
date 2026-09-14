@@ -20,9 +20,10 @@ Phase 5.
 
 ## Crisis detection
 
-- **Stemming or lemmatisation per language.** Exact word boundaries miss inflected
-  forms ("суициде", "self-harming"). A language-aware pass would widen recall
-  without reintroducing the substring false positives removed in L-2.
+- **Proper lemmatisation per language.** HIGH-tier terms are prefix stems and
+  Arabic stems accept the definite article, which covers the common inflections.
+  Irregular forms and other Arabic prefixes (و, ب, ل) are not handled; a
+  language-aware pass would.
 - **Negation handling.** "I am not suicidal" scores as a crisis today, on purpose.
   A negation window could lower it to the review band rather than dismiss it.
 
