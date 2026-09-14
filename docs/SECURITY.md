@@ -181,11 +181,13 @@ frontend, testing) preceded the remediation. Findings, in the order they were fi
 
 Chosen deliberately and documented, rather than gaps:
 
-1. **`script-src` still allows inline scripts.** Every page carries its script
-   inline plus roughly two hundred `onclick` attributes. Stored XSS is stopped by
-   escaping and validation, and `connect-src 'self'` blocks exfiltration, but a
-   strict `script-src 'self'` needs the handler rewrite planned with the
-   accessibility pass (F-5).
+1. **`style-src` still allows inline styles.** Since F-5 `script-src` is
+   `'self' https://cdn.jsdelivr.net` (Chart.js on the analytics page): every page's
+   script is a file under `/js`, there are no `on*` attributes and no
+   `javascript:` URLs, so an injected script or handler attribute does not run.
+   Inline `style="..."` attributes remain (about 200) and `'unsafe-inline'` stays
+   in `style-src`; CSS injection cannot run code or read the token, so this is
+   accepted.
 2. **No negation handling in crisis detection.** "I am not suicidal" scores as a
    crisis, which is the safer error. HIGH-tier terms are stems, so inflected forms
    ("suicidality", "self-harming", "суициде", "الانتحار") do match; MED-tier terms

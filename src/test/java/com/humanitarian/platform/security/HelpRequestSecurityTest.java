@@ -186,7 +186,10 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
                         .string("Content-Security-Policy", org.hamcrest.Matchers.allOf(
                                 org.hamcrest.Matchers.containsString("default-src 'self'"),
                                 org.hamcrest.Matchers.containsString("connect-src 'self'"),
-                                org.hamcrest.Matchers.containsString("frame-ancestors 'none'"))));
+                                org.hamcrest.Matchers.containsString("frame-ancestors 'none'"),
+                                // F-5: no inline scripts or handlers anywhere, so script-src is strict
+                                org.hamcrest.Matchers.containsString("script-src 'self' https://cdn.jsdelivr.net;"),
+                                org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("script-src 'self' 'unsafe-inline'")))));
     }
 
     // -- input validation (B-2) -----------------------------------------------

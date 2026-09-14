@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
-    :root{--blue:#1d4ed8;--green:#059669;--bg:#f0fdf4;--dark:#1e293b;--muted:#64748b}
+    :root{--blue:#1d4ed8;--green:#047857;--bg:#f0fdf4;--dark:#1e293b;--muted:#475569}
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
     .content{padding:28px;flex:1}
@@ -34,13 +34,13 @@
     .pill-psychologist{background:#f5f3ff;color:#7c3aed}
     .pill-organization{background:#fff7ed;color:#ea580c}
     .pill-beneficiary{background:#f0fdf4;color:var(--green)}
-    .pill-admin{background:#fef2f2;color:#dc2626}
+    .pill-admin{background:#fef2f2;color:#b91c1c}
     .app-actions{display:flex;gap:10px;flex-shrink:0}
     .btn-approve{background:var(--green);color:white;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
-    .btn-approve:hover{background:#047857;transform:translateY(-1px)}
+    .btn-approve:hover{background:#065f46;transform:translateY(-1px)}
     .btn-approve:disabled{background:#86efac;cursor:not-allowed;transform:none}
-    .btn-deny{background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
-    .btn-deny:hover{background:#dc2626;color:white;transform:translateY(-1px)}
+    .btn-deny{background:#fef2f2;color:#b91c1c;border:1.5px solid #fecaca;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+    .btn-deny:hover{background:#b91c1c;color:white;transform:translateY(-1px)}
     .btn-deny:disabled{opacity:.5;cursor:not-allowed;transform:none}
     .empty-state{text-align:center;padding:60px 24px;color:var(--muted)}
     .empty-state i{font-size:40px;margin-bottom:14px;display:block;opacity:.4}
@@ -48,11 +48,15 @@
     .loading-state{text-align:center;padding:60px;color:var(--muted);font-size:14px}
     .toast{position:fixed;top:20px;right:20px;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,.12);animation:toastIn .3s ease}
     @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-    .toast.success{background:#f0fdf4;border:1px solid #bbf7d0;color:#059669}
-    .toast.error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+    .toast.success{background:#f0fdf4;border:1px solid #bbf7d0;color:#047857}
+    .toast.error{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
     .count-badge{background:#ef4444;color:white;border-radius:100px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:6px}
     @media(max-width:768px){.app-card{flex-direction:column;align-items:flex-start}.app-actions{width:100%}.btn-approve,.btn-deny{flex:1;justify-content:center}}
-  </style>
+  
+/* F-5: a visible focus ring for keyboard users on every interactive element */
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px;border-radius:4px}
+[tabindex="0"]:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+</style>
   <link rel="stylesheet" href="css/shared-layout.css"/>
 </head>
 <body>
@@ -66,12 +70,12 @@
 
 <div class="main">
   <header class="topbar">
-    <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+    <button class="menu-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fa fa-bars"></i></button>
     <span class="topbar-title"><i class="fa fa-user-check" style="color:var(--blue);margin-right:8px"></i>Application Approvals</span>
     <div class="topbar-actions">
       <span class="topbar-user" id="topbarName">—</span>
       <span class="badge">Admin</span>
-      <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i></button>
+      <button class="btn-logout" id="logoutBtn" aria-label="Log out"><i class="fa fa-right-from-bracket"></i></button>
     </div>
   </header>
 
@@ -83,10 +87,10 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('pending', this)">
+      <button class="tab-btn active" id="switchTabPending">
         <i class="fa fa-clock"></i> Pending <span class="count-badge" id="tabPendingCount">0</span>
       </button>
-      <button class="tab-btn" onclick="switchTab('all', this)">
+      <button class="tab-btn" id="switchTabAll">
         <i class="fa fa-list"></i> All Users
       </button>
     </div>
@@ -102,187 +106,6 @@
 </div>
 
 <script src="/js/nidaa-common.js"></script>
-<script>
-
-  if (!localStorage.getItem('token')) window.location.href = 'login.html';
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  buildSidebar('admin-approvals.html');
-  const fullName = user.fullName || user.name || 'Admin';
-  const userRole = (user.role || '').toLowerCase();
-  if (userRole !== 'admin') window.location.href = 'dashboard.html';
-
-  const _s = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-  document.getElementById('topbarName').textContent = fullName.split(' ')[0];
-
-  const roleColors = {
-    volunteer:'#1d4ed8', psychologist:'#7c3aed',
-    organization:'#ea580c', beneficiary:'#059669', admin:'#dc2626'
-  };
-  const rolePillClass = {
-    volunteer:'pill-volunteer', psychologist:'pill-psychologist',
-    organization:'pill-organization', beneficiary:'pill-beneficiary', admin:'pill-admin'
-  };
-
-  function showToast(msg, type='success') {
-    const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.innerHTML = `<i class="fa fa-${type==='success'?'circle-check':'circle-exclamation'}"></i> ${escHtml(msg)}`;
-    document.body.appendChild(t);
-    setTimeout(() => { t.style.opacity='0'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300); }, 3000);
-  }
-
-  function formatDate(d) {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
-  }
-
-  function renderPending(users) {
-    const list = document.getElementById('pendingList');
-    const count = users.length;
-    const _pc = document.getElementById('pendingCount'); if(_pc) _pc.textContent = count;
-    const _tpc = document.getElementById('tabPendingCount'); if(_tpc) _tpc.textContent = count;
-
-    if (!count) {
-      list.innerHTML = `<div class="empty-state"><i class="fa fa-circle-check"></i><h3>All caught up!</h3><p>No pending applications right now.</p></div>`;
-      return;
-    }
-
-    list.innerHTML = users.map(u => {
-      const role = (u.role || '').toLowerCase();
-      const initials = (u.fullName||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-      const color = roleColors[role] || '#64748b';
-      const pill  = rolePillClass[role] || '';
-      return `
-            <div class="app-card" id="app-${escHtml(u.id||u.userId)}">
-                <div class="app-avatar" style="background:${color}">${escHtml(initials)}</div>
-                <div class="app-info">
-                    <div class="app-name">${escHtml(u.fullName || '—')} <span class="role-pill ${pill}">${escHtml((u.role||'').toLowerCase())}</span></div>
-                    <div class="app-meta">
-                        <span><i class="fa fa-envelope"></i> ${escHtml(u.email || '—')}</span>
-                        ${u.phone ? `<span><i class="fa fa-phone"></i> ${escHtml(u.phone)}</span>` : ''}
-                        <span><i class="fa fa-calendar"></i> Applied ${escHtml(formatDate(u.createdAt))}</span>
-                    </div>
-                </div>
-                <div class="app-actions">
-                    <button class="btn-approve" onclick="approveUser(${Number(u.id||u.userId)}, this)">
-                        <i class="fa fa-check"></i> Approve
-                    </button>
-                    <button class="btn-deny" onclick="denyUser(${Number(u.id||u.userId)}, this)">
-                        <i class="fa fa-xmark"></i> Deny
-                    </button>
-                </div>
-            </div>`;
-    }).join('');
-  }
-
-  function renderAllUsers(users) {
-    const list = document.getElementById('allList');
-    if (!users.length) {
-      list.innerHTML = `<div class="empty-state"><i class="fa fa-users"></i><h3>No users found</h3></div>`;
-      return;
-    }
-    list.innerHTML = users.map(u => {
-      const role = (u.role || '').toLowerCase();
-      const initials = (u.fullName||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-      const color = roleColors[role] || '#64748b';
-      const pill  = rolePillClass[role] || '';
-      const isActive = u.isActive === true || u.isActive === 'true';
-      return `
-            <div class="app-card">
-                <div class="app-avatar" style="background:${color}">${escHtml(initials)}</div>
-                <div class="app-info">
-                    <div class="app-name">${escHtml(u.fullName || '—')} <span class="role-pill ${pill}">${escHtml((u.role||'').toLowerCase())}</span></div>
-                    <div class="app-meta">
-                        <span><i class="fa fa-envelope"></i> ${escHtml(u.email || '—')}</span>
-                        ${u.phone ? `<span><i class="fa fa-phone"></i> ${escHtml(u.phone)}</span>` : ''}
-                        <span><i class="fa fa-circle" style="color:${isActive?'#059669':'#dc2626'};font-size:9px"></i> ${isActive?'Active':'Inactive'}</span>
-                        <span><i class="fa fa-calendar"></i> Joined ${escHtml(formatDate(u.createdAt))}</span>
-                    </div>
-                </div>
-            </div>`;
-    }).join('');
-  }
-
-  async function loadPending() {
-    try {
-      const res  = await apiFetch(API + '/admin/pending', { headers: authHeader() });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const users = (await res.json()).data || [];
-      renderPending(users);
-    } catch (e) {
-      document.getElementById('pendingList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${escHtml(e.message)}</p></div>`;
-    }
-  }
-
-  async function loadAllUsers() {
-    try {
-      const res  = await apiFetch(API + '/admin/users', { headers: authHeader() });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const users = (await res.json()).data || [];
-      renderAllUsers(users);
-    } catch (e) {
-      document.getElementById('allList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${escHtml(e.message)}</p></div>`;
-    }
-  }
-
-  async function approveUser(userId, btn) {
-    if (!confirm('Approve this application? They will receive a confirmation email.')) return;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Approving...';
-    const denyBtn = btn.nextElementSibling;
-    if (denyBtn) denyBtn.disabled = true;
-
-    try {
-      const res = await apiFetch(API + '/admin/approve/' + userId, { method: 'PUT', headers: authHeader() });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      showToast('✅ Application approved! Confirmation email sent.');
-      // Remove card smoothly
-      const card = document.getElementById('app-' + userId);
-      if (card) { card.style.opacity='0'; card.style.transition='.3s'; setTimeout(()=>{ card.remove(); loadPending(); }, 300); }
-    } catch (e) {
-      showToast('❌ Failed: ' + e.message, 'error');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa fa-check"></i> Approve';
-      if (denyBtn) denyBtn.disabled = false;
-    }
-  }
-
-  async function denyUser(userId, btn) {
-    if (!confirm('Deny this application? Their account will be deleted and they will be notified.')) return;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Denying...';
-    const approveBtn = btn.previousElementSibling;
-    if (approveBtn) approveBtn.disabled = true;
-
-    try {
-      const res = await apiFetch(API + '/admin/reject/' + userId, { method: 'PUT', headers: authHeader() });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      showToast('Application denied and user notified.', 'success');
-      const card = document.getElementById('app-' + userId);
-      if (card) { card.style.opacity='0'; card.style.transition='.3s'; setTimeout(()=>{ card.remove(); loadPending(); }, 300); }
-    } catch (e) {
-      showToast('❌ Failed: ' + e.message, 'error');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa fa-xmark"></i> Deny';
-      if (approveBtn) approveBtn.disabled = false;
-    }
-  }
-
-  let allLoaded = false;
-  function switchTab(tab, btn) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    if (tab === 'pending') {
-      document.getElementById('pendingList').style.display = 'flex';
-      document.getElementById('allList').style.display = 'none';
-    } else {
-      document.getElementById('pendingList').style.display = 'none';
-      document.getElementById('allList').style.display = 'flex';
-      if (!allLoaded) { loadAllUsers(); allLoaded = true; }
-    }
-  }
-
-  loadPending();
-</script>
+<script src="js/admin-approvals.js"></script>
 </body>
 </html>

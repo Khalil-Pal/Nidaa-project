@@ -121,7 +121,7 @@
 
 .btn-logout-side:hover {
   background: #fef2f2;
-  color: #dc2626;
+  color: #b91c1c;
 }
 
 .main {
@@ -203,7 +203,7 @@
 .btn-logout:hover {
   background: #fef2f2;
   border-color: #fca5a5;
-  color: #dc2626;
+  color: #b91c1c;
 }
 
 .menu-toggle {
@@ -233,3 +233,8 @@
     display: block;
   }
 }
+
+
+/* F-5: a visible focus ring for keyboard users on every interactive element */
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px;border-radius:4px}
+[tabindex="0"]:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2563eb;outline-offset:2px}

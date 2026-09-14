@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :root{--blue:#1d4ed8;--blue-dark:#1e40af;--green:#059669;--bg:#f0fdf4;--dark:#1e293b;--muted:#64748b;--border:#e2e8f0}
+        :root{--blue:#1d4ed8;--blue-dark:#1e40af;--green:#047857;--bg:#f0fdf4;--dark:#1e293b;--muted:#475569;--border:#e2e8f0}
         body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#eff6ff 0%,var(--bg) 60%,#d1fae5 100%);min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:40px 16px;color:var(--dark)}
 
         .logo-wrap{text-align:center;margin-bottom:24px}
@@ -65,7 +65,7 @@
         /* ALERTS */
         .alert{padding:13px 16px;border-radius:11px;font-size:14px;margin-bottom:18px;display:none;align-items:center;gap:10px;line-height:1.5}
         .alert.show{display:flex}
-        .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+        .alert-error{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
         .alert-success{background:#f0fdf4;border:1px solid #bbf7d0;color:var(--green)}
         .alert-pending{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
 
@@ -74,7 +74,11 @@
         .footer-link a:hover{text-decoration:underline}
 
         @media(max-width:480px){.card{padding:26px}.role-grid{grid-template-columns:1fr 1fr}}
-    </style>
+    
+/* F-5: a visible focus ring for keyboard users on every interactive element */
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px;border-radius:4px}
+[tabindex="0"]:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+</style>
 </head>
 <body>
 
@@ -97,7 +101,7 @@
 
             <!-- Full Name -->
             <div class="form-group">
-                <label><i class="fa fa-user"></i> Full Name</label>
+                <label for="fullName"><i class="fa fa-user"></i> Full Name</label>
                 <div class="input-wrap">
                     <i class="input-icon fa fa-user"></i>
                     <input type="text" id="fullName" placeholder="Your full name" required autocomplete="name"/>
@@ -106,7 +110,7 @@
 
             <!-- Email -->
             <div class="form-group">
-                <label><i class="fa fa-envelope"></i> Email Address</label>
+                <label for="email"><i class="fa fa-envelope"></i> Email Address</label>
                 <div class="input-wrap">
                     <i class="input-icon fa fa-envelope"></i>
                     <input type="email" id="email" placeholder="you@example.com" required autocomplete="email"/>
@@ -115,7 +119,7 @@
 
             <!-- Phone -->
             <div class="form-group">
-                <label><i class="fa fa-phone"></i> Phone Number <span style="color:var(--muted);font-weight:400;text-transform:none">(optional)</span></label>
+                <label for="phone"><i class="fa fa-phone"></i> Phone Number <span style="color:var(--muted);font-weight:400;text-transform:none">(optional)</span></label>
                 <div class="input-wrap">
                     <i class="input-icon fa fa-phone"></i>
                     <input type="tel" id="phone" placeholder="+1 234 567 8900" autocomplete="tel"/>
@@ -124,11 +128,11 @@
 
             <!-- Password -->
             <div class="form-group">
-                <label><i class="fa fa-lock"></i> Password</label>
+                <label for="password"><i class="fa fa-lock"></i> Password</label>
                 <div class="input-wrap">
                     <i class="input-icon fa fa-lock"></i>
-                    <input type="password" id="password" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password" oninput="checkStrength(this.value)"/>
-                    <button type="button" class="toggle-pw" onclick="togglePw('password',this)">
+                    <input type="password" id="password" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password"/>
+                    <button type="button" class="toggle-pw" id="togglePwPassword" aria-label="Show or hide password">
                         <i class="fa fa-eye"></i>
                     </button>
                 </div>
@@ -143,25 +147,25 @@
                 <label><i class="fa fa-id-badge"></i> I am registering as</label>
                 <div class="role-grid">
                     <label class="role-card" id="role-beneficiary">
-                        <input type="radio" name="role" value="beneficiary" onchange="selectRole('beneficiary')"/>
+                        <input type="radio" name="role" value="beneficiary" id="selectRoleBeneficiary"/>
                         <span class="role-icon">🙏</span>
                         <span class="role-name">Beneficiary</span>
                         <span class="role-desc">I need help</span>
                     </label>
                     <label class="role-card" id="role-volunteer">
-                        <input type="radio" name="role" value="volunteer" onchange="selectRole('volunteer')"/>
+                        <input type="radio" name="role" value="volunteer" id="selectRoleVolunteer"/>
                         <span class="role-icon">🤝</span>
                         <span class="role-name">Volunteer</span>
                         <span class="role-desc">I want to help</span>
                     </label>
                     <label class="role-card" id="role-psychologist">
-                        <input type="radio" name="role" value="psychologist" onchange="selectRole('psychologist')"/>
+                        <input type="radio" name="role" value="psychologist" id="selectRolePsychologist"/>
                         <span class="role-icon">🧠</span>
                         <span class="role-name">Psychologist</span>
                         <span class="role-desc">Mental health support</span>
                     </label>
                     <label class="role-card" id="role-organization">
-                        <input type="radio" name="role" value="organization" onchange="selectRole('organization')"/>
+                        <input type="radio" name="role" value="organization" id="selectRoleOrganization"/>
                         <span class="role-icon">🏢</span>
                         <span class="role-name">Organization</span>
                         <span class="role-desc">Aid organization</span>
@@ -189,93 +193,6 @@
 </div>
 
 <script src="/js/nidaa-common.js"></script>
-<script>
-    let selectedRole = '';
-
-    function selectRole(r) {
-        selectedRole = r;
-        document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
-        document.getElementById('role-' + r).classList.add('selected');
-    }
-
-    function togglePw(id, btn) {
-        const inp = document.getElementById(id);
-        const ico = btn.querySelector('i');
-        if (inp.type === 'password') { inp.type = 'text'; ico.className = 'fa fa-eye-slash'; }
-        else { inp.type = 'password'; ico.className = 'fa fa-eye'; }
-    }
-
-    function checkStrength(pw) {
-        const fill = document.getElementById('pwFill');
-        const label = document.getElementById('pwLabel');
-        let score = 0;
-        if (pw.length >= 8) score++;
-        if (/[A-Z]/.test(pw)) score++;
-        if (/[0-9]/.test(pw)) score++;
-        if (/[^A-Za-z0-9]/.test(pw)) score++;
-        const colors = ['#ef4444','#f97316','#eab308','#22c55e'];
-        const labels = ['Too weak','Weak','Good','Strong'];
-        fill.style.width = (score * 25) + '%';
-        fill.style.background = colors[score - 1] || '#e2e8f0';
-        label.textContent = score > 0 ? labels[score - 1] : 'Enter a password';
-        label.style.color = colors[score - 1] || 'var(--muted)';
-    }
-
-    function showAlert(msg, type = 'error') {
-        const el = document.getElementById('errorAlert');
-        document.getElementById('alertMsg').textContent = msg;
-        el.className = `alert alert-${type} show`;
-        if (type === 'error') setTimeout(() => el.classList.remove('show'), 6000);
-    }
-
-    function setLoading(loading) {
-        const btn = document.getElementById('registerBtn');
-        if (loading) {
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner"></div> Creating account...';
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa fa-user-plus"></i> Create Account';
-        }
-    }
-
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const fullName = document.getElementById('fullName').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const phone = document.getElementById('phone').value.trim() || null;
-        const password = document.getElementById('password').value;
-
-        if (!fullName) { showAlert('Please enter your full name.'); return; }
-        if (!email) { showAlert('Please enter your email address.'); return; }
-        if (!selectedRole) { showAlert('Please select your role.'); return; }
-        if (password.length < 8) { showAlert('Password must be at least 8 characters.'); return; }
-        if (!document.getElementById('terms').checked) { showAlert('Please agree to the Terms of Service.'); return; }
-
-        setLoading(true);
-        try {
-            const res = await fetch(`${API}/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fullName, email, phone, password, role: selectedRole })
-            });
-            const body = await res.json();
-            if (!res.ok) throw new Error(body.message || 'Registration failed. Please try again.');
-
-            // Step 1 of 2: the server has emailed a verification code; no session exists yet.
-            showAlert('✅ ' + (body.message || 'Verification code sent to ' + ((body.data || {}).email || email) + '.'), 'pending');
-            document.getElementById('registerBtn').textContent = '✓ Code Sent';
-            document.getElementById('registerBtn').disabled = true;
-        } catch (err) {
-            showAlert(err.message);
-            setLoading(false);
-        }
-    });
-
-    if (localStorage.getItem('token')) {
-        const u = JSON.parse(localStorage.getItem('user') || '{}');
-        if (u.isActive !== false) window.location.href = 'dashboard.html';
-    }
-</script>
+<script src="js/register.js"></script>
 </body>
 </html>

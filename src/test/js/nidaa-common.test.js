@@ -37,12 +37,11 @@ const json = (status, body) => ({
 });
 
 (async () => {
-    // escHtml and jsString
+    // escHtml
     {
         const ctx = freshContext(async () => json(200, {}));
         assert.strictEqual(ctx.escHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
         assert.strictEqual(ctx.escHtml(null), '');
-        assert.strictEqual(ctx.jsString("a'); alert(1); ('"), '&quot;a&#039;); alert(1); (&#039;&quot;');
     }
 
     // apiFetch prefixes the API base but leaves /api paths alone

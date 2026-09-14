@@ -145,17 +145,6 @@ function escHtml(t) {
         .replace(/'/g, '&#039;');
 }
 
-/**
- * A server-supplied string as a JavaScript string literal inside an inline
- * handler attribute, e.g. onclick="open(${jsString(r.name)})". JSON quoting
- * makes it a valid literal; the HTML escaping survives attribute decoding.
- * escHtml() alone is not enough there, because the browser decodes entities
- * before the handler is parsed as JavaScript.
- */
-function jsString(value) {
-    return escHtml(JSON.stringify(String(value == null ? '' : value)));
-}
-
 /** Relative time for a timestamp in milliseconds. */
 function timeAgo(ts) {
     const d = Date.now() - ts, m = Math.floor(d / 60000);
@@ -224,4 +213,45 @@ function buildSidebar(currentPage, role) {
         '<a href="' + p.href + '" class="nav-item' + (p.href === currentPage ? ' active' : '') + '">' +
         '<i class="fa ' + p.icon + '"></i> ' + escHtml(p.label) + '</a>'
     ).join('');
+}
+
+// ---- Event wiring helpers (F-5) --------------------------------------------
+// The Content Security Policy is script-src 'self': no inline <script> and no
+// on* attributes. Pages wire their controls with these instead. wire() also
+// makes an element that is not a native button operable from the keyboard.
+
+/** Adds an event listener to the element with that id, if the page has it. */
+function wireEvent(id, type, handler) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(type, handler);
+    return el;
+}
+
+/**
+ * Click handler for one element. A div/span/anchor-without-href that acts as a
+ * button gets Enter and Space as well, so it works without a mouse; native
+ * buttons and links already do.
+ */
+function wire(id, handler) {
+    const el = document.getElementById(id);
+    if (el) activate(el, handler);
+    return el;
+}
+
+/** wire() for every element matching a selector. */
+function wireAll(selector, handler) {
+    document.querySelectorAll(selector).forEach((el) => activate(el, handler));
+}
+
+function activate(el, handler) {
+    el.addEventListener('click', handler);
+    const nativelyOperable = el.matches('button, a[href], input, select, textarea, summary');
+    if (!nativelyOperable) {
+        el.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handler.call(el, event);
+            }
+        });
+    }
 }

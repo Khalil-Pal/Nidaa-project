@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--blue:#1d4ed8;--green:#059669;--dark:#1e293b;--muted:#64748b}
+:root{--blue:#1d4ed8;--green:#047857;--dark:#1e293b;--muted:#475569}
 body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
 .content{padding:28px 32px;flex:1}
 
@@ -32,18 +32,18 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display
 .story-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;color:var(--dark);line-height:1.4}
 .story-status-tag{font-size:11px;font-weight:700;padding:4px 10px;border-radius:100px;white-space:nowrap;flex-shrink:0}
 .tag-pending{background:#fefce8;color:#a16207}
-.tag-approved{background:#f0fdf4;color:#059669}
-.tag-rejected{background:#fef2f2;color:#dc2626}
+.tag-approved{background:#f0fdf4;color:#047857}
+.tag-rejected{background:#fef2f2;color:#b91c1c}
 .story-meta{font-size:12px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .story-meta span{display:flex;align-items:center;gap:4px}
 .story-text{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:16px;flex:1}
 .story-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
 .btn-approve{background:var(--green);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s;display:flex;align-items:center;gap:6px}
-.btn-approve:hover{background:#047857}
-.btn-reject{background:#fff;color:#dc2626;border:1.5px solid #fca5a5;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-approve:hover{background:#065f46}
+.btn-reject{background:#fff;color:#b91c1c;border:1.5px solid #fca5a5;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:6px}
 .btn-reject:hover{background:#fef2f2}
 .btn-delete{background:#fff;color:var(--muted);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s}
-.btn-delete:hover{color:#dc2626;border-color:#fca5a5}
+.btn-delete:hover{color:#b91c1c;border-color:#fca5a5}
 .admin-note-wrap{margin-top:10px}
 .admin-note-inp{width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
 .admin-note-inp:focus{border-color:var(--blue)}
@@ -59,6 +59,10 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display
 .stat-pill i{font-size:18px}
 
 @media(max-width:768px){.content{padding:20px}.stories-grid{grid-template-columns:1fr}}
+
+/* F-5: a visible focus ring for keyboard users on every interactive element */
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px;border-radius:4px}
+[tabindex="0"]:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
 </style>
 <link rel="stylesheet" href="css/shared-layout.css"/>
 </head>
@@ -73,12 +77,12 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display
 
 <div class="main">
     <header class="topbar">
-        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <button class="menu-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fa fa-bars"></i></button>
         <span class="topbar-title"><i class="fa fa-newspaper" style="color:var(--blue);margin-right:8px"></i>Story Moderation</span>
         <div class="topbar-actions">
             <span class="topbar-user" id="topbarName">Admin</span>
             <span class="badge">Admin</span>
-            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
+            <button class="btn-logout" id="logoutBtn"><i class="fa fa-right-from-bracket"></i> Logout</button>
         </div>
     </header>
 
@@ -89,12 +93,12 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display
 
         <!-- Filter tabs -->
         <div class="filter-tabs">
-            <button class="ftab active" data-f="all" onclick="setFilter('all',this)">All Stories</button>
-            <button class="ftab" data-f="pending" onclick="setFilter('pending',this)">
+            <button class="ftab active" data-f="all" id="setFilterAll">All Stories</button>
+            <button class="ftab" data-f="pending" id="setFilterPending">
                 ⏳ Pending <span class="pending-badge" id="pendingCount">0</span>
             </button>
-            <button class="ftab" data-f="approved" onclick="setFilter('approved',this)">✅ Approved</button>
-            <button class="ftab" data-f="rejected" onclick="setFilter('rejected',this)">❌ Rejected</button>
+            <button class="ftab" data-f="approved" id="setFilterApproved">✅ Approved</button>
+            <button class="ftab" data-f="rejected" id="setFilterRejected">❌ Rejected</button>
         </div>
 
         <!-- Cards -->
@@ -104,124 +108,6 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display
 </div>
 
 <script src="/js/nidaa-common.js"></script>
-<script>
-if(!localStorage.getItem('token'))window.location.href='login.html';
-
-const user   =JSON.parse(localStorage.getItem('user')||'{}');
-buildSidebar('admin-stories.html');
-const role   =(user.role||'').toLowerCase();
-if(role!=='admin')window.location.href='login.html';
-document.getElementById('topbarName').textContent=(user.fullName||'Admin').split(' ')[0];
-
-const STORIES_KEY='nidaa_stories';
-let currentFilter='all';
-
-function getStories(){try{return JSON.parse(localStorage.getItem(STORIES_KEY)||'[]');}catch{return[];}}
-function saveStories(s){localStorage.setItem(STORIES_KEY,JSON.stringify(s));}
-
-function setFilter(f,btn){
-    currentFilter=f;
-    document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    render();
-}
-
-
-function approve(id){
-    const stories=getStories();
-    const s=stories.find(x=>x.id===id);
-    if(!s)return;
-    const note=document.getElementById('note-'+id);
-    s.status='approved';
-    s.adminNote=note?note.value.trim():'';
-    s.reviewedAt=Date.now();
-    saveStories(stories);
-    showToast('✅ Story approved and published on main page!');
-    render();
-}
-
-function reject(id){
-    const stories=getStories();
-    const s=stories.find(x=>x.id===id);
-    if(!s)return;
-    const note=document.getElementById('note-'+id);
-    s.status='rejected';
-    s.adminNote=note?note.value.trim():'';
-    s.reviewedAt=Date.now();
-    saveStories(stories);
-    showToast('Story rejected.','#fef2f2','#dc2626');
-    render();
-}
-
-function deleteStory(id){
-    if(!confirm('Permanently delete this story?'))return;
-    const stories=getStories().filter(x=>x.id!==id);
-    saveStories(stories);
-    render();
-}
-
-function render(){
-    const all=getStories();
-    const pending=all.filter(s=>s.status==='pending');
-    const approved=all.filter(s=>s.status==='approved');
-    const rejected=all.filter(s=>s.status==='rejected');
-
-    // Stats
-    document.getElementById('statsRow').innerHTML=
-        `<div class="stat-pill"><i class="fa fa-inbox" style="color:var(--blue)"></i> ${all.length} Total</div>`+
-        `<div class="stat-pill"><i class="fa fa-clock" style="color:#f59e0b"></i> ${pending.length} Pending</div>`+
-        `<div class="stat-pill"><i class="fa fa-circle-check" style="color:var(--green)"></i> ${approved.length} Approved</div>`+
-        `<div class="stat-pill"><i class="fa fa-circle-xmark" style="color:#dc2626"></i> ${rejected.length} Rejected</div>`;
-    document.getElementById('pendingCount').textContent=pending.length;
-
-    const filtered=currentFilter==='all'?all:all.filter(s=>s.status===currentFilter);
-    const grid=document.getElementById('storiesGrid');
-
-    if(!filtered.length){
-        grid.innerHTML=`<div class="empty"><i class="fa fa-newspaper"></i><p>No stories here yet.</p></div>`;
-        return;
-    }
-
-    grid.innerHTML=filtered.map(s=>{
-        const cardClass=s.status==='approved'?'approved-card':s.status==='rejected'?'rejected-card':'pending-card';
-        const tagClass=s.status==='approved'?'tag-approved':s.status==='rejected'?'tag-rejected':'tag-pending';
-        const tagLabel=s.status==='approved'?'✅ Approved':s.status==='rejected'?'❌ Rejected':'⏳ Pending';
-        const initials=(s.authorName||'U').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-        return`<div class="story-card ${cardClass}" id="card-${s.id}">
-            ${s.photo?`<img class="story-photo" src="${escHtml(s.photo)}" alt="story photo" loading="lazy"/>`:''}
-            <div class="story-body">
-                <div class="story-card-header">
-                    <div class="story-title">${escHtml(s.title||'Untitled')}</div>
-                    <span class="story-status-tag ${tagClass}">${tagLabel}</span>
-                </div>
-                <div class="story-meta">
-                    <span><i class="fa fa-user"></i> ${escHtml(s.authorName||'Unknown')}</span>
-                    ${s.location?`<span><i class="fa fa-location-dot"></i> ${escHtml(s.location)}</span>`:''}
-                    <span><i class="fa fa-clock"></i> ${timeAgo(s.timestamp)}</span>
-                </div>
-                <div class="story-text">${escHtml(s.text).slice(0,320)}${s.text&&s.text.length>320?'…':''}</div>
-                ${s.adminNote?`<div class="existing-note"><b>Admin note:</b> ${escHtml(s.adminNote)}</div>`:''}
-                <div class="admin-note-wrap">
-                    <input class="admin-note-inp" id="note-${s.id}" type="text" placeholder="Add a note to the author (optional)..." value="${escHtml(s.adminNote||'')}"/>
-                </div>
-                <div class="story-actions" style="margin-top:12px">
-                    ${s.status!=='approved'?`<button class="btn-approve" onclick="approve(${s.id})"><i class="fa fa-check"></i> Approve & Publish</button>`:''}
-                    ${s.status!=='rejected'?`<button class="btn-reject" onclick="reject(${s.id})"><i class="fa fa-xmark"></i> Reject</button>`:''}
-                    <button class="btn-delete" onclick="deleteStory(${s.id})" title="Delete permanently"><i class="fa fa-trash"></i></button>
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function showToast(msg,bg,col){
-    const t=document.createElement('div');
-    t.style.cssText=`position:fixed;top:20px;right:24px;background:${bg||'#f0fdf4'};border:1px solid #bbf7d0;color:${col||'#059669'};padding:13px 20px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px`;
-    t.textContent=msg;document.body.appendChild(t);
-    setTimeout(()=>t.remove(),3000);
-}
-
-render();
-</script>
+<script src="js/admin-stories.js"></script>
 </body>
 </html>

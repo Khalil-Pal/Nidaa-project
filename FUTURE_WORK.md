@@ -8,11 +8,11 @@ Phase 5.
 
 ## Security
 
-- **Strict `script-src`.** Move each page's inline script into `js/<page>.js` and
-  replace the ~200 inline `onclick` attributes with event listeners, then drop
-  `'unsafe-inline'` from the Content-Security-Policy. Deferred because it is the same
-  handler rewrite the accessibility pass (F-5) performs; doing it twice would be
-  wasted work.
+- **Strict `script-src`.** Done in Phase 4 (F-5): every page's script lives in
+  `js/<page>.js`, the inline handlers are gone and `script-src` is `'self'` plus
+  the Chart.js CDN. `style-src` still needs `'unsafe-inline'` for the inline
+  `style="..."` attributes; moving those into classes would allow a strict
+  `style-src` too.
 - **Per-device refresh tokens.** Rotation is per account, so two tabs that refresh
   at once log the slower one out. A `refresh_tokens` row per device would fix it.
 - **`httpOnly` cookie for the access token.** Would remove the token from script

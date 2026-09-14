@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
-        :root{--blue:#1d4ed8;--green:#059669;--dark:#1e293b;--muted:#64748b}
+        :root{--blue:#1d4ed8;--green:#047857;--dark:#1e293b;--muted:#475569}
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Inter',sans-serif;color:var(--dark);background:#f1f5f9;display:flex;min-height:100vh}
         .content{padding:28px;flex:1}
@@ -34,7 +34,7 @@
 
         /* Badges */
         .tag{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700}
-        .tag-medical{background:#fef2f2;color:#dc2626}
+        .tag-medical{background:#fef2f2;color:#b91c1c}
         .tag-food{background:#fefce8;color:#a16207}
         .tag-shelter{background:#f0fdf4;color:var(--green)}
         .tag-water{background:#eff6ff;color:var(--blue)}
@@ -43,11 +43,11 @@
         .status-pending{background:#fefce8;color:#a16207}
         .status-assigned{background:#eff6ff;color:var(--blue)}
         .status-completed{background:#f0fdf4;color:var(--green)}
-        .status-cancelled{background:#fef2f2;color:#dc2626}
+        .status-cancelled{background:#fef2f2;color:#b91c1c}
         .priority-score{font-weight:700;color:#0f172a}
-        .priority-score.high{color:#dc2626}
-        .crisis-icon{color:#dc2626;font-size:16px}
-        .review-icon{color:#d97706;font-size:14px}
+        .priority-score.high{color:#b91c1c}
+        .crisis-icon{color:#b91c1c;font-size:16px}
+        .review-icon{color:#b45309;font-size:14px}
         .suggestion-cell{display:flex;flex-direction:column;gap:2px}
         .suggestion-name{font-size:13px;font-weight:600}
         .suggestion-distance{font-size:12px;color:var(--muted)}
@@ -81,7 +81,11 @@
         .empty-state i{font-size:36px;margin-bottom:12px;display:block;opacity:.4}
 
         @media(max-width:768px){.table-wrap{overflow-x:auto}}
-    </style>
+    
+/* F-5: a visible focus ring for keyboard users on every interactive element */
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px;border-radius:4px}
+[tabindex="0"]:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+</style>
     <link rel="stylesheet" href="css/shared-layout.css"/>
 </head>
 <body>
@@ -95,12 +99,12 @@
 
 <div class="main">
     <header class="topbar">
-        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <button class="menu-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fa fa-bars"></i></button>
         <span class="topbar-title"><i class="fa fa-list-check" style="color:var(--blue);margin-right:8px"></i>All Help Requests</span>
         <div class="topbar-actions">
             <span class="topbar-user" id="topbarName">—</span>
             <span class="badge">Admin</span>
-            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i></button>
+            <button class="btn-logout" id="logoutBtn" aria-label="Log out"><i class="fa fa-right-from-bracket"></i></button>
         </div>
     </header>
 
@@ -113,16 +117,16 @@
         <div class="toolbar">
             <div class="search-box">
                 <i class="fa fa-magnifying-glass"></i>
-                <input type="text" id="searchInput" placeholder="Search by title, requester..." oninput="filterRequests()"/>
+                <input type="text" id="searchInput" placeholder="Search by title, requester..." aria-label="Search requests"/>
             </div>
-            <select class="filter-sel" id="statusFilter" onchange="filterRequests()">
+            <select class="filter-sel" id="statusFilter" aria-label="Filter by status">
                 <option value="">All Statuses</option>
                 <option value="PENDING">Pending</option>
                 <option value="ASSIGNED">Assigned</option>
                 <option value="COMPLETED">Completed</option>
                 <option value="CANCELLED">Cancelled</option>
             </select>
-            <select class="filter-sel" id="typeFilter" onchange="filterRequests()">
+            <select class="filter-sel" id="typeFilter" aria-label="Filter by type">
                 <option value="">All Types</option>
                 <option value="MEDICAL">Medical</option>
                 <option value="FOOD">Food</option>
@@ -160,11 +164,11 @@
 </div>
 
 <!-- Detail Modal -->
-<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
+<div class="modal-overlay" id="detailModal">
     <div class="modal-box">
         <div class="modal-header">
             <h2 id="modalTitle">Request Details</h2>
-            <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+            <button class="modal-close" id="closeModalBtn">&#x2715;</button>
         </div>
         <div class="modal-body">
             <div class="section-title">Request Info</div>
@@ -246,221 +250,6 @@
 </div>
 
 <script src="/js/nidaa-common.js"></script>
-<script>
-
-    if (!localStorage.getItem('token')) window.location.href = 'login.html';
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    buildSidebar('admin-requests.html');
-    if ((user.role || '').toLowerCase() !== 'admin') window.location.href = 'dashboard.html';
-    document.getElementById('topbarName').textContent = (user.fullName || user.name || 'Admin').split(' ')[0];
-
-    const typeTagClass = {MEDICAL:'tag-medical',FOOD:'tag-food',SHELTER:'tag-shelter',WATER:'tag-water',CLOTHING:'tag-clothing',PSYCHOLOGICAL:'tag-other',OTHER:'tag-other'};
-    const statusClass  = {PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
-
-    let allRequests = [];
-
-    function fmtDate(d) {
-        if (!d) return '—';
-        return new Date(d).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
-    }
-
-    function fmtDistance(km) {
-        return Number.isFinite(km) ? km.toFixed(1) + ' km' : '';
-    }
-
-    function capacityIndicator(request) {
-        if (request.requestType !== 'HELP' || !request.suggestedVolunteerName || request.suggestedVolunteerName === 'N/A') return null;
-        if (request.capacitySufficient === true) {
-            return { className: 'capacity-sufficient', text: 'Capacity sufficient' };
-        }
-        if (request.capacitySufficient === false) {
-            return { className: 'capacity-insufficient', text: 'Capacity insufficient' };
-        }
-        return { className: 'capacity-unknown', text: 'Capacity unknown' };
-    }
-
-    function capacityDetail(request) {
-        const indicator = capacityIndicator(request);
-        if (!indicator) return 'N/A';
-        if (request.capacityMode === 'NUMERIC' && Number.isFinite(request.capacityAmount)) {
-            return Number.isInteger(request.peopleCount) && request.peopleCount > 0
-                ? `${indicator.text}: ${request.capacityAmount} for ${request.peopleCount} people`
-                : `${indicator.text}: numeric amount ${request.capacityAmount}, request count not set`;
-        }
-        return request.capacityMode === 'QUALITATIVE'
-            ? 'Capacity unknown (qualitative resource)'
-            : indicator.text;
-    }
-
-    function renderTable(list) {
-        const tbody = document.getElementById('requestsBody');
-        document.getElementById('totalCount').textContent = list.length + ' request' + (list.length !== 1 ? 's' : '');
-        if (!list.length) {
-            tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i class="fa fa-inbox"></i><p>No requests found.</p></div></td></tr>`;
-            return;
-        }
-        tbody.innerHTML = list.map(r => {
-            const type   = (r.helpType   || 'OTHER').toUpperCase();
-            const status = (r.status     || 'PENDING').toUpperCase();
-            const priority = Number.isFinite(r.priorityScore) ? r.priorityScore : null;
-            const priorityClass = priority !== null && priority >= 70 ? 'priority-score high' : 'priority-score';
-            const suggestionDistance = fmtDistance(r.distanceKm);
-            const capacity = capacityIndicator(r);
-            return `<tr onclick="openModal(${allRequests.indexOf(r)})">
-                <td style="color:var(--muted);font-size:12px">#${escHtml(r.id||'—')}</td>
-                <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.title||'—')}</td>
-                <td>${r.isCrisis ? '<i class="fa fa-triangle-exclamation crisis-icon" title="Crisis case"></i>' : r.needsReview ? '<i class="fa fa-flag review-icon" title="Flagged for review: the description contains wording worth a closer look"></i>' : ''}</td>
-                <td><span class="tag ${typeTagClass[type]||'tag-other'}">${escHtml(type)}</span></td>
-                <td><span class="${priorityClass}">${priority !== null ? priority : '—'}</span></td>
-                <td><span class="tag ${statusClass[status]||'status-pending'}">${escHtml(status)}</span></td>
-                <td>
-                    <div class="user-cell">
-                        <span class="u-name">${escHtml(r.requesterName||'—')}</span>
-                        <span class="u-email">${escHtml(r.requesterEmail||'')}</span>
-                    </div>
-                </td>
-                <td>
-                    <div class="user-cell">
-                        <span class="u-name">${escHtml(r.workerName||'—')}</span>
-                        <span class="u-email" style="color:${r.workerRole&&r.workerRole!=='—'?'var(--blue)':'var(--muted)'}">${escHtml(r.workerRole&&r.workerRole!=='—'?r.workerRole:'')}</span>
-                    </div>
-                </td>
-                <td>
-                    <div class="suggestion-cell">
-                        <span class="suggestion-name">${escHtml(r.suggestedVolunteerName||'N/A')}</span>
-                        <span class="suggestion-distance">${escHtml(suggestionDistance)}</span>
-                        ${capacity ? `<span class="capacity-badge ${capacity.className}">${capacity.text}</span>` : ''}
-                    </div>
-                </td>
-                <td style="font-size:13px;color:var(--muted)">${escHtml(fmtDate(r.createdAt))}</td>
-            </tr>`;
-        }).join('');
-    }
-
-    function filterRequests() {
-        const search = document.getElementById('searchInput').value.toLowerCase();
-        const status = document.getElementById('statusFilter').value.toUpperCase();
-        const type   = document.getElementById('typeFilter').value.toUpperCase();
-        renderTable(allRequests.filter(r =>
-            (!status || (r.status||'').toUpperCase() === status) &&
-            (!type   || (r.helpType||'').toUpperCase() === type) &&
-            (!search || (r.title||'').toLowerCase().includes(search) ||
-                (r.requesterName||'').toLowerCase().includes(search) ||
-                (r.requesterEmail||'').toLowerCase().includes(search) ||
-                (r.description||'').toLowerCase().includes(search) ||
-                (r.suggestedVolunteerName||'').toLowerCase().includes(search))
-        ));
-    }
-
-    function openModal(idx) {
-        const r = allRequests[idx];
-        if (!r) return;
-        document.getElementById('modalTitle').textContent       = r.title || 'Help Request #' + r.id;
-        document.getElementById('mType').textContent           = r.helpType    || '—';
-        document.getElementById('mUrgency').textContent        = r.urgencyLevel|| '—';
-        document.getElementById('mStatus').textContent         = r.status      || '—';
-        document.getElementById('mPriority').textContent       = Number.isFinite(r.priorityScore) ? r.priorityScore : '—';
-        document.getElementById('mCrisis').textContent         = r.isCrisis ? 'Yes' : r.needsReview ? 'No (flagged for review)' : 'No';
-        document.getElementById('mAddress').textContent        = r.address     || 'Not specified';
-        document.getElementById('mDesc').textContent           = r.description || '—';
-        document.getElementById('mDate').textContent           = fmtDate(r.createdAt);
-        document.getElementById('mRequesterName').textContent  = r.requesterName  || '—';
-        document.getElementById('mRequesterEmail').textContent = r.requesterEmail || '—';
-        document.getElementById('mRequesterPhone').textContent = r.requesterPhone || '—';
-        document.getElementById('mWorkerName').textContent = r.workerName || 'Not assigned yet';
-        const suggested = r.suggestedVolunteerName ? r.suggestedVolunteerName + (fmtDistance(r.distanceKm) ? ' (' + fmtDistance(r.distanceKm) + ')' : '') : 'N/A';
-        const suggestedEl = document.getElementById('mSuggested');
-        if (suggestedEl) suggestedEl.textContent = suggested;
-        document.getElementById('mCapacity').textContent = capacityDetail(r);
-        document.getElementById('detailModal').classList.add('open');
-    }
-
-    function closeModal() { document.getElementById('detailModal').classList.remove('open'); }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-    function normalizeRankedDashboard(payload) {
-        const material = (payload.rankedMaterialRequests || []).map(item => {
-            const request = item.request || {};
-            const workerName = request.assignedVolunteerId || request.assignedOrganizationId
-                ? 'Assigned'
-                : 'Not assigned yet';
-            return {
-                id: request.id,
-                requestType: 'HELP',
-                title: request.title || 'Help Request #' + (request.id || ''),
-                helpType: request.helpType || 'OTHER',
-                urgencyLevel: request.urgencyLevel || '',
-                priorityScore: Number.isFinite(item.priorityScore) ? item.priorityScore : request.priorityScore,
-                isCrisis: false,
-                needsReview: false,
-                status: request.status || 'PENDING',
-                address: request.address,
-                createdAt: request.createdAt,
-                description: request.description,
-                peopleCount: request.peopleCount,
-                requesterName: request.beneficiaryId ? 'Beneficiary #' + request.beneficiaryId : 'Beneficiary',
-                requesterEmail: '',
-                requesterPhone: '',
-                workerName,
-                workerRole: '',
-                suggestedVolunteerName: item.suggestedVolunteerName || 'N/A',
-                distanceKm: item.distanceKm,
-                capacityMode: item.capacityMode,
-                capacityAmount: item.capacityAmount,
-                capacitySufficient: item.capacitySufficient
-            };
-        });
-
-        const psychological = (payload.psychologicalRequests || payload.crisisPsychologicalCases || []).map(item => {
-            const request = item.request || item;
-            return {
-                id: request.id,
-                requestType: 'PSYCHOLOGICAL',
-                title: (request.category || 'Psychological Support') + ' - ' + (request.preferredFormat || 'CHAT'),
-                helpType: 'PSYCHOLOGICAL',
-                urgencyLevel: request.urgencyLevel || '',
-                priorityScore: Number.isFinite(item.priorityScore)
-                    ? item.priorityScore
-                    : (Number.isFinite(request.priorityScore) ? request.priorityScore : null),
-                isCrisis: Boolean(request.isCrisis),
-                needsReview: Boolean(request.needsReview),
-                status: request.status || 'PENDING',
-                address: null,
-                createdAt: request.createdAt,
-                description: request.description,
-                peopleCount: null,
-                requesterName: request.beneficiaryId ? 'Beneficiary #' + request.beneficiaryId : 'Beneficiary',
-                requesterEmail: '',
-                requesterPhone: '',
-                workerName: request.assignedPsychologistId ? 'Assigned' : 'Not assigned yet',
-                workerRole: 'Psychologist',
-                suggestedVolunteerName: request.isCrisis ? 'On-duty psychologist required' : 'N/A',
-                distanceKm: null,
-                capacityMode: null,
-                capacityAmount: null,
-                capacitySufficient: null
-            };
-        });
-
-        return [...material, ...psychological];
-    }
-
-    async function loadRequests() {
-        try {
-            const res  = await apiFetch(API + '/v1/admin/dashboard/ranked', { headers: authHeader() });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            allRequests = normalizeRankedDashboard((await res.json()).data || {});
-            renderTable(allRequests);
-        } catch (e) {
-            document.getElementById('requestsBody').innerHTML =
-                `<tr><td colspan="10" style="text-align:center;padding:40px;color:#dc2626">
-                    <i class="fa fa-triangle-exclamation" style="font-size:24px;margin-bottom:8px;display:block"></i>
-                    Could not load: ${escHtml(e.message)}
-                </td></tr>`;
-        }
-    }
-
-    loadRequests();
-</script>
+<script src="js/admin-requests.js"></script>
 </body>
 </html>

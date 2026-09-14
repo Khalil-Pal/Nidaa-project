@@ -48,7 +48,10 @@ public class SecurityConfig {
     // (stylesheet + font files), cdnjs (Font Awesome) and jsdelivr (Chart.js).
     static final String CONTENT_SECURITY_POLICY = String.join("; ",
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+            // No inline scripts or on* handlers anywhere (F-5): every page's script is
+            // a file under /js, so an injected <script> or handler attribute cannot run.
+            // cdn.jsdelivr.net serves Chart.js for admin.html.
+            "script-src 'self' https://cdn.jsdelivr.net",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
             "img-src 'self' data: blob:",
@@ -97,11 +100,9 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Content-Security-Policy (S-2, layer 3). connect-src 'self' is the
                 // directive that breaks the audited exploit chain: an injected
-                // script can no longer send the token to another origin. script-src
-                // still needs 'unsafe-inline' because every page carries its script
-                // inline and ~200 onclick attributes; dropping it is a frontend
-                // refactor scheduled with the accessibility pass (F-5), which
-                // rewrites those handlers anyway. Stored XSS is stopped at the
+                // script can no longer send the token to another origin, and since
+                // F-5 script-src 'self' means an injected script or handler
+                // attribute does not run at all. Stored XSS is also stopped at the
                 // other two layers: escaping on render and validation on write.
                 .headers(h -> h.contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY)))
                 // No valid token (missing, malformed or expired) is 401 so the

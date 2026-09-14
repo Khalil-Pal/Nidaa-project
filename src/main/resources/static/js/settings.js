@@ -1,0 +1,817 @@
+// settings.html — page script (moved out of the HTML for the strict Content Security Policy, F-5).
+// Loaded after js/nidaa-common.js, which provides API, apiFetch, authHeader, escHtml, wire() and friends.
+
+if (!localStorage.getItem('token')) window.location.href = 'login.html';
+
+const user        = JSON.parse(localStorage.getItem('user') || '{}');
+const fullName    = user.fullName || user.name || 'User';
+const firstName   = fullName.split(' ')[0];
+const userRole    = (user.role || 'user').toLowerCase();
+const roleDisplay = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+const initials    = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+const isProvider  = userRole === 'volunteer' || userRole === 'organization';
+const hasMatchingLocation = ['beneficiary','volunteer','organization'].includes(userRole);
+
+const SERVICE_DEFINITIONS = [
+    { key: 'MEDICAL', label: 'Medical', icon: 'fa-kit-medical', tone: 'medical' },
+    { key: 'FOOD', label: 'Food', icon: 'fa-bowl-food', tone: 'food' },
+    { key: 'WATER', label: 'Water', icon: 'fa-droplet', tone: 'water' },
+    { key: 'SHELTER', label: 'Shelter', icon: 'fa-house', tone: 'shelter' },
+    { key: 'CLOTHING', label: 'Clothing', icon: 'fa-shirt', tone: 'clothing' }
+];
+const providerServiceState = new Map();
+let providerServiceBaseline = new Map();
+let occupationBaseline = '';
+let providerServicesReady = false;
+let providerServicesSaving = false;
+
+function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+setEl('sidebarName',   fullName);
+setEl('sidebarRole',   roleDisplay);
+setEl('sidebarAvatar', initials);
+setEl('topbarName',    firstName);
+setEl('topbarRole',    roleDisplay);
+
+const fnEl = document.getElementById('fullName'); if (fnEl) fnEl.value = fullName;
+const emEl = document.getElementById('email');    if (emEl) emEl.value = user.email || '';
+const rdEl = document.getElementById('roleDisplay'); if (rdEl) rdEl.value = roleDisplay;
+
+async function loadAccountProfile() {
+    try {
+        const response = await apiFetch(API + '/users/me/profile', { headers: authHeader() });
+        const profile = await readApiData(response);
+        if (profile.phone) document.getElementById('phone').value = profile.phone;
+        if (profile.fullName) {
+            document.getElementById('fullName').value = profile.fullName;
+            const sidebarName = document.getElementById('sidebarName');
+            if (sidebarName) sidebarName.textContent = profile.fullName;
+        }
+        if (hasMatchingLocation) {
+            document.getElementById('matching-location').hidden = false;
+            document.getElementById('matchingAddress').value = profile.address || '';
+            document.getElementById('matchingLatitude').value = profile.latitude ?? '';
+            document.getElementById('matchingLongitude').value = profile.longitude ?? '';
+            renderMatchingLocationStatus(profile.latitude, profile.longitude);
+        }
+    } catch (error) {
+        if (hasMatchingLocation) {
+            document.getElementById('matching-location').hidden = false;
+            setMatchingLocationStatus(error.message || 'Could not load location.', 'error');
+        }
+    }
+}
+
+loadAccountProfile();
+
+function showMsg(type, msg) {
+    const el = document.getElementById(type+'Alert');
+    document.getElementById(type+'Msg').textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function defaultProviderServiceState() {
+    return { enabled: false, capacityMode: 'NUMERIC', capacityAmount: '', capacityLabel: '' };
+}
+
+function resetProviderServiceState() {
+    providerServiceState.clear();
+    SERVICE_DEFINITIONS.forEach(service => {
+        providerServiceState.set(service.key, defaultProviderServiceState());
+    });
+}
+
+function renderProviderServiceRows() {
+    const list = document.getElementById('providerServiceList');
+    list.innerHTML = SERVICE_DEFINITIONS.map(service => `
+        <div class="service-row" id="serviceRow${service.key}">
+            <div class="service-row-head">
+                <div class="service-name">
+                    <span class="service-icon ${service.tone}"><i class="fa ${service.icon}"></i></span>
+                    <span><strong>${service.label}</strong><span id="serviceState${service.key}">Not provided</span></span>
+                </div>
+                <label class="toggle" title="Toggle ${service.label} service">
+                    <input type="checkbox" id="serviceToggle${service.key}"
+                           aria-label="Provide ${service.label}"
+                           aria-controls="serviceControls${service.key}"
+                           data-service="${service.key}" data-field="enabled" disabled/>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="service-controls" id="serviceControls${service.key}" hidden>
+                <div>
+                    <div class="mode-label">Capacity type</div>
+                    <div class="mode-segment">
+                        <label class="mode-option">
+                            <input type="radio" name="serviceMode${service.key}" id="serviceNumeric${service.key}"
+                                   data-service="${service.key}" data-field="mode" value="NUMERIC" disabled/>
+                            <span><i class="fa fa-hashtag"></i> Amount</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="serviceMode${service.key}" id="serviceQualitative${service.key}"
+                                   data-service="${service.key}" data-field="mode" value="QUALITATIVE" disabled/>
+                            <span><i class="fa fa-align-left"></i> Description</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="capacity-field" id="serviceAmountWrap${service.key}">
+                    <label for="serviceAmount${service.key}">Capacity amount</label>
+                    <input class="service-input" type="number" id="serviceAmount${service.key}" min="1" max="2147483647" step="1"
+                           placeholder="0" data-service="${service.key}" data-field="amount" disabled/>
+                </div>
+                <div class="capacity-field" id="serviceLabelWrap${service.key}" hidden>
+                    <label for="serviceLabel${service.key}">Capacity description</label>
+                    <input class="service-input" type="text" id="serviceLabel${service.key}" maxlength="50"
+                           placeholder="e.g. Limited stock" data-service="${service.key}" data-field="label" disabled/>
+                </div>
+            </div>
+        </div>`).join('');
+}
+
+function normalizedProviderService(state) {
+    return {
+        enabled: Boolean(state.enabled),
+        capacityMode: state.enabled ? state.capacityMode : 'NUMERIC',
+        capacityAmount: state.enabled && state.capacityMode === 'NUMERIC'
+            ? Number(state.capacityAmount) || null : null,
+        capacityLabel: state.enabled && state.capacityMode === 'QUALITATIVE'
+            ? String(state.capacityLabel || '').trim() : null
+    };
+}
+
+function providerServiceChanged(key) {
+    const current = normalizedProviderService(providerServiceState.get(key));
+    const baseline = providerServiceBaseline.get(key) || normalizedProviderService(defaultProviderServiceState());
+    return JSON.stringify(current) !== JSON.stringify(baseline);
+}
+
+function syncProviderServiceRow(key) {
+    const state = providerServiceState.get(key);
+    const disabled = !providerServicesReady || providerServicesSaving;
+    document.getElementById(`serviceToggle${key}`).checked = state.enabled;
+    document.getElementById(`serviceToggle${key}`).disabled = disabled;
+    document.getElementById(`serviceToggle${key}`).setAttribute('aria-expanded', String(state.enabled));
+    document.getElementById(`serviceControls${key}`).hidden = !state.enabled;
+    document.getElementById(`serviceNumeric${key}`).checked = state.capacityMode === 'NUMERIC';
+    document.getElementById(`serviceQualitative${key}`).checked = state.capacityMode === 'QUALITATIVE';
+    document.getElementById(`serviceNumeric${key}`).disabled = disabled;
+    document.getElementById(`serviceQualitative${key}`).disabled = disabled;
+    document.getElementById(`serviceAmountWrap${key}`).hidden = state.capacityMode !== 'NUMERIC';
+    document.getElementById(`serviceLabelWrap${key}`).hidden = state.capacityMode !== 'QUALITATIVE';
+    document.getElementById(`serviceAmount${key}`).value = state.capacityAmount ?? '';
+    document.getElementById(`serviceLabel${key}`).value = state.capacityLabel ?? '';
+    document.getElementById(`serviceAmount${key}`).disabled = disabled;
+    document.getElementById(`serviceLabel${key}`).disabled = disabled;
+    document.getElementById(`serviceState${key}`).textContent = state.enabled ? 'Active' : 'Not provided';
+}
+
+function syncAllProviderServiceRows() {
+    SERVICE_DEFINITIONS.forEach(service => syncProviderServiceRow(service.key));
+    document.getElementById('occupationInput').disabled =
+        userRole !== 'volunteer' || !providerServicesReady || providerServicesSaving;
+    const activeCount = [...providerServiceState.values()].filter(state => state.enabled).length;
+    document.getElementById('servicesCount').textContent = `${activeCount} of ${SERVICE_DEFINITIONS.length} active`;
+}
+
+function setProviderServiceEnabled(key, enabled) {
+    providerServiceState.get(key).enabled = enabled;
+    syncProviderServiceRow(key);
+    updateProviderSaveState();
+}
+
+function setProviderServiceMode(key, mode) {
+    providerServiceState.get(key).capacityMode = mode;
+    syncProviderServiceRow(key);
+    updateProviderSaveState();
+}
+
+function setProviderServiceAmount(key, value) {
+    providerServiceState.get(key).capacityAmount = value;
+    document.getElementById(`serviceAmount${key}`).classList.remove('invalid');
+    updateProviderSaveState();
+}
+
+function setProviderServiceLabel(key, value) {
+    providerServiceState.get(key).capacityLabel = value;
+    document.getElementById(`serviceLabel${key}`).classList.remove('invalid');
+    updateProviderSaveState();
+}
+
+function updateProviderSaveState() {
+    if (!isProvider) return;
+    const resourcesChanged = SERVICE_DEFINITIONS.some(service => providerServiceChanged(service.key));
+    const occupationChanged = userRole === 'volunteer'
+        && document.getElementById('occupationInput').value.trim() !== occupationBaseline;
+    document.getElementById('saveServicesBtn').disabled =
+        !providerServicesReady || providerServicesSaving || (!resourcesChanged && !occupationChanged);
+}
+
+async function readApiData(response) {
+    let payload = {};
+    try { payload = await response.json(); } catch (ignored) {}
+    if (!response.ok) {
+        throw new Error(payload.message || `Request failed (${response.status})`);
+    }
+    return payload.data;
+}
+
+function setMatchingLocationStatus(message, type = '') {
+    const status = document.getElementById('matchingLocationStatus');
+    status.textContent = message;
+    status.className = `location-status${type ? ` ${type}` : ''}`;
+}
+
+function renderMatchingLocationStatus(latitude, longitude) {
+    if (latitude == null || longitude == null) {
+        setMatchingLocationStatus('Not set yet.');
+        return;
+    }
+    setMatchingLocationStatus(
+        `Saved: ${Number(latitude).toFixed(6)}, ${Number(longitude).toFixed(6)}`,
+        'success');
+}
+
+function readCoordinate(inputId, label, minimum, maximum) {
+    const raw = document.getElementById(inputId).value.trim();
+    if (!raw) throw new Error(`${label} is required.`);
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < minimum || value > maximum) {
+        throw new Error(`${label} must be between ${minimum} and ${maximum}.`);
+    }
+    return value;
+}
+
+async function saveMatchingLocation() {
+    const button = document.getElementById('saveLocationBtn');
+    try {
+        const latitude = readCoordinate('matchingLatitude', 'Latitude', -90, 90);
+        const longitude = readCoordinate('matchingLongitude', 'Longitude', -180, 180);
+        button.disabled = true;
+        setMatchingLocationStatus('Saving...');
+        const response = await apiFetch(`${API}/users/me/profile`, {
+            method: 'PUT',
+            headers: authHeader(),
+            body: JSON.stringify({
+                address: document.getElementById('matchingAddress').value.trim(),
+                latitude,
+                longitude
+            })
+        });
+        const profile = await readApiData(response);
+        document.getElementById('matchingLatitude').value = profile.latitude ?? latitude;
+        document.getElementById('matchingLongitude').value = profile.longitude ?? longitude;
+        renderMatchingLocationStatus(profile.latitude ?? latitude, profile.longitude ?? longitude);
+        showMsg('success', 'Matching location saved.');
+    } catch (error) {
+        setMatchingLocationStatus(error.message || 'Could not save location.', 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function useCurrentLocation() {
+    const button = document.getElementById('useLocationBtn');
+    if (!navigator.geolocation) {
+        setMatchingLocationStatus('Browser geolocation is not available.', 'error');
+        return;
+    }
+    button.disabled = true;
+    setMatchingLocationStatus('Finding current location...');
+    navigator.geolocation.getCurrentPosition(position => {
+        document.getElementById('matchingLatitude').value =
+            position.coords.latitude.toFixed(6);
+        document.getElementById('matchingLongitude').value =
+            position.coords.longitude.toFixed(6);
+        setMatchingLocationStatus('Coordinates ready. Save to confirm.');
+        button.disabled = false;
+    }, error => {
+        const message = error.code === error.PERMISSION_DENIED
+            ? 'Location permission was denied.'
+            : 'Current location could not be determined.';
+        setMatchingLocationStatus(message, 'error');
+        button.disabled = false;
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+}
+
+function renderProviderAvailability(data) {
+    const available = Boolean(data?.available);
+    const preference = Boolean(data?.availabilityPreference);
+    const activeCount = Number(data?.activeAssignmentCount || 0);
+    const toggle = document.getElementById('providerAvailabilityToggle');
+    toggle.checked = preference;
+    toggle.disabled = false;
+    const availableNowButton = document.getElementById('providerAvailableNowBtn');
+    availableNowButton.hidden = !(activeCount > 0 && !available && preference);
+    availableNowButton.disabled = false;
+    let message = available ? 'Available for new matches.' : 'Unavailable for new matches.';
+    if (activeCount > 0 && !available && preference) {
+        message = 'Reserved by an active assignment.';
+    }
+    if (activeCount > 0) {
+        message += ` ${activeCount} active assignment${activeCount === 1 ? '' : 's'} ${activeCount === 1 ? 'continues' : 'continue'}.`;
+    }
+    const status = document.getElementById('providerAvailabilityStatus');
+    status.textContent = message;
+    status.className = `availability-status ${available ? 'success' : ''}`.trim();
+}
+
+async function initializeProviderAvailability() {
+    if (!isProvider) return;
+    document.getElementById('providerAvailability').hidden = false;
+    const toggle = document.getElementById('providerAvailabilityToggle');
+    toggle.disabled = true;
+    document.getElementById('providerAvailabilityStatus').textContent = 'Loading availability...';
+    try {
+        const response = await apiFetch(`${API}/provider-availability/me`, {
+            headers: authHeader()
+        });
+        renderProviderAvailability(await readApiData(response));
+    } catch (error) {
+        const status = document.getElementById('providerAvailabilityStatus');
+        status.textContent = error.message || 'Could not load availability.';
+        status.className = 'availability-status error';
+    }
+}
+
+async function saveProviderAvailability(available) {
+    const toggle = document.getElementById('providerAvailabilityToggle');
+    const availableNowButton = document.getElementById('providerAvailableNowBtn');
+    toggle.disabled = true;
+    availableNowButton.disabled = true;
+    try {
+        const response = await apiFetch(`${API}/provider-availability/me`, {
+            method: 'PUT',
+            headers: authHeader(),
+            body: JSON.stringify({ available })
+        });
+        renderProviderAvailability(await readApiData(response));
+    } catch (error) {
+        const status = document.getElementById('providerAvailabilityStatus');
+        status.textContent = error.message || 'Could not update availability.';
+        status.className = 'availability-status error';
+        initializeProviderAvailability();
+    }
+}
+
+function setProviderServicesStatus(message, type = '') {
+    const status = document.getElementById('providerServicesStatus');
+    status.textContent = message;
+    status.className = `services-status${type ? ` ${type}` : ''}`;
+}
+
+async function initializeProviderServices() {
+    if (!isProvider) return;
+    const section = document.getElementById('my-services');
+    section.hidden = false;
+    document.getElementById('occupationGroup').hidden = userRole !== 'volunteer';
+    resetProviderServiceState();
+    renderProviderServiceRows();
+    syncAllProviderServiceRows();
+
+    try {
+        const resourceRequest = apiFetch(`${API}/provider-resources/me`, { headers: authHeader() })
+            .then(readApiData);
+        const occupationRequest = userRole === 'volunteer'
+            ? apiFetch(`${API}/volunteers/me/occupation`, { headers: authHeader() }).then(readApiData)
+            : Promise.resolve(null);
+        const [resources, occupation] = await Promise.all([resourceRequest, occupationRequest]);
+
+        resetProviderServiceState();
+        (Array.isArray(resources) ? resources : []).forEach(resource => {
+            const state = providerServiceState.get(String(resource.helpType || '').toUpperCase());
+            if (!state) return;
+            state.enabled = true;
+            state.capacityMode = resource.capacityMode === 'QUALITATIVE' ? 'QUALITATIVE' : 'NUMERIC';
+            state.capacityAmount = resource.capacityAmount ?? '';
+            state.capacityLabel = resource.capacityLabel ?? '';
+        });
+        if (userRole === 'volunteer') {
+            occupationBaseline = String(occupation?.occupation || '').trim();
+            document.getElementById('occupationInput').value = occupationBaseline;
+        }
+        providerServiceBaseline = new Map(
+            SERVICE_DEFINITIONS.map(service => [
+                service.key,
+                normalizedProviderService(providerServiceState.get(service.key))
+            ])
+        );
+        providerServicesReady = true;
+        document.getElementById('providerServicesBody').setAttribute('aria-busy', 'false');
+        setProviderServicesStatus('');
+        syncAllProviderServiceRows();
+        updateProviderSaveState();
+    } catch (error) {
+        setProviderServicesStatus(error.message || 'Could not load services.', 'error');
+    }
+
+    if (window.location.hash === '#my-services') {
+        setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    }
+}
+
+function validateProviderServices() {
+    for (const service of SERVICE_DEFINITIONS) {
+        const state = providerServiceState.get(service.key);
+        if (!state.enabled) continue;
+        if (state.capacityMode === 'NUMERIC') {
+            const amount = Number(state.capacityAmount);
+            if (!Number.isInteger(amount) || amount <= 0 || amount > 2147483647) {
+                document.getElementById(`serviceAmount${service.key}`).classList.add('invalid');
+                setProviderServicesStatus(`${service.label} needs a whole-number amount between 1 and 2,147,483,647.`, 'error');
+                return false;
+            }
+        } else if (!String(state.capacityLabel || '').trim()) {
+            document.getElementById(`serviceLabel${service.key}`).classList.add('invalid');
+            setProviderServicesStatus(`${service.label} needs a capacity description.`, 'error');
+            return false;
+        }
+    }
+
+    if (userRole === 'volunteer') {
+        const occupation = document.getElementById('occupationInput').value.trim();
+        if (occupation !== occupationBaseline && !occupation) {
+            setProviderServicesStatus('Occupation cannot be empty once it has been set.', 'error');
+            return false;
+        }
+    }
+    return true;
+}
+
+async function saveProviderServices() {
+    if (!providerServicesReady || providerServicesSaving || !validateProviderServices()) return;
+    providerServicesSaving = true;
+    syncAllProviderServiceRows();
+    updateProviderSaveState();
+    setProviderServicesStatus('Saving...');
+
+    try {
+        for (const service of SERVICE_DEFINITIONS) {
+            if (!providerServiceChanged(service.key)) continue;
+            const state = providerServiceState.get(service.key);
+            let response;
+            if (state.enabled) {
+                const normalized = normalizedProviderService(state);
+                response = await apiFetch(`${API}/provider-resources`, {
+                    method: 'PUT',
+                    headers: authHeader(),
+                    body: JSON.stringify({
+                        helpType: service.key,
+                        capacityMode: normalized.capacityMode,
+                        capacityAmount: normalized.capacityAmount,
+                        capacityLabel: normalized.capacityLabel
+                    })
+                });
+            } else {
+                response = await apiFetch(`${API}/provider-resources/${encodeURIComponent(service.key)}`, {
+                    method: 'DELETE',
+                    headers: authHeader()
+                });
+            }
+            await readApiData(response);
+            providerServiceBaseline.set(service.key, normalizedProviderService(state));
+        }
+
+        if (userRole === 'volunteer') {
+            const occupation = document.getElementById('occupationInput').value.trim();
+            if (occupation !== occupationBaseline) {
+                const response = await apiFetch(`${API}/volunteers/me/occupation`, {
+                    method: 'PUT',
+                    headers: authHeader(),
+                    body: JSON.stringify({ occupation })
+                });
+                const saved = await readApiData(response);
+                occupationBaseline = String(saved?.occupation || occupation).trim();
+                document.getElementById('occupationInput').value = occupationBaseline;
+            }
+        }
+
+        setProviderServicesStatus('Services saved.', 'success');
+        showMsg('success', 'Services updated successfully!');
+    } catch (error) {
+        setProviderServicesStatus(error.message || 'Could not save services.', 'error');
+        showMsg('error', error.message || 'Could not save services.');
+    } finally {
+        providerServicesSaving = false;
+        syncAllProviderServiceRows();
+        updateProviderSaveState();
+    }
+}
+
+initializeProviderAvailability();
+initializeProviderServices();
+
+// ── Psychologist duty (UX-2) ───────────────────────────────────────────
+function renderDuty(data) {
+    const onDuty = Boolean(data?.onDuty);
+    const verified = Boolean(data?.verified);
+    const openCases = Number(data?.openCases || 0);
+    const toggle = document.getElementById('dutyToggle');
+    toggle.checked = onDuty;
+    toggle.disabled = false;
+    let message = onDuty ? 'On duty: crisis cases can be routed to you.' : 'Off duty: no new crisis cases will be routed to you.';
+    if (onDuty && !verified) {
+        message = 'On duty, but your professional verification is still pending: crisis cases are not routed to you until an administrator verifies you.';
+    }
+    if (openCases > 0) {
+        message += ` ${openCases} open case${openCases === 1 ? '' : 's'} continue${openCases === 1 ? 's' : ''}.`;
+    }
+    const status = document.getElementById('dutyStatus');
+    status.textContent = message;
+    status.className = `availability-status ${onDuty && verified ? 'success' : ''}`.trim();
+}
+
+async function initializeDuty() {
+    if (userRole !== 'psychologist') return;
+    document.getElementById('dutyCard').hidden = false;
+    const toggle = document.getElementById('dutyToggle');
+    toggle.disabled = true;
+    document.getElementById('dutyStatus').textContent = 'Loading duty status...';
+    try {
+        const response = await apiFetch(`${API}/psychologists/me/duty`, { headers: authHeader() });
+        renderDuty(await readApiData(response));
+    } catch (error) {
+        const status = document.getElementById('dutyStatus');
+        status.textContent = error.message || 'Could not load duty status.';
+        status.className = 'availability-status error';
+    }
+}
+
+async function saveDuty(onDuty) {
+    const toggle = document.getElementById('dutyToggle');
+    toggle.disabled = true;
+    try {
+        const response = await apiFetch(`${API}/psychologists/me/duty`, {
+            method: 'PUT',
+            headers: authHeader(),
+            body: JSON.stringify({ onDuty })
+        });
+        renderDuty(await readApiData(response));
+    } catch (error) {
+        const status = document.getElementById('dutyStatus');
+        status.textContent = error.message || 'Could not update duty status.';
+        status.className = 'availability-status error';
+        initializeDuty();
+    }
+}
+
+initializeDuty();
+
+async function saveProfile() {
+    const newName = document.getElementById('fullName').value.trim();
+    const newPhone = document.getElementById('phone').value.trim();
+    if (!newName) { showMsg('error', 'Name cannot be empty.'); return; }
+    try {
+        const res = await apiFetch(`${API}/users/me/profile`, {
+            method: 'PUT',
+            headers: authHeader(),
+            body: JSON.stringify({ fullName: newName, phone: newPhone })
+        });
+        if (!res.ok) throw new Error('Failed to save');
+        // Update localStorage
+        const updated = { ...user, fullName: newName };
+        localStorage.setItem('user', JSON.stringify(updated));
+        {const _e=document.getElementById('sidebarName'); if(_e) _e.textContent = newName;}
+        document.getElementById('topbarName').textContent = newName.split(' ')[0];
+        showMsg('success', 'Profile updated successfully!');
+    } catch {
+        // Update locally even if API fails
+        const updated = { ...user, fullName: newName };
+        localStorage.setItem('user', JSON.stringify(updated));
+        showMsg('success', 'Profile saved locally.');
+    }
+}
+
+// ── Password Change — Two-Step Flow ──────────────────────────────────────
+let _savedNewPw = '';
+let _modalTimer = null;
+let _timerSecs  = 0;
+
+function pwMsg(type, text) {
+    const el = document.getElementById('pwMsg');
+    el.style.display = 'block';
+    if (type === 'error') {
+        el.style.background = '#fef2f2';
+        el.style.color = '#b91c1c';
+        el.style.border = '1px solid #fecaca';
+    } else {
+        el.style.background = '#f0fdf4';
+        el.style.color = '#16a34a';
+        el.style.border = '1px solid #bbf7d0';
+    }
+    el.textContent = text;
+}
+
+async function changePassword() {
+    const current = document.getElementById('currentPw').value.trim();
+    const newPw   = document.getElementById('newPw').value;
+    const confirmVal = document.getElementById('confirmPw').value;
+
+    if (!current)              { pwMsg('error', 'Please enter your current password.'); return; }
+    if (!newPw)                { pwMsg('error', 'Please enter a new password.'); return; }
+    if (newPw.length < 6)     { pwMsg('error', 'New password must be at least 6 characters.'); return; }
+    if (newPw !== confirmVal)  { pwMsg('error', 'New passwords do not match.'); return; }
+
+    const btn = document.getElementById('pwBtn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Sending code…';
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await apiFetch(API + '/users/change-password/request', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ currentPassword: current, newPassword: newPw })
+        });
+
+        let d = {};
+        try { d = await res.json(); } catch(e) {}
+
+        if (!res.ok) {
+            pwMsg('error', d.message || ('Error ' + res.status + ': Could not send code.'));
+            return;
+        }
+
+        _savedNewPw = newPw;
+        pwMsg('success', 'Verification code sent! Check your email.');
+        const emailStr = document.getElementById('email').value || 'your email';
+        openModal(emailStr);
+
+    } catch (err) {
+        pwMsg('error', 'Network error: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-shield-halved"></i> Update Password';
+    }
+}
+
+function openModal(email) {
+    document.getElementById('modalSub').textContent =
+        'We sent an 8-character verification code to ' + email + '. Enter it below to confirm the password change.';
+    document.getElementById('codeInput').value = '';
+    document.getElementById('codeInput').classList.remove('error');
+    document.getElementById('codeModal').classList.add('open');
+    document.getElementById('codeInput').focus();
+    startTimer(600); // 10 minutes
+}
+
+function closeModal() {
+    document.getElementById('codeModal').classList.remove('open');
+    clearInterval(_modalTimer);
+    document.getElementById('modalTimer').textContent = '';
+    _savedNewPw = '';
+}
+
+function startTimer(seconds) {
+    clearInterval(_modalTimer);
+    _timerSecs = seconds;
+    const timerEl = document.getElementById('modalTimer');
+    function tick() {
+        const m = String(Math.floor(_timerSecs / 60)).padStart(2, '0');
+        const s = String(_timerSecs % 60).padStart(2, '0');
+        timerEl.innerHTML = 'Code expires in <span>' + m + ':' + s + '</span>';
+        if (_timerSecs <= 0) {
+            clearInterval(_modalTimer);
+            timerEl.innerHTML = '<span style="color:#b91c1c">Code expired. Please request a new one.</span>';
+        }
+        _timerSecs--;
+    }
+    tick();
+    _modalTimer = setInterval(tick, 1000);
+}
+
+async function confirmCode() {
+    const code  = document.getElementById('codeInput').value.trim();
+    const input = document.getElementById('codeInput');
+    const btn   = document.getElementById('confirmBtn');
+
+    if (code.length < 6) {
+        input.classList.add('error');
+        setTimeout(() => input.classList.remove('error'), 500);
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+        const res = await apiFetch(`${API}/users/change-password/confirm`, {
+            method: 'POST', headers: authHeader(),
+            body: JSON.stringify({ code: code, newPassword: _savedNewPw })
+        });
+        const d = await res.json();
+        if (!res.ok) {
+            // Wrong code — shake and let them try again
+            input.classList.add('error');
+            setTimeout(() => input.classList.remove('error'), 500);
+            input.value = '';
+            input.focus();
+            throw new Error(d.message || 'Incorrect code. Please try again.');
+        }
+        // Success
+        clearInterval(_modalTimer);
+        closeModal();
+        document.getElementById('currentPw').value = '';
+        document.getElementById('newPw').value     = '';
+        document.getElementById('confirmPw').value = '';
+        showMsg('success', 'Password changed successfully!');
+    } catch (err) {
+        showMsg('error', err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-check"></i> Confirm';
+    }
+}
+
+async function resendCode() {
+    const current = document.getElementById('currentPw').value.trim();
+    const newPw   = _savedNewPw;
+    if (!current || !newPw) { closeModal(); showMsg('error', 'Please fill the form again.'); return; }
+    try {
+        const res = await apiFetch(`${API}/users/change-password/request`, {
+            method: 'POST', headers: authHeader(),
+            body: JSON.stringify({ currentPassword: current, newPassword: newPw })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.message || 'Failed.');
+        document.getElementById('codeInput').value = '';
+        startTimer(600);
+        showMsg('success', 'New code sent to your email.');
+    } catch (err) { showMsg('error', err.message); }
+}
+
+// Close modal on overlay click
+document.getElementById('codeModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+async function deleteAccount() {
+    const password = document.getElementById('deletePassword').value;
+    if (!password) { showMsg('error', 'Enter your current password to delete the account.'); return; }
+    if (!confirm('Are you absolutely sure you want to delete your account? This cannot be undone.')) return;
+    try {
+        const res = await apiFetch(`${API}/users/me`, {
+            method: 'DELETE',
+            headers: { ...authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { showMsg('error', data.message || 'Could not delete account.'); return; }
+        localStorage.clear();
+        window.location.href = 'index.html';
+    } catch (e) {
+        showMsg('error', 'Could not delete account. Contact supp0rtnidaa@yandex.ru');
+    }
+}
+
+
+// ── BUILD SIDEBAR BASED ON ROLE ──
+buildSidebar('settings.html');
+
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+// ---- Event wiring (F-5) ----------------------------------------------------
+// Controls are wired here by id or class instead of with inline on* attributes,
+// which script-src 'self' forbids. wire() also makes non-button elements
+// keyboard-operable (Enter/Space).
+wireEvent('sidebarToggle', 'click', () => { toggleSidebar(); });
+wireEvent('logoutBtn', 'click', () => { logout(); });
+wireEvent('saveProfileBtn', 'click', () => { saveProfile(); });
+wireEvent('useLocationBtn', 'click', () => { useCurrentLocation(); });
+wireEvent('saveLocationBtn', 'click', () => { saveMatchingLocation(); });
+wireEvent('providerAvailabilityToggle', 'change', function () { saveProviderAvailability(this.checked); });
+wireEvent('providerAvailableNowBtn', 'click', () => { saveProviderAvailability(true); });
+wireEvent('occupationInput', 'input', () => { updateProviderSaveState(); });
+wireEvent('saveServicesBtn', 'click', () => { saveProviderServices(); });
+wireEvent('dutyToggle', 'change', function () { saveDuty(this.checked); });
+wireEvent('pwBtn', 'click', () => { changePassword(); });
+wireEvent('deleteAccountBtn', 'click', () => { deleteAccount(); });
+wireEvent('codeInput', 'input', function () { this.value=this.value.toUpperCase(); });
+wireEvent('codeInput', 'keydown', (event) => { if(event.key==='Enter') confirmCode(); });
+wireEvent('closeModalBtn', 'click', () => { closeModal(); });
+wireEvent('confirmBtn', 'click', () => { confirmCode(); });
+wire('resendCodeBtn', () => { resendCode(); });
+
+// ---- Delegated actions (F-5) ----------------------------------------------
+// Rendered markup carries data-action / data-id instead of inline handlers;
+// one listener on the container dispatches them.
+(() => {
+    const list = document.getElementById('providerServiceList');
+    if (!list) return;
+    const dispatch = (event) => {
+        const input = event.target.closest('[data-service][data-field]');
+        if (!input) return;
+        const key = input.dataset.service;
+        switch (input.dataset.field) {
+            case 'enabled': if (event.type === 'change') setProviderServiceEnabled(key, input.checked); break;
+            case 'mode':    if (event.type === 'change' && input.checked) setProviderServiceMode(key, input.value); break;
+            case 'amount':  if (event.type === 'input') setProviderServiceAmount(key, input.value); break;
+            case 'label':   if (event.type === 'input') setProviderServiceLabel(key, input.value); break;
+        }
+    };
+    list.addEventListener('change', dispatch);
+    list.addEventListener('input', dispatch);
+})();

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --blue: #1d4ed8; --green: #059669; --dark: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+    :root { --blue: #1d4ed8; --green: #047857; --dark: #1e293b; --muted: #475569; --border: #e2e8f0; }
     body { font-family: 'Inter', sans-serif; color: var(--dark); background: #f8fafc; }
     nav { background: white; border-bottom: 1px solid var(--border); padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
     .nav-logo img { height: 44px; width: auto; }
@@ -27,13 +27,17 @@
     .contact-box p { font-size: 14px; color: #1e40af; }
     .contact-box a { color: var(--blue); font-weight: 600; }
     footer { text-align: center; padding: 32px 24px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); margin-top: 48px; }
-  </style>
+  
+/* F-5: a visible focus ring for keyboard users on every interactive element */
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px;border-radius:4px}
+[tabindex="0"]:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+</style>
 </head>
 <body>
 
 <nav>
   <a href="index.html" class="nav-logo"><img src="nidaa-logo.webp" alt="Nidaa" width="293" height="160" /></a>
-  <a href="javascript:history.back()" class="back-btn">← Back</a>
+  <a href="index.html" class="back-btn">← Back</a>
 </nav>
 
 <div class="container">

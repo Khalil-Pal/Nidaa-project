@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--blue:#1d4ed8;--green:#059669;--bg:#f1f5f9;--dark:#1e293b;--muted:#64748b}
+:root{--blue:#1d4ed8;--green:#047857;--bg:#f1f5f9;--dark:#1e293b;--muted:#475569}
 body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);display:flex;min-height:100vh}
 .content{padding:24px 28px;flex:1}
 
@@ -37,7 +37,7 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 .post-input:focus{border-color:var(--blue)}
 .char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
 .char-count.warn{color:#f59e0b}
-.char-count.over{color:#dc2626}
+.char-count.over{color:#b91c1c}
 .post-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:10px}
 .post-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cat-select{padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fff;color:var(--dark);cursor:pointer}
@@ -72,11 +72,11 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 .moderation-label{display:block;font-size:12px;font-weight:700;color:#9a3412;margin-bottom:6px}
 .moderation-reason{width:100%;min-height:72px;padding:9px 11px;border:1.5px solid #fdba74;border-radius:8px;resize:vertical;font:13px/1.5 'Inter',sans-serif;outline:none}
 .moderation-reason:focus{border-color:#ea580c}
-.moderation-error{min-height:18px;margin-top:4px;font-size:12px;color:#dc2626}
+.moderation-error{min-height:18px;margin-top:4px;font-size:12px;color:#b91c1c}
 .moderation-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 .btn-moderation-cancel,.btn-moderation-delete{border-radius:7px;padding:7px 12px;font:600 12px 'Inter',sans-serif;cursor:pointer}
 .btn-moderation-cancel{background:#fff;border:1px solid var(--border);color:var(--muted)}
-.btn-moderation-delete{background:#dc2626;border:1px solid #dc2626;color:#fff}
+.btn-moderation-delete{background:#b91c1c;border:1px solid #b91c1c;color:#fff}
 .btn-moderation-delete:disabled{opacity:.55;cursor:not-allowed}
 .feed-actions{display:flex;justify-content:center;padding:14px;border-top:1px solid var(--border)}
 .feed-actions[hidden],#moderationAuditPanel[hidden]{display:none}
@@ -123,7 +123,7 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 .guidelines-list{list-style:none;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
 .guidelines-list li{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:flex-start}
 .guidelines-list i{color:var(--green);flex-shrink:0;margin-top:2px}
-.report-box{margin:0 18px 16px;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:12px;color:#dc2626}
+.report-box{margin:0 18px 16px;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:12px;color:#b91c1c}
 .audit-item{padding:12px 18px;border-bottom:1px solid var(--border)}
 .audit-item:last-child{border:none}
 .audit-meta{font-size:11px;color:var(--muted);margin-bottom:4px}
@@ -132,6 +132,10 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 
 @media(max-width:960px){.community-grid{grid-template-columns:1fr}}
 @media(max-width:768px){.content{padding:16px}}
+
+/* F-5: a visible focus ring for keyboard users on every interactive element */
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px;border-radius:4px}
+[tabindex="0"]:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
 </style>
 <link rel="stylesheet" href="css/shared-layout.css"/>
 </head>
@@ -146,11 +150,11 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 
 <div class="main">
     <header class="topbar">
-        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <button class="menu-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fa fa-bars"></i></button>
         <div class="topbar-actions">
             <span class="topbar-user" id="topbarName">—</span>
             <span class="badge" id="topbarRole">—</span>
-            <button class="btn-logout" onclick="logout()"><i class="fa fa-right-from-bracket"></i> Logout</button>
+            <button class="btn-logout" id="logoutBtn"><i class="fa fa-right-from-bracket"></i> Logout</button>
         </div>
     </header>
 
@@ -162,29 +166,29 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 
         <!-- Category Tabs -->
         <div class="cat-tabs">
-            <button class="cat-tab active" data-cat="ALL" onclick="setCategory('ALL',this)">🌐 All Posts</button>
-            <button class="cat-tab" data-cat="SUCCESS_STORIES" onclick="setCategory('SUCCESS_STORIES',this)">🌟 Success Stories</button>
-            <button class="cat-tab" data-cat="QUESTION" onclick="setCategory('QUESTION',this)">❓ Questions</button>
-            <button class="cat-tab" data-cat="TIPS_ADVICE" onclick="setCategory('TIPS_ADVICE',this)">💡 Tips &amp; Advice</button>
-            <button class="cat-tab" data-cat="EVENTS" onclick="setCategory('EVENTS',this)">📅 Events</button>
-            <button class="cat-tab" data-cat="RESOURCES" onclick="setCategory('RESOURCES',this)">📚 Resources</button>
-            <button class="cat-tab" data-cat="UPDATE" onclick="setCategory('UPDATE',this)">📢 Updates</button>
+            <button class="cat-tab active" data-cat="ALL" id="setCategoryAll">🌐 All Posts</button>
+            <button class="cat-tab" data-cat="SUCCESS_STORIES" id="setCategorySuccessStories">🌟 Success Stories</button>
+            <button class="cat-tab" data-cat="QUESTION" id="setCategoryQuestion">❓ Questions</button>
+            <button class="cat-tab" data-cat="TIPS_ADVICE" id="setCategoryTipsAdvice">💡 Tips &amp; Advice</button>
+            <button class="cat-tab" data-cat="EVENTS" id="setCategoryEvents">📅 Events</button>
+            <button class="cat-tab" data-cat="RESOURCES" id="setCategoryResources">📚 Resources</button>
+            <button class="cat-tab" data-cat="UPDATE" id="setCategoryUpdate">📢 Updates</button>
         </div>
 
         <!-- Search & Filter -->
         <div class="search-bar">
             <div class="search-input-wrap">
                 <i class="fa fa-magnifying-glass"></i>
-                <input class="search-input" type="text" id="searchInput" placeholder="Search posts, members, topics..." oninput="renderPosts()"/>
+                <input class="search-input" type="text" id="searchInput" placeholder="Search posts, members, topics..." aria-label="Search posts, members, topics"/>
             </div>
-            <select class="search-select" id="roleFilter" onchange="renderPosts()">
+            <select class="search-select" id="roleFilter" aria-label="Filter by role">
                 <option value="ALL">All Roles</option>
                 <option value="volunteer">Volunteers</option>
                 <option value="psychologist">Psychologists</option>
                 <option value="organization">Organizations</option>
                 <option value="admin">Admins</option>
             </select>
-            <select class="search-select" id="dateFilter" onchange="renderPosts()">
+            <select class="search-select" id="dateFilter" aria-label="Filter by date">
                 <option value="ALL">Any Time</option>
                 <option value="week">This Week</option>
                 <option value="month">This Month</option>
@@ -200,13 +204,13 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
                         <div class="new-post-top">
                             <div class="post-avatar" id="newPostAvatar">?</div>
                             <div class="post-input-wrap">
-                                <textarea class="post-input" id="postText" rows="3" placeholder="Share something with the community..." maxlength="1000" oninput="updateCharCount()"></textarea>
+                                <textarea class="post-input" id="postText" rows="3" placeholder="Share something with the community..." maxlength="1000"></textarea>
                                 <div class="char-count" id="charCount">0 / 1000</div>
                             </div>
                         </div>
                         <div class="post-controls">
                             <div class="post-left">
-                                <select class="cat-select" id="postCat">
+                                <select class="cat-select" id="postCat" aria-label="Post category">
                                     <option value="UPDATE">📢 Update</option>
                                     <option value="SUCCESS_STORIES">🌟 Success Story</option>
                                     <option value="QUESTION">❓ Question</option>
@@ -216,14 +220,14 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
                                     <option value="GRATITUDE">🙏 Gratitude</option>
                                 </select>
                             </div>
-                            <button class="btn-post" id="postBtn" onclick="submitPost()"><i class="fa fa-paper-plane"></i> Post</button>
+                            <button class="btn-post" id="postBtn"><i class="fa fa-paper-plane"></i> Post</button>
                         </div>
                     </div>
 
                     <!-- Posts List -->
                     <div id="postsList"></div>
                     <div class="feed-actions" id="feedActions" hidden>
-                        <button class="btn-load-more" id="loadMoreBtn" onclick="loadMorePosts()">Load more</button>
+                        <button class="btn-load-more" id="loadMoreBtn">Load more</button>
                     </div>
                 </div>
             </div>
@@ -253,7 +257,7 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
                 </div>
 
                 <div class="panel" id="moderationAuditPanel" hidden>
-                    <div class="side-panel-title"><i class="fa fa-clock-rotate-left" style="color:#dc2626"></i> Moderation History</div>
+                    <div class="side-panel-title"><i class="fa fa-clock-rotate-left" style="color:#b91c1c"></i> Moderation History</div>
                     <div id="moderationAuditList"></div>
                 </div>
 
@@ -263,466 +267,6 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 </div>
 
 <script src="/js/nidaa-common.js"></script>
-<script>
-if(!localStorage.getItem('token'))window.location.href='login.html';
-
-const user       =JSON.parse(localStorage.getItem('user')||'{}');
-const fullName   =user.fullName||user.name||'User';
-const firstName  =fullName.split(' ')[0];
-const userRole   =(user.role||'volunteer').toLowerCase();
-const roleDisplay=userRole.charAt(0).toUpperCase()+userRole.slice(1);
-const initials   =fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-
-if(userRole==='beneficiary')window.location.href='dashboard.html';
-
-document.getElementById('topbarName').textContent=firstName;
-document.getElementById('topbarRole').textContent=roleDisplay;
-(function(){
-    const avatarKey='nidaa_avatar_'+(user.id||user.email||'');
-    const savedPhoto=localStorage.getItem(avatarKey);
-    const av=document.getElementById('newPostAvatar');
-    if(savedPhoto){
-        av.style.background='none';
-        av.innerHTML=`<img src="${savedPhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`;
-    } else {
-        av.textContent=initials;
-    }
-})();
-
-const ENGAGEMENT_KEY='nidaa_community_engagement';
-const PAGE_SIZE=20;
-const roleColors={volunteer:'#059669',psychologist:'#7c3aed',admin:'#dc2626',beneficiary:'#1d4ed8',organization:'#ea580c'};
-const roleBg={volunteer:'#f0fdf4',psychologist:'#faf5ff',admin:'#fef2f2',organization:'#fff7ed',beneficiary:'#eff6ff'};
-const catMeta={
-    'ALL':             {label:'All',          color:'#1d4ed8',bg:'#eff6ff'},
-    'UPDATE':          {label:'📢 Update',    color:'#1d4ed8',bg:'#eff6ff'},
-    'SUCCESS_STORIES': {label:'🌟 Success',   color:'#059669',bg:'#f0fdf4'},
-    'QUESTION':        {label:'❓ Question',  color:'#a16207',bg:'#fefce8'},
-    'TIPS_ADVICE':     {label:'💡 Tips',      color:'#7c3aed',bg:'#faf5ff'},
-    'EVENTS':          {label:'📅 Event',     color:'#0891b2',bg:'#ecfeff'},
-    'RESOURCES':       {label:'📚 Resource',  color:'#9d174d',bg:'#fdf2f8'},
-    'GRATITUDE':       {label:'🙏 Gratitude', color:'#059669',bg:'#f0fdf4'},
-    'INFO':            {label:'ℹ️ Info',      color:'#7c3aed',bg:'#faf5ff'},
-};
-
-let currentCat='ALL';
-let posts=[];
-let nextPage=0;
-let feedLastPage=false;
-let feedLoading=false;
-
-function readEngagementStore(){
-    try{return JSON.parse(localStorage.getItem(ENGAGEMENT_KEY)||'{}');}catch{return{};}
-}
-function getEngagement(messageId){
-    const saved=readEngagementStore()[String(messageId)]||{};
-    return{
-        likes:Number(saved.likes)||0,
-        likedBy:Array.isArray(saved.likedBy)?saved.likedBy:[],
-        comments:Array.isArray(saved.comments)?saved.comments:[]
-    };
-}
-function saveEngagement(messageId,value){
-    const store=readEngagementStore();
-    store[String(messageId)]=value;
-    localStorage.setItem(ENGAGEMENT_KEY,JSON.stringify(store));
-}
-function removeEngagement(messageId){
-    const store=readEngagementStore();
-    delete store[String(messageId)];
-    localStorage.setItem(ENGAGEMENT_KEY,JSON.stringify(store));
-}
-
-function setCategory(cat,btn){
-    currentCat=cat;
-    document.querySelectorAll('.cat-tab').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    renderPosts();
-}
-
-function updateCharCount(){
-    const len=document.getElementById('postText').value.length;
-    const el=document.getElementById('charCount');
-    el.textContent=len+' / 1000';
-    el.className='char-count'+(len>900?' over':len>750?' warn':'');
-}
-
-
-function normalizePost(raw){
-    const author=raw.authorName||'Unknown user';
-    const parsedTime=Date.parse(raw.sentAt);
-    return{
-        id:Number(raw.id),
-        authorId:raw.authorId,
-        author,
-        initials:author.split(' ').filter(Boolean).map(n=>n[0]).join('').slice(0,2).toUpperCase()||'?',
-        role:String(raw.authorRole||'').toLowerCase(),
-        text:raw.content||'',
-        category:raw.communityCategory||'UPDATE',
-        timestamp:Number.isNaN(parsedTime)?Date.now():parsedTime
-    };
-}
-
-async function fetchJson(url,options={}){
-    const response=await apiFetch(url,{...options,headers:{...authHeader(),...(options.headers||{})}});
-    let payload={};
-    try{payload=await response.json();}catch{}
-    if(!response.ok)throw new Error(payload.message||'The community request failed.');
-    return payload.data;
-}
-
-async function loadPosts(reset=false){
-    if(feedLoading||(!reset&&feedLastPage))return;
-    feedLoading=true;
-    if(reset){
-        posts=[];
-        nextPage=0;
-        feedLastPage=false;
-        document.getElementById('postsList').innerHTML='<div class="empty-feed"><i class="fa fa-spinner fa-spin"></i><p>Loading community messages...</p></div>';
-    }
-    updateFeedActions();
-    try{
-        const page=await fetchJson(`${API}/community/messages?page=${nextPage}&size=${PAGE_SIZE}`);
-        const incoming=(page.content||[]).map(normalizePost);
-        const knownIds=new Set(posts.map(post=>post.id));
-        posts=posts.concat(incoming.filter(post=>!knownIds.has(post.id)));
-        feedLastPage=page.last===true||incoming.length<PAGE_SIZE;
-        nextPage+=1;
-        renderPosts();
-    }catch(error){
-        if(reset){
-            document.getElementById('postsList').innerHTML=`<div class="empty-feed"><i class="fa fa-triangle-exclamation"></i><p>${escHtml(error.message)}</p><button class="btn-load-more" onclick="loadPosts(true)">Try again</button></div>`;
-        }else{
-            showToast(error.message,'#fef2f2','#dc2626');
-        }
-    }finally{
-        feedLoading=false;
-        updateFeedActions();
-    }
-}
-
-function loadMorePosts(){loadPosts(false);}
-
-function updateFeedActions(){
-    const actions=document.getElementById('feedActions');
-    const button=document.getElementById('loadMoreBtn');
-    actions.hidden=feedLastPage||posts.length===0;
-    button.disabled=feedLoading;
-    button.textContent=feedLoading?'Loading...':'Load more';
-}
-
-function renderPosts(){
-    const search=(document.getElementById('searchInput').value||'').toLowerCase().trim();
-    const roleF=document.getElementById('roleFilter').value;
-    const dateF=document.getElementById('dateFilter').value;
-    const now=Date.now();
-    const weekMs=7*24*60*60*1000,monthMs=30*24*60*60*1000;
-
-    const filtered=posts.filter(p=>{
-        const cat=p.category||'UPDATE';
-        if(currentCat!=='ALL'&&cat!==currentCat)return false;
-        if(roleF!=='ALL'&&(p.role||'').toLowerCase()!==roleF)return false;
-        if(dateF==='week'&&now-p.timestamp>weekMs)return false;
-        if(dateF==='month'&&now-p.timestamp>monthMs)return false;
-        if(search){
-            const hay=(p.text+' '+(p.author||'')+' '+(cat)).toLowerCase();
-            if(!hay.includes(search))return false;
-        }
-        return true;
-    });
-
-    const list=document.getElementById('postsList');
-    if(!filtered.length){
-        list.innerHTML=`<div class="empty-feed"><i class="fa fa-comments"></i><p>${search?'No posts match your search.':currentCat==='ALL'?'No posts yet. Be the first!':'No posts in this category yet.'}</p></div>`;
-        renderTrending(posts);
-        return;
-    }
-
-    const myKey=String(user.id||user.email||'');
-    list.innerHTML=filtered.map(p=>{
-        const cat=p.category||'UPDATE';
-        const cm=catMeta[cat]||catMeta['UPDATE'];
-        const engagement=getEngagement(p.id);
-        const liked=engagement.likedBy.includes(myKey);
-        const roleCol=roleColors[(p.role||'').toLowerCase()]||'#1d4ed8';
-        const photo=localStorage.getItem('nidaa_avatar_'+(p.authorId||''));
-        const avatarInner=photo?`<img src="${photo}" alt=""/>`:(p.initials||'?');
-        const avatarStyle=photo?'':`background:${roleCol}`;
-        const comments=engagement.comments;
-        const roleLabel=p.role?p.role.charAt(0).toUpperCase()+p.role.slice(1):'Member';
-        return`<div class="post-card" id="pc-${p.id}">
-            <div class="post-meta">
-                <div class="post-author-av" style="${avatarStyle}" onclick="window.location.href='profile.html'">${avatarInner}</div>
-                <div class="post-author-info">
-                    <div class="post-author-name" onclick="window.location.href='profile.html'">${escHtml(p.author)}</div>
-                    <div class="post-author-role">${roleLabel}</div>
-                </div>
-                <span class="post-cat-tag" style="background:${cm.bg};color:${cm.color}">${cm.label}</span>
-                <span class="post-time">${timeAgo(p.timestamp)}</span>
-            </div>
-            <div class="post-text">${escHtml(p.text)}</div>
-            <div class="post-engagement">
-                <span class="eng-num"><i class="fa fa-heart" style="color:#ef4444"></i> ${engagement.likes} likes</span>
-                <span class="eng-num"><i class="fa fa-comment" style="color:var(--blue)"></i> ${comments.length} comments</span>
-            </div>
-            <div class="post-actions">
-                <button type="button" class="post-btn${liked?' liked':''}" onclick="toggleLike(${p.id})">
-                    <i class="fa fa-heart"></i> ${liked?'Liked':'Like'}
-                </button>
-                <button type="button" class="post-btn" onclick="toggleComments(${p.id})">
-                    <i class="fa fa-comment"></i> Comment${comments.length?` (${comments.length})`:''}
-                </button>
-                <a href="profile.html" class="post-btn" style="text-decoration:none"><i class="fa fa-user"></i> Profile</a>
-                ${userRole==='admin'?`<button type="button" class="post-btn danger" onclick="openModeration(${p.id})"><i class="fa fa-trash"></i> Moderate</button>`:''}
-            </div>
-            <div class="comments-wrap" id="cw-${p.id}">
-                ${comments.map(c=>`<div class="comment-item">
-                    <div class="comment-av" style="background:${roleColors[(c.role||'').toLowerCase()]||'#1d4ed8'}">${escHtml(c.initials||'?')}</div>
-                    <div class="comment-body"><div class="comment-author">${escHtml(c.author)}</div><div class="comment-text">${escHtml(c.text)}</div></div>
-                </div>`).join('')}
-                <div class="comment-input-row">
-                    <input class="comment-input" id="ci-${p.id}" type="text" maxlength="500" placeholder="Write a comment..." onkeydown="if(event.key==='Enter')submitComment(${p.id})"/>
-                    <button class="comment-submit" onclick="submitComment(${p.id})">Send</button>
-                </div>
-            </div>
-            ${userRole==='admin'?`<div class="moderation-box" id="moderation-${p.id}">
-                <label class="moderation-label" for="moderation-reason-${p.id}">Deletion justification</label>
-                <textarea class="moderation-reason" id="moderation-reason-${p.id}" maxlength="1000" placeholder="Explain why this message must be removed" oninput="clearModerationError(${p.id})"></textarea>
-                <div class="moderation-error" id="moderation-error-${p.id}" role="alert"></div>
-                <div class="moderation-actions">
-                    <button type="button" class="btn-moderation-cancel" onclick="closeModeration(${p.id})">Cancel</button>
-                    <button type="button" class="btn-moderation-delete" id="moderation-delete-${p.id}" onclick="confirmModerationDelete(${p.id})">Delete message</button>
-                </div>
-            </div>`:''}
-        </div>`;
-    }).join('');
-    renderTrending(posts);
-}
-
-function toggleLike(messageId){
-    const engagement=getEngagement(messageId);
-    const key=String(user.id||user.email||'');
-    const index=engagement.likedBy.indexOf(key);
-    if(index===-1){engagement.likedBy.push(key);engagement.likes+=1;}
-    else{engagement.likedBy.splice(index,1);engagement.likes=Math.max(0,engagement.likes-1);}
-    saveEngagement(messageId,engagement);
-    renderPosts();
-}
-
-function toggleComments(messageId){
-    const el=document.getElementById('cw-'+messageId);
-    if(el)el.classList.toggle('open');
-}
-
-function submitComment(messageId){
-    const inp=document.getElementById('ci-'+messageId);
-    const text=(inp.value||'').trim();if(!text)return;
-    const engagement=getEngagement(messageId);
-    engagement.comments.push({author:fullName,initials,role:userRole,text,timestamp:Date.now()});
-    saveEngagement(messageId,engagement);
-    inp.value='';
-    renderPosts();
-    const cw=document.getElementById('cw-'+messageId);
-    if(cw)cw.classList.add('open');
-}
-
-function openModeration(messageId){
-    document.querySelectorAll('.moderation-box.open').forEach(box=>box.classList.remove('open'));
-    const box=document.getElementById('moderation-'+messageId);
-    if(!box)return;
-    box.classList.add('open');
-    document.getElementById('moderation-reason-'+messageId)?.focus();
-}
-
-function closeModeration(messageId){
-    document.getElementById('moderation-'+messageId)?.classList.remove('open');
-    const error=document.getElementById('moderation-error-'+messageId);
-    if(error)error.textContent='';
-}
-
-function clearModerationError(messageId){
-    const reason=document.getElementById('moderation-reason-'+messageId);
-    const error=document.getElementById('moderation-error-'+messageId);
-    if(reason&&reason.value.trim()&&error)error.textContent='';
-}
-
-async function confirmModerationDelete(messageId){
-    const reasonInput=document.getElementById('moderation-reason-'+messageId);
-    const error=document.getElementById('moderation-error-'+messageId);
-    const button=document.getElementById('moderation-delete-'+messageId);
-    const reason=(reasonInput?.value||'').trim();
-    if(!reason){
-        if(error)error.textContent='Enter a justification before deleting this message.';
-        reasonInput?.focus();
-        return;
-    }
-    button.disabled=true;
-    if(error)error.textContent='';
-    try{
-        await fetchJson(`${API}/community/messages/${messageId}?reason=${encodeURIComponent(reason)}`,{method:'DELETE'});
-        posts=posts.filter(post=>post.id!==messageId);
-        removeEngagement(messageId);
-        renderPosts();
-        updateFeedActions();
-        showToast('Message deleted and recorded in the moderation audit.');
-        loadModerationAudit();
-    }catch(requestError){
-        if(error)error.textContent=requestError.message;
-        if(button)button.disabled=false;
-    }
-}
-
-async function submitPost(){
-    const text=document.getElementById('postText').value.trim();
-    if(!text){showToast('Write something first.','#fefce8','#a16207');return;}
-    const btn=document.getElementById('postBtn');btn.disabled=true;
-    const cat=document.getElementById('postCat').value;
-    try{
-        const created=await fetchJson(`${API}/community/messages`,{
-            method:'POST',
-            body:JSON.stringify({content:text,communityCategory:cat})
-        });
-        posts.unshift(normalizePost(created));
-        document.getElementById('postText').value='';
-        updateCharCount();
-        renderPosts();
-        updateFeedActions();
-        showToast('Posted successfully.');
-    }catch(error){
-        showToast(error.message,'#fef2f2','#dc2626');
-    }finally{
-        btn.disabled=false;
-    }
-}
-
-function renderTrending(posts){
-    const trending=[...posts].sort((a,b)=>{
-        const aEngagement=getEngagement(a.id),bEngagement=getEngagement(b.id);
-        return(bEngagement.likes+bEngagement.comments.length)-(aEngagement.likes+aEngagement.comments.length);
-    }).slice(0,5);
-    const el=document.getElementById('trendingList');
-    if(!trending.length){el.innerHTML='<div style="padding:14px 18px;font-size:13px;color:var(--muted)">No posts yet.</div>';return;}
-    el.innerHTML=trending.map(p=>{
-        const cat=p.category||'UPDATE';
-        const cm=catMeta[cat]||catMeta['UPDATE'];
-        const engagement=getEngagement(p.id);
-        return`<div class="trending-item" onclick="scrollToPost(${p.id})">
-            <div class="trending-title">${escHtml(p.text).slice(0,70)}${p.text.length>70?'…':''}</div>
-            <div class="trending-meta">
-                <span style="color:${cm.color}">${cm.label}</span>
-                <span><i class="fa fa-heart" style="color:#ef4444"></i> ${engagement.likes}</span>
-                <span><i class="fa fa-comment" style="color:var(--blue)"></i> ${engagement.comments.length}</span>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function scrollToPost(messageId){
-    currentCat='ALL';
-    document.querySelectorAll('.cat-tab').forEach(b=>b.classList.toggle('active',b.dataset.cat==='ALL'));
-    document.getElementById('searchInput').value='';
-    renderPosts();
-    setTimeout(()=>{
-        const el=document.getElementById('pc-'+messageId);
-        if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.outline='2px solid var(--blue)';setTimeout(()=>el.style.outline='',2000);}
-    },100);
-}
-
-async function loadModerationAudit(){
-    if(userRole!=='admin')return;
-    const panel=document.getElementById('moderationAuditPanel');
-    const list=document.getElementById('moderationAuditList');
-    panel.hidden=false;
-    list.innerHTML='<div style="padding:14px 18px;font-size:13px;color:var(--muted)">Loading history...</div>';
-    try{
-        const page=await fetchJson(`${API}/admin/community/deletions?page=0&size=5`);
-        const entries=page.content||[];
-        if(!entries.length){
-            list.innerHTML='<div style="padding:14px 18px;font-size:13px;color:var(--muted)">No moderated messages yet.</div>';
-            return;
-        }
-        list.innerHTML=entries.map(item=>{
-            const deletedAt=item.deletedAt?new Date(item.deletedAt).toLocaleString():'Unknown time';
-            const snapshot=String(item.originalContent||'');
-            return`<div class="audit-item">
-                <div class="audit-meta">${escHtml(item.originalAuthorName)} · ${escHtml(deletedAt)}</div>
-                <div class="audit-reason">${escHtml(item.reason)}</div>
-                <div class="audit-snapshot">${escHtml(snapshot.slice(0,100))}${snapshot.length>100?'…':''}</div>
-                <div class="audit-meta" style="margin-top:5px">Removed by ${escHtml(item.deletedByAdminName)}</div>
-            </div>`;
-        }).join('');
-    }catch(error){
-        list.innerHTML=`<div style="padding:14px 18px;font-size:13px;color:#dc2626">${escHtml(error.message)}</div>`;
-    }
-}
-
-async function loadMembers(){
-    const list=document.getElementById('membersList');
-    try{
-        let members=[];
-        if(userRole==='admin'){
-            const res=await apiFetch(API+'/admin/users',{headers:authHeader()});
-            if(res.ok){const all=(await res.json()).data||[];members=all.filter(m=>{const r=(m.role||'').toLowerCase();return r==='volunteer'||r==='psychologist'||r==='organization';}).slice(0,6);}
-        }
-        if(!members.length){
-            const res=await apiFetch(API+'/dashboard/stats',{headers:authHeader()});
-            if(res.ok){
-                const s=(await res.json()).data||{};
-                const vc=s.totalVolunteers||s.volunteers||0;
-                const pc=s.totalPsychologists||s.psychologists||0;
-                const oc=s.totalOrganizations||s.organizations||0;
-                if(vc||pc||oc){
-                    list.innerHTML=
-                        (vc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#059669">${vc}<div class="online-dot"></div></div><div><div class="member-name">${vc} Volunteer${vc!==1?'s':''}</div><span class="member-role-badge" style="background:#f0fdf4;color:#059669">Volunteer</span></div></div></div>`:'')+
-                        (pc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#7c3aed">${pc}<div class="online-dot"></div></div><div><div class="member-name">${pc} Psychologist${pc!==1?'s':''}</div><span class="member-role-badge" style="background:#faf5ff;color:#7c3aed">Psychologist</span></div></div></div>`:'')+
-                        (oc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#ea580c">${oc}<div class="online-dot"></div></div><div><div class="member-name">${oc} Organization${oc!==1?'s':''}</div><span class="member-role-badge" style="background:#fff7ed;color:#ea580c">Organization</span></div></div></div>`:'');
-                    return;
-                }
-            }
-            members=[{fullName,role:userRole,id:user.id,email:user.email}];
-        }
-        list.innerHTML=members.map(m=>{
-            const mName=m.fullName||m.name||'Member';
-            const mRole=(m.role||'volunteer').toLowerCase();
-            const mInit=mName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-            const col=roleColors[mRole]||'#1d4ed8';
-            const bg=roleBg[mRole]||'#eff6ff';
-            const photo=localStorage.getItem('nidaa_avatar_'+(m.id||m.email||''));
-            const saved=JSON.parse(localStorage.getItem('nidaa_profile_'+(m.id||m.email||'me'))||'{}');
-            return`<div class="member-card">
-                <div class="member-card-top">
-                    <div class="member-av" style="${photo?'':'background:'+col}">
-                        ${photo?`<img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`:`<span>${mInit}</span>`}
-                        <div class="online-dot"></div>
-                    </div>
-                    <div>
-                        <div class="member-name">${escHtml(mName)}</div>
-                        <span class="member-role-badge" style="background:${bg};color:${col}">${mRole.charAt(0).toUpperCase()+mRole.slice(1)}</span>
-                    </div>
-                </div>
-                ${saved.bio?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.4">"${escHtml(saved.bio).slice(0,60)}${saved.bio.length>60?'…':''}"</div>`:''}
-                <div class="member-actions">
-                    <a class="btn-sm" href="profile.html"><i class="fa fa-user"></i> Profile</a>
-                </div>
-            </div>`;
-        }).join('');
-    }catch{
-        list.innerHTML='<div style="padding:16px 18px;font-size:13px;color:var(--muted)">Could not load members.</div>';
-    }
-}
-
-function showToast(msg,bg,col){
-    const t=document.createElement('div');
-    t.style.cssText=`position:fixed;top:20px;right:24px;background:${bg||'#f0fdf4'};border:1px solid #bbf7d0;color:${col||'#059669'};padding:13px 20px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px`;
-    t.textContent=msg;document.body.appendChild(t);
-    setTimeout(()=>t.remove(),2500);
-}
-
-
-buildSidebar();
-loadPosts(true);
-loadMembers();
-loadModerationAudit();
-</script>
+<script src="js/community.js"></script>
 </body>
 </html>

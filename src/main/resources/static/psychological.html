@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --blue: #1d4ed8; --green: #059669; --bg: #f0fdf4; --dark: #1e293b; --muted: #64748b; }
+    :root { --blue: #1d4ed8; --green: #047857; --bg: #f0fdf4; --dark: #1e293b; --muted: #475569; }
     body { font-family: 'Inter', sans-serif; color: var(--dark); background: #f8fafc; display: flex; min-height: 100vh; }
 
     /* CONTENT */
@@ -38,7 +38,7 @@
     .pill-crisis { background: #fff7ed; color: #9a3412; }
     .pill.active { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,.1); }
     .btn-request { padding: 12px 28px; background: var(--green); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .2s; font-family: 'Inter', sans-serif; }
-    .btn-request:hover { background: #047857; }
+    .btn-request:hover { background: #065f46; }
 
     /* MY REQUESTS */
     .panel { background: white; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 20px; }
@@ -54,8 +54,8 @@
     .status-assigned { background: #eff6ff; color: var(--blue); }
     .status-completed { background: #f0fdf4; color: var(--green); }
     .btn-accept { padding: 7px 14px; background: var(--green); color: white; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s; }
-    .btn-accept:hover { background: #047857; }
-    .btn-decline { padding: 7px 14px; background: #fef2f2; color: #dc2626; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s; }
+    .btn-accept:hover { background: #065f46; }
+    .btn-decline { padding: 7px 14px; background: #fef2f2; color: #b91c1c; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s; }
     .btn-decline:hover { background: #fecaca; }
 
     /* MODAL */
@@ -105,7 +105,11 @@
     .btn-psych-update:hover{background:#1e40af}
     .btn-psych-close{width:100%;padding:9px;background:none;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;font-family:'Inter',sans-serif;color:var(--muted);transition:all .2s}
     .btn-psych-close:hover{border-color:var(--blue);color:var(--blue)}
-  </style>
+  
+/* F-5: a visible focus ring for keyboard users on every interactive element */
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px;border-radius:4px}
+[tabindex="0"]:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+</style>
   <link rel="stylesheet" href="css/shared-layout.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 </head>
@@ -120,11 +124,11 @@
 <!-- MAIN -->
 <div class="main">
   <header class="topbar">
-    <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa fa-bars"></i></button>
+    <button class="menu-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fa fa-bars"></i></button>
     <div class="topbar-actions">
       <span class="topbar-user" id="topbarName">—</span>
       <span class="badge" id="topbarRole">—</span>
-      <button class="btn-logout" onclick="logout()" title="Logout">
+      <button class="btn-logout" title="Logout" id="logoutBtn">
         <i class="fa fa-right-from-bracket"></i> Logout
       </button>
     </div>
@@ -138,17 +142,17 @@
 
     <!-- FORMAT SELECTION -->
     <div class="format-grid">
-      <div class="format-card selected" onclick="selectFormat(this, 'chat')">
+      <div class="format-card selected" role="button" tabindex="0" aria-pressed="true" id="selectFormatChat">
         <div class="format-icon">&#128172;</div>
         <h3>Text Chat</h3>
         <p>Communicate through text messages with a licensed psychologist at your own pace.</p>
       </div>
-      <div class="format-card" onclick="selectFormat(this, 'audio')">
+      <div class="format-card" role="button" tabindex="0" aria-pressed="false" id="selectFormatAudio">
         <div class="format-icon">&#127897;</div>
         <h3>Audio Call</h3>
         <p>Speak directly with a mental health professional in a private, secure audio session.</p>
       </div>
-      <div class="format-card" onclick="selectFormat(this, 'video')">
+      <div class="format-card" role="button" tabindex="0" aria-pressed="false" id="selectFormatVideo">
         <div class="format-icon">&#127909;</div>
         <h3>Video Session</h3>
         <p>Face-to-face video sessions for a more personal therapeutic experience.</p>
@@ -159,21 +163,21 @@
     <div class="categories-section">
       <h3 class="section-title">What are you seeking support for?</h3>
       <div class="pills">
-        <span class="pill pill-anxiety active" data-value="ANXIETY" onclick="togglePill(this)">Anxiety</span>
-        <span class="pill pill-depression" data-value="DEPRESSION" onclick="togglePill(this)">Depression</span>
-        <span class="pill pill-ptsd" data-value="PTSD" onclick="togglePill(this)">PTSD</span>
-        <span class="pill pill-grief" data-value="GRIEF" onclick="togglePill(this)">Grief &amp; Loss</span>
-        <span class="pill pill-violence" data-value="VIOLENCE" onclick="togglePill(this)">Domestic Violence</span>
-        <span class="pill pill-crisis" data-value="CRISIS" onclick="togglePill(this)">Crisis Support</span>
+        <span class="pill pill-anxiety active" data-value="ANXIETY" role="button" tabindex="0" aria-pressed="true">Anxiety</span>
+        <span class="pill pill-depression" data-value="DEPRESSION" role="button" tabindex="0" aria-pressed="false">Depression</span>
+        <span class="pill pill-ptsd" data-value="PTSD" role="button" tabindex="0" aria-pressed="false">PTSD</span>
+        <span class="pill pill-grief" data-value="GRIEF" role="button" tabindex="0" aria-pressed="false">Grief &amp; Loss</span>
+        <span class="pill pill-violence" data-value="VIOLENCE" role="button" tabindex="0" aria-pressed="false">Domestic Violence</span>
+        <span class="pill pill-crisis" data-value="CRISIS" role="button" tabindex="0" aria-pressed="false">Crisis Support</span>
       </div>
-      <button class="btn-request" onclick="openModal()">Request Support Session</button>
+      <button class="btn-request" id="openModalBtn">Request Support Session</button>
     </div>
 
     <!-- MY REQUESTS -->
     <div class="panel" id="myRequestsPanel">
       <div class="panel-header"><h3>My Support Requests</h3></div>
       <div id="myRequestsList">
-        <div style="text-align:center;padding:32px;color:#64748b;">
+        <div style="text-align:center;padding:32px;color:#475569;">
           <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>
           Loading your requests...
         </div>
@@ -184,7 +188,7 @@
     <div class="panel" id="psychPanel" style="display:none">
       <div class="panel-header"><h3>Pending Requests — Awaiting Your Response</h3></div>
       <div id="pendingRequestsList">
-        <div style="text-align:center;padding:32px;color:#64748b;">
+        <div style="text-align:center;padding:32px;color:#475569;">
           <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>
           Loading pending requests...
         </div>
@@ -195,7 +199,7 @@
     <div class="panel" id="activeSessionsPanel" style="display:none">
       <div class="panel-header"><h3>My Active Sessions</h3></div>
       <div id="activeSessionsList">
-        <div style="text-align:center;padding:32px;color:#64748b;">
+        <div style="text-align:center;padding:32px;color:#475569;">
           <i class="fa fa-spinner fa-spin" style="font-size:20px;margin-bottom:8px;display:block"></i>
           Loading...
         </div>
@@ -205,15 +209,15 @@
 </div>
 
 <!-- MODAL -->
-<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+<div class="overlay" id="overlay">
   <div class="modal">
     <div class="modal-header">
       <h2>Request Support Session</h2>
-      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+      <button class="modal-close" id="closeModalBtn">&#x2715;</button>
     </div>
     <form id="supportForm">
       <div class="form-group">
-        <label>Support Category</label>
+        <label for="supportCategory">Support Category</label>
         <select id="supportCategory">
           <option value="ANXIETY">Anxiety</option>
           <option value="DEPRESSION">Depression</option>
@@ -224,7 +228,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Session Format</label>
+        <label for="supportFormat">Session Format</label>
         <select id="supportFormat">
           <option value="chat">Text Chat</option>
           <option value="audio">Audio Call</option>
@@ -232,7 +236,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Tell us a bit about what you're going through <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <label for="supportDesc">Tell us a bit about what you're going through <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
         <textarea id="supportDesc" placeholder="Your message is private and confidential..."></textarea>
       </div>
       <label class="anonymous-choice">
@@ -247,333 +251,7 @@
 <div class="alert alert-success" id="successAlert">Request submitted. A psychologist will be in touch shortly.</div>
 
 <script src="/js/nidaa-common.js"></script>
-<script>
-  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-  if (!localStorage.getItem('token')) window.location.href = 'login.html';
-
-  const user     = JSON.parse(localStorage.getItem('user') || '{}');
-  const fullName = user.fullName || user.name || 'User';
-  const firstName= fullName.split(' ')[0];
-  const userRole = (user.role || 'user').toLowerCase();
-  const roleDisp = userRole.charAt(0).toUpperCase() + userRole.slice(1);
-  const initials = fullName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-
-  {const _e=document.getElementById('sidebarName'); if(_e) _e.textContent = fullName;}
-  {const _e=document.getElementById('sidebarRole'); if(_e) _e.textContent = roleDisp;}
-  {const _e=document.getElementById('sidebarAvatar'); if(_e) _e.textContent = initials;}
-  document.getElementById('topbarName').textContent    = firstName;
-  document.getElementById('topbarRole').textContent    = roleDisp;
-
-  if (userRole === 'psychologist') {
-    document.getElementById('psychPanel').style.display = 'block';
-    document.getElementById('activeSessionsPanel').style.display = 'block';
-    // Hide beneficiary-only sections from psychologist
-    document.querySelector('.format-grid').style.display = 'none';
-    document.querySelector('.categories-section').style.display = 'none';
-    document.getElementById('myRequestsPanel').style.display = 'none';
-  }
-
-  let selectedFormat = 'CHAT';
-  function selectFormat(el, format) {
-    document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
-    el.classList.add('selected');
-    selectedFormat = format.toUpperCase();
-    document.getElementById('supportFormat').value = format;
-  }
-  function togglePill(el) { el.classList.toggle('active'); }
-  function openModal()  { document.getElementById('overlay').classList.add('open'); }
-  function closeModal() { document.getElementById('overlay').classList.remove('open'); }
-  function handleOverlayClick(e) { if (e.target === document.getElementById('overlay')) closeModal(); }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  function showToast(msg, ok) {
-    const el = document.getElementById('successAlert');
-    el.textContent = msg;
-    el.style.background   = ok ? '#f0fdf4' : '#fef2f2';
-    el.style.borderColor  = ok ? '#bbf7d0' : '#fecaca';
-    el.style.color        = ok ? '#059669' : '#dc2626';
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 4000);
-  }
-
-  function fmtDate(d) {
-    return d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-  }
-
-  // Load MY requests (beneficiary)
-  async function loadMyRequests() {
-    const list = document.getElementById('myRequestsList');
-    if (!list) return;
-    try {
-      const res  = await apiFetch(API + '/psychological-requests/my', { headers: authHeader() });
-      if (!res.ok) throw new Error();
-      const reqs = (await res.json()).data || [];
-      if (!reqs.length) {
-        list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No support requests yet.</div>';
-        return;
-      }
-      const sc = {PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
-      list.innerHTML = reqs.map(r => `
-        <div class="req-row">
-          <div class="req-info">
-            <div class="title">${escHtml(r.category||'')} — ${escHtml(r.preferredFormat||r.supportType||'')}</div>
-            <div class="meta">Submitted ${escHtml(fmtDate(r.createdAt))}${r.description?' · '+escHtml(r.description.substring(0,40)):''}</div>
-          </div>
-          <div class="req-actions">
-            <span class="tag ${sc[r.status]||'status-pending'}">${escHtml(r.status||'PENDING')}</span>
-            ${['ASSIGNED','COMPLETED'].includes((r.status||'').toUpperCase())
-              ? `<button class="btn-accept" onclick="openPsychContact(${Number(r.id)},'Psychologist Contact',${jsString(r.status||'ASSIGNED')})">Contact Psychologist</button>`
-              : ''}
-          </div>
-        </div>`).join('');
-    } catch {
-      if (list) list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">Could not load requests.</div>';
-    }
-  }
-
-  // Load PENDING requests (psychologist)
-  async function loadPendingRequests() {
-    const list = document.getElementById('pendingRequestsList');
-    if (!list) return;
-    try {
-      const res  = await apiFetch(API + '/psychological-requests/pending', { headers: authHeader() });
-      if (!res.ok) throw new Error();
-      const reqs = ((await res.json()).data || {}).content || [];   // paged (Q-3)
-      if (!reqs.length) {
-        list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No pending requests.</div>';
-        return;
-      }
-      list.innerHTML = reqs.map(r => `
-        <div class="req-row" id="pr-${Number(r.id)}">
-          <div class="req-info">
-            <div class="title">${escHtml(r.category||'')} — ${escHtml(r.preferredFormat||'')}</div>
-            <div class="meta">${escHtml(fmtDate(r.createdAt))} · ${escHtml(r.urgencyLevel||'')}</div>
-          </div>
-          <div class="req-actions">
-            <button class="btn-accept" onclick="startPsychWork(${Number(r.id)},this)">&#9654; Start Working</button>
-            <button class="btn-decline" onclick="document.getElementById('pr-${Number(r.id)}').remove()">Decline</button>
-          </div>
-        </div>`).join('');
-    } catch {
-      if (list) list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">Could not load.</div>';
-    }
-  }
-
-  // SUBMIT support request
-  document.getElementById('supportForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = e.target.querySelector('.btn-submit');
-    btn.disabled = true; btn.textContent = 'Submitting...';
-
-    const payload = {
-      supportType:     'INDIVIDUAL',
-      category:        document.getElementById('supportCategory').value,
-      urgencyLevel:    'MEDIUM',
-      preferredFormat: selectedFormat,
-      description:     document.getElementById('supportDesc').value.trim(),
-      isAnonymous:     document.getElementById('supportAnonymous').checked
-    };
-
-    try {
-      const res = await apiFetch(API + '/psychological-requests', {
-        method: 'POST', headers: authHeader(), body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Server error ' + res.status);
-      }
-      closeModal();
-      e.target.reset();
-      showToast('✅ Request submitted! A psychologist will contact you shortly.', true);
-      loadMyRequests(); // reload to show the new saved request
-    } catch (err) {
-      showToast('❌ Failed: ' + err.message, false);
-    }
-    btn.disabled = false; btn.textContent = 'Submit Request';
-  });
-
-  let currentPsychRequestId = null;
-
-  async function startPsychWork(id, btn) {
-    if (!confirm('Start working on this request? Anonymous requests will keep the beneficiary identity private.')) return;
-    btn.disabled = true;
-    btn.textContent = 'Starting...';
-    try {
-      const res = await apiFetch(API + '/psychological-requests/' + id + '/accept', { method: 'PUT', headers: authHeader() });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || 'HTTP ' + res.status);
-      }
-
-      // Remove decline button
-      const row = document.getElementById('pr-' + id);
-      if (row) {
-        const dec = row.querySelector('.btn-decline');
-        if (dec) dec.remove();
-        btn.textContent = '✓ Working';
-        btn.style.background = '#047857';
-        btn.disabled = false;
-        btn.onclick = () => openPsychContact(
-          id,
-          row.querySelector('.title') ? row.querySelector('.title').textContent : 'Support Request',
-          'ASSIGNED');
-      }
-      await openPsychContact(id, 'Support Request', 'ASSIGNED');
-    } catch (e) {
-      alert('Could not start: ' + e.message);
-      btn.disabled = false;
-      btn.textContent = '▶ Start Working';
-    }
-  }
-
-  async function openPsychContact(id, title, status = 'ASSIGNED') {
-    currentPsychRequestId = id;
-    document.getElementById('psychContactTitle').textContent = title || 'Requester Contact';
-    document.getElementById('psychContactName').textContent  = '...';
-    document.getElementById('psychContactEmail').textContent = '...';
-    document.getElementById('psychContactPhone').textContent = '...';
-    const notice = document.getElementById('psychContactNotice');
-    notice.hidden = true;
-    notice.textContent = '';
-    const statusSection = document.getElementById('psychStatusSection');
-    statusSection.style.display = userRole === 'psychologist' ? 'block' : 'none';
-    if (userRole === 'psychologist') buildPsychStatusOptions(status);
-    document.getElementById('psychContactOverlay').classList.add('open');
-    try {
-      const res = await apiFetch(API + '/psychological-requests/' + id + '/contact', { headers: authHeader() });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || 'Contact is not available');
-      }
-      const contact = (await res.json()).data || {};
-      const roleLabel = formatPsychContactRole(contact.contactRole);
-      document.getElementById('psychContactTitle').textContent =
-        contact.anonymous ? 'Anonymous Request' : roleLabel + ' Contact';
-      document.getElementById('psychContactName').textContent = contact.name || '—';
-      document.getElementById('psychContactEmail').textContent =
-        contact.anonymous ? 'Not shared' : (contact.email || '—');
-      document.getElementById('psychContactPhone').textContent =
-        contact.anonymous ? 'Not shared' : (contact.phone || 'Not provided');
-      if (contact.message) {
-        notice.textContent = contact.message;
-        notice.hidden = false;
-      }
-    } catch (error) {
-      document.getElementById('psychContactName').textContent = error.message;
-      document.getElementById('psychContactEmail').textContent = '—';
-      document.getElementById('psychContactPhone').textContent = '—';
-    }
-  }
-
-  function formatPsychContactRole(role) {
-    const normalized = (role || 'Contact').toLowerCase();
-    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-  }
-
-  async function loadActiveSessions() {
-    const list = document.getElementById('activeSessionsList');
-    if (!list) return;
-    try {
-      const res  = await apiFetch(API + '/psychological-requests/my-assigned', { headers: authHeader() });
-      if (!res.ok) throw new Error();
-      const reqs = (await res.json()).data || [];
-      if (!reqs.length) {
-        list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No active sessions yet.</div>';
-        return;
-      }
-      const sc = {PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
-      list.innerHTML = reqs.map(r => `
-        <div class="req-row" id="as-${Number(r.id)}">
-          <div class="req-info">
-            <div class="title">${escHtml(r.category||'')} — ${escHtml(r.preferredFormat||r.supportType||'')}</div>
-            <div class="meta">Started ${escHtml(fmtDate(r.createdAt))}${r.description?' · '+escHtml(r.description.substring(0,40)):''}</div>
-          </div>
-          <div class="req-actions">
-            <span class="tag ${sc[r.status]||'status-assigned'}">${escHtml(r.status||'ASSIGNED')}</span>
-            <button class="btn-accept" style="font-size:12px;padding:6px 12px" onclick="openPsychContact(${Number(r.id)},${jsString(r.category||'Session')},${jsString(r.status||'ASSIGNED')})">Contact & Status</button>
-          </div>
-        </div>`).join('');
-    } catch {
-      if (list) list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">Could not load sessions.</div>';
-    }
-  }
-
-  function closePsychContact() {
-    document.getElementById('psychContactOverlay').classList.remove('open');
-    currentPsychRequestId = null;
-  }
-
-  function buildPsychStatusOptions(currentStatus) {
-    const VALID_TRANSITIONS = {
-      'PENDING':   ['ASSIGNED', 'CANCELLED'],
-      'ASSIGNED':  ['COMPLETED', 'CANCELLED'],
-      'COMPLETED': [],
-      'CANCELLED': []
-    };
-    const LABELS = {
-      'ASSIGNED':  'Assigned (In Progress)',
-      'COMPLETED': 'Completed',
-      'CANCELLED': 'Cancelled',
-      'PENDING':   'Pending'
-    };
-    const sel = document.getElementById('psychStatusSelect');
-    const btn = document.querySelector('.btn-psych-update');
-    const transitions = VALID_TRANSITIONS[(currentStatus || '').toUpperCase()] || [];
-    sel.innerHTML = '';
-
-    if (transitions.length === 0) {
-      sel.innerHTML = '<option value="" disabled>No further transitions allowed</option>';
-      if (btn) btn.disabled = true;
-      return;
-    }
-
-    if (btn) btn.disabled = false;
-    transitions.forEach(status => {
-      const opt = document.createElement('option');
-      opt.value = status;
-      opt.textContent = LABELS[status] || status;
-      sel.appendChild(opt);
-    });
-  }
-
-  async function submitPsychStatus() {
-    if (!currentPsychRequestId) return;
-    const status = document.getElementById('psychStatusSelect').value;
-    const btn = document.querySelector('.btn-psych-update');
-    if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
-    try {
-      const res = await apiFetch(API + '/psychological-requests/' + currentPsychRequestId + '/status?status=' + status, {
-        method: 'PUT', headers: authHeader()
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      closePsychContact();
-      loadPendingRequests();
-      const t = document.createElement('div');
-      t.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#059669;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;font-size:14px;font-family:Inter,sans-serif';
-      t.textContent = '✅ Status updated to ' + status.charAt(0) + status.slice(1).toLowerCase();
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 3000);
-    } catch (e) {
-      alert('Could not update: ' + e.message);
-    }
-    if (btn) { btn.disabled = false; btn.textContent = 'Update Status'; }
-  }
-
-  loadMyRequests();
-  if (userRole === 'psychologist') {
-    loadPendingRequests();
-    loadActiveSessions();
-  }
-
-  // ── ACCESS CONTROL: Volunteer & Organization cannot access this page ──
-  if (userRole === 'volunteer' || userRole === 'organization') {
-    window.location.href = 'help-requests.html';
-  }
-
-  // ── BUILD SIDEBAR BASED ON ROLE ──
-  buildSidebar('psychological.html');
-
-</script>
+<script src="js/psychological.js"></script>
 
 
 <!-- Psychologist Contact & Status Modal -->
@@ -586,14 +264,14 @@
     <div class="psych-contact-notice" id="psychContactNotice" hidden></div>
     <div class="psych-status-section" id="psychStatusSection">
       <div class="psych-status-title">Update Request Status</div>
-      <select class="psych-status-sel" id="psychStatusSelect">
+      <select class="psych-status-sel" id="psychStatusSelect" aria-label="Update request status">
         <option value="ASSIGNED">Assigned (In Progress)</option>
         <option value="COMPLETED">Completed</option>
         <option value="CANCELLED">Cancelled</option>
       </select>
-      <button class="btn-psych-update" onclick="submitPsychStatus()">Update Status</button>
+      <button class="btn-psych-update" id="submitPsychStatusBtn">Update Status</button>
     </div>
-    <button class="btn-psych-close" onclick="closePsychContact()">Close</button>
+    <button class="btn-psych-close" id="closePsychContactBtn">Close</button>
   </div>
 </div>
 </body>

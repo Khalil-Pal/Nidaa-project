@@ -38,6 +38,11 @@ BASE=http://127.0.0.1:8081 ADMIN_EMAIL=... ADMIN_PASSWORD=... BENE_EMAIL=... BEN
 VOL_EMAIL=... VOL_PASSWORD=... JWT_SECRET=... CHROME="C:/Program Files/Google/Chrome/Application/chrome.exe" \
 node scripts/gate/browser-checks.js
 
+# 5a. accessibility + CSP audit and keyboard-only checks (F-5): npm install --no-save axe-core too
+#     BASE=... ADMIN_EMAIL=... ADMIN_PASSWORD=... BENE_EMAIL=... BENE_PASSWORD=... node scripts/gate/a11y-audit.js after
+#     -> every page: 0 axe violations (WCAG 2.1 A/AA), 0 CSP violations, 0 inline handlers/scripts; exit 1 otherwise
+#     same env, node scripts/gate/keyboard-checks.js -> Tab walks and Enter/Space operation of the main controls
+
 # 5b. Lighthouse (F-3 / PF-1): once `npm install --no-save lighthouse puppeteer-core`, then
 #     node scripts/gate/lighthouse.js http://127.0.0.1:8081/index.html after
 #     -> prints and writes lighthouse-after.json (performance, LCP, image bytes; mobile + desktop)
