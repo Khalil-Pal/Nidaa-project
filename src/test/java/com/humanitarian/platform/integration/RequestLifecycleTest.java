@@ -145,12 +145,13 @@ class RequestLifecycleTest {
         assertEquals(20L, captor.getValue().getVolunteerId());
         assertEquals(3, captor.getValue().getReservedCapacityAmount());
 
+        when(helpRequestRepository.updateStatusCompleted(eq(10L), eq("COMPLETED"), any(), eq("ASSIGNED"))).thenReturn(1);
         HelpRequest updated = helpRequestService.updateStatus(10L, "COMPLETED");
 
         assertEquals("COMPLETED", updated.getStatus());
         assertEquals("COMPLETED", assignment.getStatus());
         verify(providerResourceService, never()).restoreReservation(
                 any(ProviderCapacityReservation.class));
-        verify(helpRequestRepository).updateStatusCompleted(eq(10L), eq("COMPLETED"), any());
+        verify(helpRequestRepository).updateStatusCompleted(eq(10L), eq("COMPLETED"), any(), eq("ASSIGNED"));
     }
 }

@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -121,5 +123,28 @@ class HelpRequestPersistenceTest extends PersistenceTestSupport {
         assertEquals("ASSIGNED", reloaded.getStatus());
         assertEquals(volunteer.getId(), reloaded.getAssignedVolunteerId());
         assertNull(reloaded.getAssignedOrganizationId());
+    }
+
+    @Test
+    void guardedStatusUpdatesLetExactlyOneOfTwoRacingCallersWin() {
+        // B-4: the same pattern for the status transitions. Both callers read
+        // ASSIGNED and validated the transition; the second UPDATE matches no row.
+        User beneficiary = newUser(UserRole.BENEFICIARY, "guard-b@example.test");
+        HelpRequest request = newHelpRequest(beneficiary.getId(), "FOOD", "HIGH", "ASSIGNED");
+        em.clear();
+        LocalDateTime now = LocalDateTime.now();
+
+        int completed = helpRequestRepository.updateStatusCompleted(request.getId(), "COMPLETED", now, "ASSIGNED");
+        int cancelledAfterwards = helpRequestRepository.updateStatusCancelled(request.getId(), "CANCELLED", now, "ASSIGNED");
+        int wrongExpectation = helpRequestRepository.updateStatusNative(request.getId(), "ASSIGNED", "PENDING");
+        em.clear();
+
+        assertEquals(1, completed);
+        assertEquals(0, cancelledAfterwards, "the row is no longer ASSIGNED, so the second transition is refused");
+        assertEquals(0, wrongExpectation);
+        HelpRequest reloaded = em.find(HelpRequest.class, request.getId());
+        assertEquals("COMPLETED", reloaded.getStatus());
+        assertNull(reloaded.getCancelledAt());
+        assertTrue(reloaded.getCompletedAt() != null);
     }
 }

@@ -62,24 +62,33 @@ public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> 
                            @Param("newStatus") String newStatus,
                            @Param("currentStatus") String currentStatus);
 
+    // Status transitions are guarded by the status the caller validated against
+    // (B-4): if another transaction moved the row first, 0 rows match and the
+    // service answers 409 instead of silently overwriting.
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "UPDATE help_requests SET status = :newStatus WHERE request_id = :id",
+    @Query(value = "UPDATE help_requests SET status = :newStatus WHERE request_id = :id AND status = :expectedStatus",
             nativeQuery = true)
-    int updateStatusNative(@Param("id") Long id, @Param("newStatus") String newStatus);
+    int updateStatusNative(@Param("id") Long id,
+                           @Param("newStatus") String newStatus,
+                           @Param("expectedStatus") String expectedStatus);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "UPDATE help_requests SET status = :newStatus, completed_at = :completedAt WHERE request_id = :id",
+    @Query(value = "UPDATE help_requests SET status = :newStatus, completed_at = :completedAt "
+                 + "WHERE request_id = :id AND status = :expectedStatus",
             nativeQuery = true)
     int updateStatusCompleted(@Param("id") Long id,
                               @Param("newStatus") String newStatus,
-                              @Param("completedAt") java.time.LocalDateTime completedAt);
+                              @Param("completedAt") java.time.LocalDateTime completedAt,
+                              @Param("expectedStatus") String expectedStatus);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "UPDATE help_requests SET status = :newStatus, cancelled_at = :cancelledAt WHERE request_id = :id",
+    @Query(value = "UPDATE help_requests SET status = :newStatus, cancelled_at = :cancelledAt "
+                 + "WHERE request_id = :id AND status = :expectedStatus",
             nativeQuery = true)
     int updateStatusCancelled(@Param("id") Long id,
                               @Param("newStatus") String newStatus,
-                              @Param("cancelledAt") java.time.LocalDateTime cancelledAt);
+                              @Param("cancelledAt") java.time.LocalDateTime cancelledAt,
+                              @Param("expectedStatus") String expectedStatus);
 
     /**
      * Writes only priority_score, so the scheduler's recalculation neither

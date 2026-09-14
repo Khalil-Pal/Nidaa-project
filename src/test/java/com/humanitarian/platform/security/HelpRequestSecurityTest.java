@@ -308,7 +308,7 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isForbidden());
-        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any());
+        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any(), anyString());
     }
 
     @Test
@@ -317,11 +317,11 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
         actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
         volunteerProfile(VOLUNTEER_USER_ID, VOLUNTEER_PROFILE_ID);
         storedRequest(1L, "ASSIGNED", VOLUNTEER_PROFILE_ID);
-        when(helpRequestRepository.updateStatusCompleted(eq(1L), eq("COMPLETED"), any())).thenReturn(1);
+        when(helpRequestRepository.updateStatusCompleted(eq(1L), eq("COMPLETED"), any(), eq("ASSIGNED"))).thenReturn(1);
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isOk());
-        verify(helpRequestRepository).updateStatusCompleted(eq(1L), eq("COMPLETED"), any());
+        verify(helpRequestRepository).updateStatusCompleted(eq(1L), eq("COMPLETED"), any(), eq("ASSIGNED"));
     }
 
     @Test
@@ -332,7 +332,7 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isForbidden());
-        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any());
+        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any(), anyString());
     }
 
     @Test
@@ -340,11 +340,11 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
     void beneficiaryCanCancelOwnRequest() throws Exception {
         actingAs(OWNER_ID, UserRole.BENEFICIARY);
         storedRequest(1L, "PENDING", null);
-        when(helpRequestRepository.updateStatusCancelled(eq(1L), eq("CANCELLED"), any())).thenReturn(1);
+        when(helpRequestRepository.updateStatusCancelled(eq(1L), eq("CANCELLED"), any(), eq("PENDING"))).thenReturn(1);
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "CANCELLED"))
                 .andExpect(status().isOk());
-        verify(helpRequestRepository).updateStatusCancelled(eq(1L), eq("CANCELLED"), any());
+        verify(helpRequestRepository).updateStatusCancelled(eq(1L), eq("CANCELLED"), any(), eq("PENDING"));
     }
 
     @Test
@@ -352,7 +352,7 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
     void filerCanCancelRequestTheyFiled() throws Exception {
         actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
         storedRequest(1L, "PENDING", null).setFiledByUserId(VOLUNTEER_USER_ID);
-        when(helpRequestRepository.updateStatusCancelled(eq(1L), eq("CANCELLED"), any())).thenReturn(1);
+        when(helpRequestRepository.updateStatusCancelled(eq(1L), eq("CANCELLED"), any(), eq("PENDING"))).thenReturn(1);
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "CANCELLED"))
                 .andExpect(status().isOk());
@@ -367,7 +367,7 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isForbidden());
-        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any());
+        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any(), anyString());
     }
 
     @Test
@@ -375,10 +375,38 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
     void adminCanCompleteAnyAssignedRequest() throws Exception {
         actingAs(99L, UserRole.ADMIN);
         storedRequest(1L, "ASSIGNED", OTHER_VOLUNTEER_PROFILE_ID);
-        when(helpRequestRepository.updateStatusCompleted(eq(1L), eq("COMPLETED"), any())).thenReturn(1);
+        when(helpRequestRepository.updateStatusCompleted(eq(1L), eq("COMPLETED"), any(), eq("ASSIGNED"))).thenReturn(1);
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void statusUpdateThatLosesTheRaceIs409() throws Exception {
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        volunteerProfile(VOLUNTEER_USER_ID, VOLUNTEER_PROFILE_ID);
+        storedRequest(1L, "ASSIGNED", VOLUNTEER_PROFILE_ID);
+        // the row was ASSIGNED when read, but the guarded UPDATE matched nothing (B-4)
+        when(helpRequestRepository.updateStatusCompleted(eq(1L), eq("COMPLETED"), any(), eq("ASSIGNED"))).thenReturn(0);
+
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Reload")));
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void repeatingATransitionSomeoneElseAlreadyMadeIs409() throws Exception {
+        actingAs(99L, UserRole.ADMIN);
+        storedRequest(1L, "COMPLETED", VOLUNTEER_PROFILE_ID);
+
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("This request is already COMPLETED."));
+        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any(), anyString());
     }
 
     @Test
@@ -389,6 +417,6 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
 
         mockMvc.perform(put("/api/help-requests/1/status").param("status", "CANCELLED"))
                 .andExpect(status().isForbidden());
-        verify(helpRequestRepository, never()).updateStatusCancelled(anyLong(), anyString(), any());
+        verify(helpRequestRepository, never()).updateStatusCancelled(anyLong(), anyString(), any(), anyString());
     }
 }

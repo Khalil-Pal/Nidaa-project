@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import com.humanitarian.platform.exception.BusinessException;
+import com.humanitarian.platform.exception.ConflictException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.exception.UnauthorizedException;
 import com.humanitarian.platform.util.HelpTypeNormalizer;
@@ -232,7 +233,7 @@ public class HelpRequestService {
         if (updated == 0) {
             providerResourceService.restoreReservation(reservation);
             releaseClaim(assignedVolunteerId, assignedOrganizationId);
-            throw new BusinessException("Request is no longer available or already assigned.");
+            throw new ConflictException("Request is no longer available or already assigned.");
         }
 
         if (assignedVolunteerId != null || assignedOrganizationId != null) {
@@ -383,21 +384,33 @@ public class HelpRequestService {
             throw new UnauthorizedException("You do not have permission to update this request.");
         }
 
+        // Someone else already applied this transition: a conflict of state, not
+        // a bad request, so a client racing another actor sees 409 either way (B-4).
+        if (next.equals(current)) {
+            throw new ConflictException("This request is already " + current + ".");
+        }
+
         // Transition validation — no going backwards or into invalid states
         if (!VALID_TRANSITIONS.getOrDefault(current, Set.of()).contains(next)) {
             throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
         }
 
-        // Use native SQL to update the PostgreSQL ENUM status column — JPA save() cannot cast VARCHAR to ENUM
+        // The UPDATE is guarded by the status validated above, so two callers
+        // racing from the same state cannot both win (B-4).
         LocalDateTime statusChangedAt = LocalDateTime.now();
+        int updated;
         if ("COMPLETED".equals(next)) {
-            helpRequestRepository.updateStatusCompleted(id, next, statusChangedAt);
-            updateAssignmentStatus(id, next, statusChangedAt);
+            updated = helpRequestRepository.updateStatusCompleted(id, next, statusChangedAt, current);
         } else if ("CANCELLED".equals(next)) {
-            helpRequestRepository.updateStatusCancelled(id, next, statusChangedAt);
-            updateAssignmentStatus(id, next, statusChangedAt);
+            updated = helpRequestRepository.updateStatusCancelled(id, next, statusChangedAt, current);
         } else {
-            helpRequestRepository.updateStatusNative(id, next);
+            updated = helpRequestRepository.updateStatusNative(id, next, current);
+        }
+        if (updated == 0) {
+            throw new ConflictException("This request was updated by someone else. Reload and try again.");
+        }
+        if ("COMPLETED".equals(next) || "CANCELLED".equals(next)) {
+            updateAssignmentStatus(id, next, statusChangedAt);
         }
 
         return findOrThrow(id);

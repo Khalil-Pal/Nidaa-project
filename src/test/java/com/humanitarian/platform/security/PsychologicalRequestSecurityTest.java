@@ -144,7 +144,7 @@ class PsychologicalRequestSecurityTest extends SecuritySliceTest {
 
         mockMvc.perform(put("/api/psychological-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isForbidden());
-        verify(psychologicalRequestRepository, never()).updateStatusNative(anyLong(), anyString());
+        verify(psychologicalRequestRepository, never()).updateStatusNative(anyLong(), anyString(), anyString());
     }
 
     @Test
@@ -153,11 +153,11 @@ class PsychologicalRequestSecurityTest extends SecuritySliceTest {
         actingAs(PSYCHOLOGIST_USER_ID, UserRole.PSYCHOLOGIST);
         psychologistProfile(PSYCHOLOGIST_USER_ID, PSYCHOLOGIST_PROFILE_ID);
         storedRequest(1L, "ASSIGNED", PSYCHOLOGIST_PROFILE_ID);
-        when(psychologicalRequestRepository.updateStatusNative(1L, "COMPLETED")).thenReturn(1);
+        when(psychologicalRequestRepository.updateStatusNative(1L, "COMPLETED", "ASSIGNED")).thenReturn(1);
 
         mockMvc.perform(put("/api/psychological-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isOk());
-        verify(psychologicalRequestRepository).updateStatusNative(eq(1L), eq("COMPLETED"));
+        verify(psychologicalRequestRepository).updateStatusNative(eq(1L), eq("COMPLETED"), eq("ASSIGNED"));
     }
 
     @Test
@@ -169,10 +169,10 @@ class PsychologicalRequestSecurityTest extends SecuritySliceTest {
         mockMvc.perform(put("/api/psychological-requests/1/status").param("status", "COMPLETED"))
                 .andExpect(status().isForbidden());
 
-        when(psychologicalRequestRepository.updateStatusNative(1L, "CANCELLED")).thenReturn(1);
+        when(psychologicalRequestRepository.updateStatusNative(1L, "CANCELLED", "ASSIGNED")).thenReturn(1);
         mockMvc.perform(put("/api/psychological-requests/1/status").param("status", "CANCELLED"))
                 .andExpect(status().isOk());
-        verify(psychologicalRequestRepository, never()).updateStatusNative(1L, "COMPLETED");
+        verify(psychologicalRequestRepository, never()).updateStatusNative(1L, "COMPLETED", "ASSIGNED");
     }
 
     // -- input validation (B-2) -----------------------------------------------

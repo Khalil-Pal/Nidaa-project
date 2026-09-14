@@ -41,6 +41,13 @@ Phase 5.
   approval leaves it NULL). Any screen that lets a psychologist record
   specialisations needs the entity changed to a list of the enum first. Found during A-2.
 
+- **`psychological_requests.completed_at` is never written.** Completing a
+  psychological case updates `status` only, so the statistics panel's
+  "completed this week" never counts psychological cases and the column stays
+  NULL. Help requests set `completed_at`/`cancelled_at` on the same transition.
+  Belongs with Phase 5 CS-1 (consultation records), which decides what a closed
+  case records. Found during B-4.
+
 ## Registration
 
 - **The registration page has no verification-code step.** The backend has been

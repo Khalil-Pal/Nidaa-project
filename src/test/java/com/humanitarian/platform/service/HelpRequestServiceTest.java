@@ -4,6 +4,7 @@ import com.humanitarian.platform.dto.ProviderCapacityAssessment;
 import com.humanitarian.platform.dto.ProviderCapacityReservation;
 import com.humanitarian.platform.dto.RankedRequestDTO;
 import com.humanitarian.platform.exception.BusinessException;
+import com.humanitarian.platform.exception.ConflictException;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.Profile;
@@ -184,7 +185,7 @@ class HelpRequestServiceTest {
         when(helpRequestRepository.assignVolunteer(92L, 41L, "ASSIGNED", "PENDING"))
                 .thenReturn(0);
 
-        assertThrows(BusinessException.class, () -> service.assignToMe(92L));
+        assertThrows(ConflictException.class, () -> service.assignToMe(92L));
 
         verify(providerResourceService).restoreReservation(reservation);
         verify(volunteerRepository).release(41L);
@@ -214,7 +215,7 @@ class HelpRequestServiceTest {
         when(helpRequestRepository.assignOrganization(93L, 42L, "ASSIGNED", "PENDING"))
                 .thenReturn(0);
 
-        assertThrows(BusinessException.class, () -> service.assignToMe(93L));
+        assertThrows(ConflictException.class, () -> service.assignToMe(93L));
 
         verify(providerResourceService).restoreReservation(reservation);
         verify(organizationRepository).release(42L);
@@ -260,6 +261,8 @@ class HelpRequestServiceTest {
                 .thenReturn(1);
         when(assignmentRepository.countByVolunteerIdAndStatus(41L, "ASSIGNED"))
                 .thenReturn(0L);
+        when(helpRequestRepository.updateStatusCancelled(eq(96L), eq("CANCELLED"), any(), eq("ASSIGNED")))
+                .thenReturn(1);
 
         HelpRequest result = service.updateStatus(96L, "CANCELLED");
 

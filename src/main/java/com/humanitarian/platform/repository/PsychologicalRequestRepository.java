@@ -48,8 +48,11 @@ public interface PsychologicalRequestRepository extends JpaRepository<Psychologi
                            @Param("newStatus") String newStatus,
                            @Param("currentStatus") String currentStatus);
 
+    // Guarded by the status the caller validated against (B-4); 0 rows means someone else moved it first
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "UPDATE psychological_requests SET status = :newStatus WHERE request_id = :id",
+    @Query(value = "UPDATE psychological_requests SET status = :newStatus WHERE request_id = :id AND status = :expectedStatus",
             nativeQuery = true)
-    int updateStatusNative(@Param("id") Long id, @Param("newStatus") String newStatus);
+    int updateStatusNative(@Param("id") Long id,
+                           @Param("newStatus") String newStatus,
+                           @Param("expectedStatus") String expectedStatus);
 }

@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import com.humanitarian.platform.exception.BusinessException;
+import com.humanitarian.platform.exception.ConflictException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.data.domain.Page;
@@ -106,7 +107,7 @@ public class PsychologicalRequestService {
 
         int updated = repo.assignPsychologist(requestId, psychologistId, "ASSIGNED", "PENDING");
         if (updated == 0) {
-            throw new BusinessException("Request is no longer available or already assigned.");
+            throw new ConflictException("Request is no longer available or already assigned.");
         }
 
         Assignment assignment = Assignment.builder()
@@ -151,12 +152,21 @@ public class PsychologicalRequestService {
             throw new UnauthorizedException("You do not have permission to update this request.");
         }
 
+        // Someone else already applied this transition: a conflict of state, not
+        // a bad request, so a client racing another actor sees 409 either way (B-4).
+        if (next.equals(current)) {
+            throw new ConflictException("This request is already " + current + ".");
+        }
+
         // Transition validation
         if (!VALID_TRANSITIONS.getOrDefault(current, Set.of()).contains(next)) {
             throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
         }
 
-        repo.updateStatusNative(id, next);
+        // Guarded by the status validated above; a lost race is 409, not a silent overwrite (B-4)
+        if (repo.updateStatusNative(id, next, current) == 0) {
+            throw new ConflictException("This request was updated by someone else. Reload and try again.");
+        }
         if ("COMPLETED".equals(next) || "CANCELLED".equals(next)) {
             updateAssignmentStatus(id, next, LocalDateTime.now());
         }
