@@ -23,12 +23,44 @@ class HelpRequestPersistenceTest extends PersistenceTestSupport {
 
     @Test
     void priorityScoreIsStoredAsTheApplicationComputedIt() {
-        // V15 removed the trigger that used to overwrite this on insert.
+        // V15 removed the trigger that used to overwrite this on insert: the
+        // persisted value must be exactly what the documented model computes.
+        var priorityScoreService = new com.humanitarian.platform.service.PriorityScoreService();
         User beneficiary = newUser(UserRole.BENEFICIARY, "score@example.test");
-        HelpRequest saved = newHelpRequest(beneficiary.getId(), "FOOD", "HIGH", "PENDING");   // fixture stores 50
+        HelpRequest request = HelpRequest.builder()
+                .beneficiaryId(beneficiary.getId())
+                .title("Score check").description("Score check")
+                .helpType("MEDICAL").urgencyLevel("CRITICAL")
+                .peopleCount(6).hasChildren(true).hasDisabled(true)
+                .status("PENDING")
+                .build();
+        request.setPriorityScore(priorityScoreService.calculate(request));
+        HelpRequest saved = em.persistAndFlush(request);
         em.clear();
 
-        assertEquals(50, em.find(HelpRequest.class, saved.getId()).getPriorityScore());
+        HelpRequest fromDb = em.find(HelpRequest.class, saved.getId());
+        assertEquals(priorityScoreService.calculate(fromDb), fromDb.getPriorityScore());
+        assertEquals(40 + 10 + 15 + 12, fromDb.getPriorityScore(), "CRITICAL + children + disabled + 6 people, fresh");
+    }
+
+    @Test
+    void oldEnoughRequestStillSavesWithinTheCheckRange() {
+        // 400 hours of waiting would once have pushed this over 100 and failed the CHECK.
+        var priorityScoreService = new com.humanitarian.platform.service.PriorityScoreService();
+        User beneficiary = newUser(UserRole.BENEFICIARY, "ancient@example.test");
+        HelpRequest request = HelpRequest.builder()
+                .beneficiaryId(beneficiary.getId())
+                .title("Ancient").description("Ancient")
+                .helpType("FOOD").urgencyLevel("CRITICAL")
+                .peopleCount(12).hasChildren(true).hasElderly(true).hasDisabled(true)
+                .status("PENDING")
+                .createdAt(java.time.LocalDateTime.now().minusHours(400))
+                .build();
+        request.setPriorityScore(priorityScoreService.calculate(request));
+        HelpRequest saved = em.persistAndFlush(request);
+        em.clear();
+
+        assertEquals(100, em.find(HelpRequest.class, saved.getId()).getPriorityScore());
     }
 
     @Test
