@@ -480,6 +480,31 @@ The current tests cover:
 - Ranked administrator dashboard contracts.
 - Community role enforcement and direct-message isolation.
 - Mandatory moderation reasons, soft deletion, and audit snapshots.
+- HTTP-layer authorization: 401 for no token, 403 for the wrong role, 404 for
+  records the caller may not see, per-role status transitions.
+- Persistence against a real PostgreSQL schema: every enum label the services
+  emit, the `users` and `help_requests` constraints, soft deletion with dependent
+  rows, and the lock-free assignment update.
+
+### Persistence tests
+
+The tests in `src/test/java/.../persistence` run against a database built only
+from the migrations, so they also prove a fresh setup works. Create it once:
+
+```bash
+psql -U postgres -d postgres -c "CREATE DATABASE nidaa_test;"
+for f in database/migrations/V*.sql; do psql -U postgres -d nidaa_test -v ON_ERROR_STOP=1 -q -f "$f"; done
+```
+
+(apply the files in version order; the shell glob sorts `V10` before `V2`, so on
+a fresh database list them explicitly or use the order in
+`database/migrations/README.md`). Each test runs in a rolled-back transaction, so
+the database stays empty. The connection uses `DB_USERNAME` / `DB_PASSWORD` (or
+the `.env` file) and `NIDAA_TEST_DB_URL` when the database is not
+`localhost:5432/nidaa_test`. If the database is unreachable these tests are
+skipped with a reason rather than failed.
+
+The shared frontend module has its own Node tests: `node src/test/js/nidaa-common.test.js`.
 
 ## Current Constraints
 
