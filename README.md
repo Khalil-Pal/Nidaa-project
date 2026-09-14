@@ -29,6 +29,8 @@ Repository: [github.com/Khalil-Pal/Nidaa-project](https://github.com/Khalil-Pal/
 
 - [Backend guide](docs/BACKEND_GUIDE.md): startup, configuration, security, database model, APIs, request lifecycles, matching, migrations, and tests.
 - [Frontend guide](docs/FRONTEND_GUIDE.md): pages, role navigation, browser state, API calls, shared layout, local-only features, debugging, and test checklists.
+- [Security](docs/SECURITY.md): assets, threat model, the controls and where each is enforced, the audit findings with their fixes, and the limitations kept by choice.
+- [Future work](FUTURE_WORK.md): follow-ups identified during remediation and deliberately deferred.
 
 ## Core Capabilities
 
