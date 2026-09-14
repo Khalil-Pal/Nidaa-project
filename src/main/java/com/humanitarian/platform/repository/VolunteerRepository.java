@@ -24,7 +24,7 @@ public interface VolunteerRepository extends JpaRepository<Volunteer, Long> {
 
     List<Volunteer> findByOrganizationId(Long organizationId);
 
-    @Query("SELECT v FROM Volunteer v ORDER BY v.rating DESC")
+    @Query("SELECT v FROM Volunteer v ORDER BY v.rating DESC NULLS LAST")
     List<Volunteer> findTopRatedVolunteers();
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

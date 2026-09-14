@@ -51,15 +51,30 @@ class UserPersistenceTest extends PersistenceTestSupport {
     }
 
     @Test
-    void volunteerEntityDefaultRatingViolatesTheCheckConstraint() {
-        // Documents the D-3 defect: the entity defaults rating to 0.0 while the
-        // database requires 1..5. D-3 changes the default to null and the CHECK
-        // to allow NULL; this test must be updated with it.
+    void unratedVolunteerStoresNullNotZero() {
+        // D-3: the entity default is null and the CHECK permits NULL; a zero is
+        // still refused because it is not a rating.
         User user = newUser(UserRole.VOLUNTEER, "vol-rating@example.test");
-        Volunteer withEntityDefault = Volunteer.builder().user(user).isAvailable(true).build();
+        Volunteer unrated = em.persistAndFlush(Volunteer.builder().user(user).isAvailable(true).build());
+        em.clear();
+        assertNull(em.find(Volunteer.class, unrated.getId()).getRating());
 
-        assertEquals(0.0, withEntityDefault.getRating());
-        assertThrows(PersistenceException.class, () -> em.persistAndFlush(withEntityDefault));
+        User other = newUser(UserRole.VOLUNTEER, "vol-zero@example.test");
+        Volunteer zero = Volunteer.builder().user(other).rating(0.0).isAvailable(true).build();
+        assertThrows(PersistenceException.class, () -> em.persistAndFlush(zero));
+    }
+
+    @Test
+    void approvalShapedRowsStoreNoRating() {
+        // the former column default of 5.0 made every approved provider look top-rated
+        User psy = newUser(UserRole.PSYCHOLOGIST, "approve-psy-rating@example.test");
+        em.getEntityManager().createNativeQuery(
+                        "INSERT INTO psychologists (user_id, is_on_duty) VALUES (:id, true)")
+                .setParameter("id", psy.getId()).executeUpdate();
+        Object rating = em.getEntityManager()
+                .createNativeQuery("SELECT rating FROM psychologists WHERE user_id = :id")
+                .setParameter("id", psy.getId()).getSingleResult();
+        assertNull(rating);
     }
 
     @Test

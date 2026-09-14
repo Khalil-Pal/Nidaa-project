@@ -39,9 +39,9 @@ public class Psychologist {
     @Builder.Default
     private Integer consultationCount = 0;
 
+    // NULL until the first rating is recorded (AGG-1); the CHECK is 1..5 or NULL (V18).
     @Column(name = "rating", columnDefinition = "numeric")
-    @Builder.Default
-    private Double rating = 0.0;
+    private Double rating;
 
     @Column(name = "is_verified")
     @Builder.Default

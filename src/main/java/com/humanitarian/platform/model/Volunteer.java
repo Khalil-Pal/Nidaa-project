@@ -35,9 +35,9 @@ public class Volunteer {
     @Builder.Default
     private Integer totalCompletedRequests = 0;
 
+    // NULL until the first rating is recorded (AGG-1); the CHECK is 1..5 or NULL (V18).
     @Column(name = "rating", columnDefinition = "numeric")
-    @Builder.Default
-    private Double rating = 0.0;
+    private Double rating;
 
     @CreationTimestamp
     @Column(name = "joined_at", updatable = false)

@@ -22,6 +22,7 @@ psql -U postgres -d Web_DB -f database/migrations/V14__crisis_review_flag.sql
 psql -U postgres -d Web_DB -f database/migrations/V15__drop_priority_triggers.sql
 psql -U postgres -d Web_DB -f database/migrations/V16__provider_profile_optional_columns.sql
 psql -U postgres -d Web_DB -f database/migrations/V17__users_role_enum.sql
+psql -U postgres -d Web_DB -f database/migrations/V18__nullable_provider_ratings.sql
 ```
 
 ## Versions
@@ -73,6 +74,10 @@ psql -U postgres -d Web_DB -f database/migrations/V17__users_role_enum.sql
 - `V17` converts `users.role` from `character varying` to the `user_role` enum it
   was always meant to be; the application's native-query workarounds for the
   mismatch were deleted with it. Idempotent; safe to rerun.
+- `V18` lets `volunteers.rating` and `psychologists.rating` be NULL ("not rated
+  yet"), drops the misleading default of 5.0, and resets the default-only values
+  already stored. Real ratings arrive with Phase 5 (AGG-1). Idempotent; safe to
+  rerun.
 
 V1 through V8 were applied in order to a genuinely empty verification database.
 Its normalized schema dump matched the migrated development database with zero
