@@ -152,6 +152,7 @@ public class SecurityConfig {
                         .hasAnyRole("BENEFICIARY", "PSYCHOLOGIST", "ADMIN")
                         .requestMatchers("/api/provider-resources/**", "/api/provider-availability/**")
                         .hasAnyRole("VOLUNTEER", "ORGANIZATION")
+                        .requestMatchers("/api/psychologists/**").hasRole("PSYCHOLOGIST")
                         // Everything else needs a valid JWT; @PreAuthorize narrows further
                         .anyRequest().authenticated()
                 )

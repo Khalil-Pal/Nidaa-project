@@ -249,6 +249,26 @@
             </div>
         </div>
 
+        <!-- Psychologist duty (UX-2) -->
+        <div class="settings-card" id="dutyCard" hidden>
+            <div class="card-title"><i class="fa fa-user-doctor" style="color:#7c3aed"></i> Duty Status</div>
+            <div class="card-body">
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="t-label">On duty for crisis cases</div>
+                        <div class="t-desc">While on duty, crisis cases can be routed to you automatically. Going off duty does not affect cases already assigned to you.</div>
+                    </div>
+                    <label class="toggle" title="On duty for crisis cases">
+                        <input type="checkbox" id="dutyToggle" onchange="saveDuty(this.checked)"/>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="availability-feedback">
+                    <div class="availability-status" id="dutyStatus" role="status" aria-live="polite"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Change Password -->
         <div class="settings-card">
             <div class="card-title"><i class="fa fa-lock" style="color:var(--green)"></i> Change Password</div>
@@ -830,6 +850,62 @@
 
     initializeProviderAvailability();
     initializeProviderServices();
+
+    // ── Psychologist duty (UX-2) ───────────────────────────────────────────
+    function renderDuty(data) {
+        const onDuty = Boolean(data?.onDuty);
+        const verified = Boolean(data?.verified);
+        const openCases = Number(data?.openCases || 0);
+        const toggle = document.getElementById('dutyToggle');
+        toggle.checked = onDuty;
+        toggle.disabled = false;
+        let message = onDuty ? 'On duty: crisis cases can be routed to you.' : 'Off duty: no new crisis cases will be routed to you.';
+        if (onDuty && !verified) {
+            message = 'On duty, but your professional verification is still pending: crisis cases are not routed to you until an administrator verifies you.';
+        }
+        if (openCases > 0) {
+            message += ` ${openCases} open case${openCases === 1 ? '' : 's'} continue${openCases === 1 ? 's' : ''}.`;
+        }
+        const status = document.getElementById('dutyStatus');
+        status.textContent = message;
+        status.className = `availability-status ${onDuty && verified ? 'success' : ''}`.trim();
+    }
+
+    async function initializeDuty() {
+        if (userRole !== 'psychologist') return;
+        document.getElementById('dutyCard').hidden = false;
+        const toggle = document.getElementById('dutyToggle');
+        toggle.disabled = true;
+        document.getElementById('dutyStatus').textContent = 'Loading duty status...';
+        try {
+            const response = await apiFetch(`${API}/psychologists/me/duty`, { headers: authHeader() });
+            renderDuty(await readApiData(response));
+        } catch (error) {
+            const status = document.getElementById('dutyStatus');
+            status.textContent = error.message || 'Could not load duty status.';
+            status.className = 'availability-status error';
+        }
+    }
+
+    async function saveDuty(onDuty) {
+        const toggle = document.getElementById('dutyToggle');
+        toggle.disabled = true;
+        try {
+            const response = await apiFetch(`${API}/psychologists/me/duty`, {
+                method: 'PUT',
+                headers: authHeader(),
+                body: JSON.stringify({ onDuty })
+            });
+            renderDuty(await readApiData(response));
+        } catch (error) {
+            const status = document.getElementById('dutyStatus');
+            status.textContent = error.message || 'Could not update duty status.';
+            status.className = 'availability-status error';
+            initializeDuty();
+        }
+    }
+
+    initializeDuty();
 
     async function saveProfile() {
         const newName = document.getElementById('fullName').value.trim();

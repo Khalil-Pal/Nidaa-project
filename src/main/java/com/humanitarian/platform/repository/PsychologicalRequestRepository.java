@@ -24,6 +24,7 @@ public interface PsychologicalRequestRepository extends JpaRepository<Psychologi
     List<PsychologicalRequest> findByCategory(String category);
     List<PsychologicalRequest> findByPreferredFormat(String format);
     List<PsychologicalRequest> findByIsCrisisTrue();
+    long countByAssignedPsychologistIdAndStatus(Long psychologistId, String status);
 
     // -- statistics: aggregate in the database, never load the table (Q-2) --
     long countByCreatedAtAfter(LocalDateTime since);
