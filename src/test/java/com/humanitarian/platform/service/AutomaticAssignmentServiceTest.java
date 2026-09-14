@@ -2,6 +2,7 @@ package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.ProviderCapacityAssessment;
 import com.humanitarian.platform.dto.ProviderCapacityReservation;
+import com.humanitarian.platform.dto.PsychologistCaseLoad;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.Organization;
@@ -309,10 +310,9 @@ class AutomaticAssignmentServiceTest {
 
         when(psychologistRepository.findByIsVerifiedTrueAndIsOnDutyTrue())
                 .thenReturn(List.of(busy, available));
-        when(psychologicalRequestRepository.countByAssignedPsychologistIdAndStatus(40L, "ASSIGNED"))
-                .thenReturn(3L);
-        when(psychologicalRequestRepository.countByAssignedPsychologistIdAndStatus(41L, "ASSIGNED"))
-                .thenReturn(0L);
+        // 41 has no open cases so it has no row in the grouped result (Q-1)
+        when(psychologicalRequestRepository.caseLoadByPsychologist("ASSIGNED"))
+                .thenReturn(List.of(new PsychologistCaseLoad(40L, 3L)));
         when(psychologicalRequestRepository.assignPsychologist(
                 30L, 41L, "ASSIGNED", "PENDING")).thenReturn(1);
 

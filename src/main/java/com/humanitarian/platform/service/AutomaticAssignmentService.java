@@ -2,6 +2,7 @@ package com.humanitarian.platform.service;
 
 import com.humanitarian.platform.dto.ProviderCapacityAssessment;
 import com.humanitarian.platform.dto.ProviderCapacityReservation;
+import com.humanitarian.platform.dto.PsychologistCaseLoad;
 import com.humanitarian.platform.model.Assignment;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.Organization;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class AutomaticAssignmentService {
@@ -165,12 +167,14 @@ public class AutomaticAssignmentService {
             return false;
         }
 
+        // One grouped query before sorting; a query inside the comparator ran on every comparison (Q-1)
+        Map<Long, Long> openCases = psychologicalRequestRepository.caseLoadByPsychologist("ASSIGNED").stream()
+                .collect(Collectors.toMap(PsychologistCaseLoad::psychologistId, PsychologistCaseLoad::openCases));
+
         List<Psychologist> onDuty = psychologistRepository.findByIsVerifiedTrueAndIsOnDutyTrue()
                 .stream()
                 .sorted(Comparator
-                        .comparingLong((Psychologist psychologist) ->
-                                psychologicalRequestRepository.countByAssignedPsychologistIdAndStatus(
-                                        psychologist.getId(), "ASSIGNED"))
+                        .comparingLong((Psychologist psychologist) -> openCases.getOrDefault(psychologist.getId(), 0L))
                         .thenComparing(
                                 Psychologist::getRating,
                                 Comparator.nullsLast(Comparator.reverseOrder()))

@@ -1,5 +1,6 @@
 package com.humanitarian.platform.repository;
 
+import com.humanitarian.platform.dto.PsychologistCaseLoad;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -19,7 +20,13 @@ public interface PsychologicalRequestRepository extends JpaRepository<Psychologi
     List<PsychologicalRequest> findByCategory(String category);
     List<PsychologicalRequest> findByPreferredFormat(String format);
     List<PsychologicalRequest> findByIsCrisisTrue();
-    long countByAssignedPsychologistIdAndStatus(Long psychologistId, String status);
+
+    /** Open cases per psychologist in one grouped query; psychologists with none are absent (Q-1). */
+    @Query("SELECT new com.humanitarian.platform.dto.PsychologistCaseLoad(r.assignedPsychologistId, COUNT(r)) "
+         + "FROM PsychologicalRequest r "
+         + "WHERE r.status = :status AND r.assignedPsychologistId IS NOT NULL "
+         + "GROUP BY r.assignedPsychologistId")
+    List<PsychologistCaseLoad> caseLoadByPsychologist(@Param("status") String status);
 
     // Native SQL — assigns using psychologist_id (FK to psychologists table)
     @Modifying(clearAutomatically = true, flushAutomatically = true)
