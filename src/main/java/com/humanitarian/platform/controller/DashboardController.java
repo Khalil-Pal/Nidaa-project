@@ -51,8 +51,8 @@ public class DashboardController {
 
         long completedRequests = helpRequestRepository.countByStatus("COMPLETED");
         long totalRequests     = helpRequestRepository.count();
-        long volunteers        = userRepository.findByRole(UserRole.VOLUNTEER).size();
-        long psychologists     = userRepository.findByRole(UserRole.PSYCHOLOGIST).size();
+        long volunteers        = userRepository.countByRoleAndIsActiveTrue(UserRole.VOLUNTEER);
+        long psychologists     = userRepository.countByRoleAndIsActiveTrue(UserRole.PSYCHOLOGIST);
 
         // Completion rate as percentage
         long completionRate = totalRequests > 0

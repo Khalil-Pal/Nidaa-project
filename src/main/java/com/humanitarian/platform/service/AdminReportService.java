@@ -12,15 +12,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Read models for the administrator screens (A-2): the combined request queue
  * (help and psychological requests joined to their people) and the statistics
  * panel. Moved out of AdminController so the web layer carries no SQL.
  *
- * The statistics still aggregate in Java over full table loads; Q-2 replaces
- * them with GROUP BY queries.
  */
 @Service
 public class AdminReportService {
@@ -119,49 +116,47 @@ public class AdminReportService {
         return result;
     }
 
+    /**
+     * Statistics panel. Every number is a COUNT or GROUP BY in the database
+     * (Q-2); nothing is loaded into memory to be counted. Request totals
+     * combine help and psychological requests; user totals exclude anonymised
+     * accounts, which are placeholders for aid history rather than people.
+     */
     @Transactional(readOnly = true)
     public Map<String, Object> stats() {
-        var helpRequests  = helpRequestRepository.findAll();
-        var psychRequests = psychologicalRequestRepository.findAll();
-        var allUsers      = userRepository.findAll();
-        var weekAgo       = LocalDateTime.now().minusDays(7);
+        LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
 
         Map<String, Long> byStatus = new LinkedHashMap<>();
-        helpRequests.forEach(r -> byStatus.merge(r.getStatus() != null ? r.getStatus() : "UNKNOWN", 1L, Long::sum));
-        psychRequests.forEach(r -> byStatus.merge(r.getStatus() != null ? r.getStatus() : "UNKNOWN", 1L, Long::sum));
+        helpRequestRepository.countGroupedByStatus().forEach(c -> byStatus.merge(nvl(c.key(), "UNKNOWN"), c.count(), Long::sum));
+        psychologicalRequestRepository.countGroupedByStatus().forEach(c -> byStatus.merge(nvl(c.key(), "UNKNOWN"), c.count(), Long::sum));
+
+        long helpCount  = helpRequestRepository.count();
+        long psychCount = psychologicalRequestRepository.count();
 
         Map<String, Long> byType = new LinkedHashMap<>();
-        helpRequests.forEach(r -> byType.merge(r.getHelpType() != null ? r.getHelpType() : "OTHER", 1L, Long::sum));
-        byType.merge("PSYCHOLOGICAL", (long) psychRequests.size(), Long::sum);
+        helpRequestRepository.countGroupedByHelpType().forEach(c -> byType.merge(nvl(c.key(), "OTHER"), c.count(), Long::sum));
+        byType.merge("PSYCHOLOGICAL", psychCount, Long::sum);
 
-        Map<String, Long> byRegion = helpRequests.stream()
-                .filter(r -> r.getAddress() != null && !r.getAddress().isBlank())
-                .collect(Collectors.groupingBy(r -> r.getAddress().trim(), Collectors.counting()));
+        Map<String, Long> byRegion = new LinkedHashMap<>();
+        helpRequestRepository.countGroupedByAddress().forEach(c -> byRegion.put(c.key(), c.count()));
 
-        long thisWeek = helpRequests.stream()
-                .filter(r -> r.getCreatedAt() != null && r.getCreatedAt().isAfter(weekAgo)).count()
-                + psychRequests.stream()
-                .filter(r -> r.getCreatedAt() != null && r.getCreatedAt().isAfter(weekAgo)).count();
+        long thisWeek = helpRequestRepository.countByCreatedAtAfter(weekAgo)
+                + psychologicalRequestRepository.countByCreatedAtAfter(weekAgo);
+        long completedThisWeek = helpRequestRepository.countByStatusAndCompletedAtAfter("COMPLETED", weekAgo)
+                + psychologicalRequestRepository.countByStatusAndCompletedAtAfter("COMPLETED", weekAgo);
 
-        long completedThisWeek = helpRequests.stream()
-                .filter(r -> "COMPLETED".equals(r.getStatus()) && r.getCompletedAt() != null
-                        && r.getCompletedAt().isAfter(weekAgo)).count()
-                + psychRequests.stream()
-                .filter(r -> "COMPLETED".equals(r.getStatus()) && r.getCompletedAt() != null
-                        && r.getCompletedAt().isAfter(weekAgo)).count();
-
-        Map<String, Long> usersByRole = allUsers.stream().filter(u -> Boolean.TRUE.equals(u.getIsActive()))
-                .collect(Collectors.groupingBy(u -> u.getRole() != null ? u.getRole().name() : "UNKNOWN", Collectors.counting()));
+        Map<String, Long> usersByRole = new LinkedHashMap<>();
+        userRepository.countActiveGroupedByRole().forEach(c -> usersByRole.put(c.role() != null ? c.role().name() : "UNKNOWN", c.count()));
 
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalRequests",     helpRequests.size() + psychRequests.size());
+        stats.put("totalRequests",     helpCount + psychCount);
         stats.put("byStatus",          byStatus);
         stats.put("byType",            byType);
         stats.put("byRegion",          byRegion);
         stats.put("thisWeek",          thisWeek);
         stats.put("completedThisWeek", completedThisWeek);
-        stats.put("totalUsers",        allUsers.size());
-        stats.put("activeUsers",       allUsers.stream().filter(u -> Boolean.TRUE.equals(u.getIsActive())).count());
+        stats.put("totalUsers",        userRepository.countByDeletedAtIsNull());
+        stats.put("activeUsers",       userRepository.countByIsActiveTrue());
         stats.put("usersByRole",       usersByRole);
         return stats;
     }

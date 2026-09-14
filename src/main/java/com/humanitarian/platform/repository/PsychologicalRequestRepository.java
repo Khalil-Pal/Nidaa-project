@@ -1,5 +1,6 @@
 package com.humanitarian.platform.repository;
 
+import com.humanitarian.platform.dto.KeyCount;
 import com.humanitarian.platform.dto.PsychologistCaseLoad;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -20,6 +22,13 @@ public interface PsychologicalRequestRepository extends JpaRepository<Psychologi
     List<PsychologicalRequest> findByCategory(String category);
     List<PsychologicalRequest> findByPreferredFormat(String format);
     List<PsychologicalRequest> findByIsCrisisTrue();
+
+    // -- statistics: aggregate in the database, never load the table (Q-2) --
+    long countByCreatedAtAfter(LocalDateTime since);
+    long countByStatusAndCompletedAtAfter(String status, LocalDateTime since);
+
+    @Query("SELECT new com.humanitarian.platform.dto.KeyCount(r.status, COUNT(r)) FROM PsychologicalRequest r GROUP BY r.status")
+    List<KeyCount> countGroupedByStatus();
 
     /** Open cases per psychologist in one grouped query; psychologists with none are absent (Q-1). */
     @Query("SELECT new com.humanitarian.platform.dto.PsychologistCaseLoad(r.assignedPsychologistId, COUNT(r)) "

@@ -1,5 +1,6 @@
 package com.humanitarian.platform.repository;
 
+import com.humanitarian.platform.dto.KeyCount;
 import com.humanitarian.platform.model.HelpRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -28,6 +30,20 @@ public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> 
     List<HelpRequest> findByAssignedVolunteerId(Long volunteerId);
     List<HelpRequest> findByAssignedOrganizationId(Long organizationId);
     long countByStatus(String status);
+
+    // -- statistics: aggregate in the database, never load the table (Q-2) --
+    long countByCreatedAtAfter(LocalDateTime since);
+    long countByStatusAndCompletedAtAfter(String status, LocalDateTime since);
+
+    @Query("SELECT new com.humanitarian.platform.dto.KeyCount(r.status, COUNT(r)) FROM HelpRequest r GROUP BY r.status")
+    List<KeyCount> countGroupedByStatus();
+
+    @Query("SELECT new com.humanitarian.platform.dto.KeyCount(r.helpType, COUNT(r)) FROM HelpRequest r GROUP BY r.helpType")
+    List<KeyCount> countGroupedByHelpType();
+
+    @Query("SELECT new com.humanitarian.platform.dto.KeyCount(TRIM(r.address), COUNT(r)) FROM HelpRequest r "
+         + "WHERE r.address IS NOT NULL AND TRIM(r.address) <> '' GROUP BY TRIM(r.address)")
+    List<KeyCount> countGroupedByAddress();
 
     // Native SQL — passes status as a bound parameter so stringtype=unspecified
     // handles the PostgreSQL enum cast at the driver level.

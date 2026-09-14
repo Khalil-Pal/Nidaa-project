@@ -1,5 +1,6 @@
 package com.humanitarian.platform.repository;
 
+import com.humanitarian.platform.dto.RoleCount;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,6 +20,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(@Param("email") String email);
     boolean existsByEmail(String email);
     List<User> findByRole(UserRole role);
+
+    // -- statistics: counts in the database (Q-2). Anonymised accounts (D-2) are not people any more. --
+    long countByDeletedAtIsNull();
+    long countByIsActiveTrue();
+    long countByRoleAndIsActiveTrue(UserRole role);
+
+    @Query("SELECT new com.humanitarian.platform.dto.RoleCount(u.role, COUNT(u)) FROM User u WHERE u.isActive = true GROUP BY u.role")
+    List<RoleCount> countActiveGroupedByRole();
     List<User> findByIsActiveTrue();
     List<User> findByIsActiveFalseAndDeletedAtIsNull();  // for pending approvals
     List<User> findByIsVerifiedFalse();
