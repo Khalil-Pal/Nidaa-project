@@ -246,7 +246,8 @@ public class AuthService {
         failedAttempts.remove(lockoutKey);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        userRepository.updateLastLogin(user.getId(), LocalDateTime.now()); // native SQL
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
 
         logger.info("Login successful: {}", email);
         String accessToken  = jwtUtils.generateToken(user.getEmail());

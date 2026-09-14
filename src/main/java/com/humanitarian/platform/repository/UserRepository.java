@@ -27,30 +27,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :name, '%'))")
     List<User> searchByName(@Param("name") String name);
 
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE users SET is_active = true, is_verified = true WHERE user_id = :userId",
-            nativeQuery = true)
-    void approveUser(@Param("userId") Long userId);
-
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE users SET is_locked = :locked WHERE user_id = :userId",
-            nativeQuery = true)
-    void setLocked(@Param("userId") Long userId, @Param("locked") boolean locked);
-
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE users SET is_active = :active WHERE user_id = :userId",
-            nativeQuery = true)
-    void setActive(@Param("userId") Long userId, @Param("active") boolean active);
-
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE users SET last_login = :lastLogin WHERE user_id = :userId",
-            nativeQuery = true)
-    void updateLastLogin(@Param("userId") Long userId, @Param("lastLogin") java.time.LocalDateTime lastLogin);
-
     /**
      * Anonymises an account in place (D-2). Aid history keeps its foreign keys;
      * the person becomes unidentifiable and can never log in again. The
@@ -65,16 +41,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
             + "full_name = 'Deleted user', phone = NULL "
             + "WHERE user_id = :id AND deleted_at IS NULL", nativeQuery = true)
     int softDelete(@Param("id") Long id, @Param("deletedAt") java.time.LocalDateTime deletedAt);
-
-    /**
-     * Replaces the password and, in the same statement, invalidates every
-     * access token issued before {@code changedAt} (see JwtAuthenticationFilter).
-     */
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE users SET password_hash = :hash, tokens_valid_from = :changedAt "
-            + "WHERE user_id = :userId", nativeQuery = true)
-    void updatePassword(@Param("userId") Long userId,
-                        @Param("hash") String hash,
-                        @Param("changedAt") java.time.LocalDateTime changedAt);
 }

@@ -127,8 +127,9 @@ public class PasswordChangeService {
 
         // Apply the new password and end every existing session (S-7). The
         // caller's own access token is included: the frontend must log in again.
-        userRepository.updatePassword(user.getId(), passwordEncoder.encode(newPassword),
-                LocalDateTime.now()); // native SQL
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setTokensValidFrom(LocalDateTime.now());
+        userRepository.save(user);
         refreshTokenRepository.deleteByEmail(user.getEmail());
 
         // Remove the used code

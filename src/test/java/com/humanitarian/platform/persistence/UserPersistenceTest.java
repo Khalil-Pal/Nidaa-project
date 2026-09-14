@@ -115,6 +115,36 @@ class UserPersistenceTest extends PersistenceTestSupport {
     }
 
     @Test
+    void roleColumnIsTheEnumAndJpaWritesThroughIt() {
+        // D-6: users.role is user_role, not varchar; the old native-SQL workarounds
+        // (approveUser, setActive, setLocked, updateLastLogin, updatePassword) are gone,
+        // so every state change must round-trip through a plain JPA save.
+        Object udt = em.getEntityManager().createNativeQuery(
+                "SELECT udt_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'role'")
+                .getSingleResult();
+        assertEquals("user_role", udt);
+
+        User user = newUser(UserRole.VOLUNTEER, "role-roundtrip@example.test");
+        user.setIsActive(false);
+        user.setIsLocked(true);
+        user.setLastLogin(LocalDateTime.now().minusDays(1));
+        user.setPasswordHash("$2a$10$replaced");
+        user.setTokensValidFrom(LocalDateTime.now());
+        em.persistAndFlush(user);
+        em.clear();
+
+        User reloaded = em.find(User.class, user.getId());
+        assertEquals(UserRole.VOLUNTEER, reloaded.getRole());
+        assertFalse(reloaded.getIsActive());
+        assertTrue(reloaded.getIsLocked());
+        assertNotNull(reloaded.getLastLogin());
+        assertEquals("$2a$10$replaced", reloaded.getPasswordHash());
+        assertNotNull(reloaded.getTokensValidFrom());
+        assertEquals(1, userRepository.findByRole(UserRole.VOLUNTEER).stream()
+                .filter(u -> u.getId().equals(user.getId())).count(), "derived query binds the enum");
+    }
+
+    @Test
     void approvalShapedProviderRowsPersist() {
         // AdminController.approveUser inserts exactly these columns. Before V16
         // psychologists.specialization and organizations.registration_number were

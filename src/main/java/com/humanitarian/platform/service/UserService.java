@@ -170,10 +170,8 @@ public class UserService {
     @Transactional
     public User toggleUserActive(Long userId) {
         User user = getUserById(userId);
-        boolean newActive = !user.getIsActive();
-        userRepository.setActive(userId, newActive); // native SQL — avoids ENUM cast on role field
-        user.setIsActive(newActive);
-        return user;
+        user.setIsActive(!user.getIsActive());
+        return userRepository.save(user);
     }
 
     // Search users by name

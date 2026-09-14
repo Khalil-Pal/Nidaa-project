@@ -144,8 +144,9 @@ public class PasswordResetService {
         // before now are rejected by the JWT filter, refresh tokens are deleted.
         // A password reset is the canonical "my account was compromised" step,
         // so leaving an attacker's tokens alive would defeat its purpose.
-        userRepository.updatePassword(user.getId(), passwordEncoder.encode(newPassword),
-                LocalDateTime.now()); // native SQL
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setTokensValidFrom(LocalDateTime.now());
+        userRepository.save(user);
         refreshTokenRepository.deleteByEmail(normalizedEmail);
 
         // Remove the used token

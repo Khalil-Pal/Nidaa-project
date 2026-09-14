@@ -301,7 +301,7 @@ public class HelpRequestService {
 
     public List<HelpRequest> getMyRequests() {
         User currentUser = userService.getCurrentUser();
-        return helpRequestRepository.findByBeneficiaryId(
+        return helpRequestRepository.findMine(
                 currentUser.getId(),
                 PageRequest.of(0, 50, Sort.by("createdAt").descending())).getContent();
     }

@@ -16,6 +16,10 @@ public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> 
 
     List<HelpRequest> findByBeneficiaryId(Long beneficiaryId);
     Page<HelpRequest> findByBeneficiaryId(Long beneficiaryId, Pageable pageable);
+
+    /** Requests a user asked for, plus those they filed on someone else's behalf (ON-1). */
+    @Query("SELECT r FROM HelpRequest r WHERE r.beneficiaryId = :userId OR r.filedByUserId = :userId")
+    Page<HelpRequest> findMine(@Param("userId") Long userId, Pageable pageable);
     List<HelpRequest> findByStatus(String status);
     Page<HelpRequest> findByStatus(String status, Pageable pageable);
     List<HelpRequest> findByHelpType(String helpType);

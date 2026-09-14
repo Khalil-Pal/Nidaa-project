@@ -162,7 +162,9 @@ public class AdminController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        userRepository.approveUser(userId); // native SQL — avoids Hibernate typing role as VARCHAR
+        user.setIsActive(true);
+        user.setIsVerified(true);
+        userRepository.save(user);
 
         String role = user.getRole().name();
 

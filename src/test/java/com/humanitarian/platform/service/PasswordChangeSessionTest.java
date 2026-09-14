@@ -48,13 +48,16 @@ class PasswordChangeSessionTest {
 
     @Test
     void resetPasswordInvalidatesAccessAndRefreshTokens() {
+        User user = account();
         when(tokenRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(token("owner@example.com", "ABC123")));
-        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(account()));
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.encode("new-password")).thenReturn("hash");
 
         resetService.resetPassword("owner@example.com", "abc123", "new-password");
 
-        verify(userRepository).updatePassword(eq(7L), eq("hash"), any(LocalDateTime.class));
+        verify(userRepository).save(user);
+        org.junit.jupiter.api.Assertions.assertEquals("hash", user.getPasswordHash());
+        org.junit.jupiter.api.Assertions.assertNotNull(user.getTokensValidFrom(), "sessions issued before now are cut off");
         verify(refreshTokenRepository).deleteByEmail("owner@example.com");
     }
 
@@ -96,18 +99,21 @@ class PasswordChangeSessionTest {
                 () -> changeService.confirmPasswordChange("nope", "new-password"));
 
         verify(tokenRepository).deleteByEmail("CHANGE:owner@example.com");
-        verify(userRepository, org.mockito.Mockito.never()).updatePassword(any(), any(), any());
+        verify(userRepository, org.mockito.Mockito.never()).save(any());
     }
 
     @Test
     void confirmPasswordChangeInvalidatesAccessAndRefreshTokens() {
-        when(userService.getCurrentUser()).thenReturn(account());
+        User user = account();
+        when(userService.getCurrentUser()).thenReturn(user);
         when(tokenRepository.findByEmail("CHANGE:owner@example.com")).thenReturn(Optional.of(token("CHANGE:owner@example.com", "ZZZ999")));
         when(passwordEncoder.encode("new-password")).thenReturn("hash");
 
         changeService.confirmPasswordChange("zzz999", "new-password");
 
-        verify(userRepository).updatePassword(eq(7L), eq("hash"), any(LocalDateTime.class));
+        verify(userRepository).save(user);
+        org.junit.jupiter.api.Assertions.assertEquals("hash", user.getPasswordHash());
+        org.junit.jupiter.api.Assertions.assertNotNull(user.getTokensValidFrom());
         verify(refreshTokenRepository).deleteByEmail("owner@example.com");
     }
 }
