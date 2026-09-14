@@ -5,10 +5,12 @@ import com.humanitarian.platform.dto.RankedRequestDTO;
 import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.repository.VolunteerRepository;
 import com.humanitarian.platform.service.HelpRequestService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -28,9 +30,11 @@ public class HelpRequestV1Controller {
 
     @GetMapping("/ranked")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VOLUNTEER') or hasRole('ORGANIZATION')")
-    public ResponseEntity<ApiResponse<List<RankedRequestDTO>>> getRanked() {
+    public ResponseEntity<ApiResponse<Page<RankedRequestDTO>>> getRanked(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
         List<Volunteer> available = volunteerRepository.findByIsAvailableTrue();
         return ResponseEntity.ok(ApiResponse.success("Ranked requests retrieved",
-                helpRequestService.getRankedWithSuggestions(available)));
+                helpRequestService.getRankedWithSuggestions(available, page, size)));
     }
 }

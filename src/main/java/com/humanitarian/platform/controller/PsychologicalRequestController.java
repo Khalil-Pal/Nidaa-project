@@ -7,6 +7,7 @@ import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.service.ContactInfoService;
 import com.humanitarian.platform.service.PsychologicalRequestService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -46,9 +47,11 @@ public class PsychologicalRequestController {
     // GET /api/psychological-requests/pending
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('PSYCHOLOGIST', 'ADMIN')")
-    public ResponseEntity<ApiResponse<List<PsychologicalRequest>>> getPendingRequests() {
-        return ResponseEntity.ok(ApiResponse.success("Pending requests retrieved",
-                psychologicalRequestService.getPendingRequests()));
+    public ResponseEntity<ApiResponse<Page<PsychologicalRequest>>> getPendingRequests(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success("Pending requests",
+                psychologicalRequestService.getPendingRequests(page, size)));
     }
 
     // GET /api/psychological-requests/my — beneficiary sees their own requests

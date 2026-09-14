@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
@@ -30,6 +32,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -102,8 +106,8 @@ class HelpRequestServiceTest {
                 .user(userAt(302L, "Matching Provider", 55.80, 37.70))
                 .isAvailable(true)
                 .build();
-        when(helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING"))
-                .thenReturn(List.of(request));
+        when(helpRequestRepository.findByStatus(eq("PENDING"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(request)));
         when(providerResourceService.findEligibleProviderCapacityAssessments("MEDICAL", 12))
                 .thenReturn(Map.of(302L, capacity(302L, "NUMERIC", 12, true)));
         when(geoMatchingService.findNearestProvider(
@@ -118,7 +122,7 @@ class HelpRequestServiceTest {
                         7.2)));
 
         var ranked = service.getRankedWithSuggestions(
-                List.of(closerWrongResource, fartherRightResource));
+                List.of(closerWrongResource, fartherRightResource), 0, 20).getContent();
 
         assertEquals(1, ranked.size());
         assertEquals("Matching Provider", ranked.get(0).getSuggestedVolunteerName());
@@ -272,8 +276,8 @@ class HelpRequestServiceTest {
     private RankedRequestDTO rankSingleVolunteer(HelpRequest request,
                                                   Volunteer volunteer,
                                                   ProviderCapacityAssessment capacity) {
-        when(helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING"))
-                .thenReturn(List.of(request));
+        when(helpRequestRepository.findByStatus(eq("PENDING"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(request)));
         when(providerResourceService.findEligibleProviderCapacityAssessments(
                 request.getHelpType(), request.getPeopleCount()))
                 .thenReturn(Map.of(volunteer.getUser().getId(), capacity));
@@ -288,7 +292,7 @@ class HelpRequestServiceTest {
                         volunteer.getUser().getProfile().getLongitude(),
                         2.5)));
 
-        return service.getRankedWithSuggestions(List.of(volunteer)).get(0);
+        return service.getRankedWithSuggestions(List.of(volunteer), 0, 20).getContent().get(0);
     }
 
     private HelpRequest rankedRequest(Long id, String helpType, Integer peopleCount) {

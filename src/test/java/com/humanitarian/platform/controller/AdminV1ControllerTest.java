@@ -12,6 +12,7 @@ import com.humanitarian.platform.service.HelpRequestService;
 import com.humanitarian.platform.service.MatchingEvaluationService;
 import com.humanitarian.platform.service.PriorityScoreService;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
@@ -51,7 +52,7 @@ class AdminV1ControllerTest {
                 .build();
 
         when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of());
-        when(helpRequestService.getRankedWithSuggestions(List.of())).thenReturn(List.of());
+        when(helpRequestService.getRankedWithSuggestions(List.of(), 0, 20)).thenReturn(Page.empty());
         when(psychologicalRequestRepository.findAll()).thenReturn(List.of(nonCrisis, crisis));
 
         AdminV1Controller controller = new AdminV1Controller(
@@ -64,7 +65,7 @@ class AdminV1ControllerTest {
                 assignmentRepository,
                 new PriorityScoreService());
 
-        ResponseEntity<ApiResponse<Map<String, Object>>> response = controller.getRankedDashboard();
+        ResponseEntity<ApiResponse<Map<String, Object>>> response = controller.getRankedDashboard(0, 20);
         ApiResponse<Map<String, Object>> envelope = response.getBody();
 
         assertNotNull(envelope);
@@ -82,5 +83,6 @@ class AdminV1ControllerTest {
         assertEquals(List.of(crisis), body.get("crisisPsychologicalCases"));
         assertEquals(2, body.get("totalPsychological"));
         assertEquals(1, body.get("totalCrisis"));
+        assertEquals(0L, body.get("totalPending"), "page total, not page size");
     }
 }

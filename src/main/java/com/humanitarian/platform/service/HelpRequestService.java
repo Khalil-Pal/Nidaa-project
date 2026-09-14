@@ -427,15 +427,24 @@ public class HelpRequestService {
         helpRequestRepository.delete(request);
     }
 
-    public List<HelpRequest> getPendingByPriority() {
-        return helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING");
+    /**
+     * Highest priority first; ties broken oldest-first, then by id, so the
+     * order is total and pages neither repeat nor skip a request (Q-3).
+     * idx_help_requests_status_priority covers the leading sort.
+     */
+    static final Sort PENDING_ORDER = Sort.by(Sort.Order.desc("priorityScore"),
+            Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
+
+    public Page<HelpRequest> getPendingByPriority(int page, int size) {
+        return helpRequestRepository.findByStatus("PENDING", PageRequest.of(page, size, PENDING_ORDER));
     }
 
     @Transactional(readOnly = true)
-    public List<RankedRequestDTO> getRankedWithSuggestions(List<Volunteer> availableVolunteers) {
+    public Page<RankedRequestDTO> getRankedWithSuggestions(List<Volunteer> availableVolunteers,
+                                                           int page, int size) {
         Map<CapacityLookupKey, Map<Long, ProviderCapacityAssessment>> capacityByRequest =
                 new HashMap<>();
-        return helpRequestRepository.findByStatusOrderByPriorityScoreDesc("PENDING").stream()
+        return getPendingByPriority(page, size)
                 .map(request -> {
                     int score = request.getPriorityScore() != null
                             ? request.getPriorityScore()
@@ -470,8 +479,7 @@ public class HelpRequestService {
                             .capacitySufficient(
                                     capacity == null ? null : capacity.getCapacitySufficient())
                             .build();
-                })
-                .toList();
+                });
     }
 
     private List<Volunteer> filterByProviderResource(List<Volunteer> volunteers,

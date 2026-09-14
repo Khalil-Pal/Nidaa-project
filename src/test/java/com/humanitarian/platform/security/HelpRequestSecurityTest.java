@@ -214,7 +214,7 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
         mockMvc.perform(get("/api/help-requests")).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/help-requests/pending")).andExpect(status().isForbidden());
         verify(helpRequestRepository, never()).findAll(any(Pageable.class));
-        verify(helpRequestRepository, never()).findByStatusOrderByPriorityScoreDesc(anyString());
+        verify(helpRequestRepository, never()).findByStatus(anyString(), any(Pageable.class));
     }
 
     @Test

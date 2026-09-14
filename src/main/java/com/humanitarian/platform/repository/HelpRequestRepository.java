@@ -26,7 +26,6 @@ public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> 
     Page<HelpRequest> findByStatus(String status, Pageable pageable);
     List<HelpRequest> findByHelpType(String helpType);
     List<HelpRequest> findByUrgencyLevel(String urgencyLevel);
-    List<HelpRequest> findByStatusOrderByPriorityScoreDesc(String status);
     List<HelpRequest> findByAssignedVolunteerId(Long volunteerId);
     List<HelpRequest> findByAssignedOrganizationId(Long organizationId);
     long countByStatus(String status);

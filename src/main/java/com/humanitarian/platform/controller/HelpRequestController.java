@@ -52,9 +52,11 @@ public class HelpRequestController {
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<ApiResponse<List<HelpRequest>>> getPendingRequests() {
+    public ResponseEntity<ApiResponse<Page<HelpRequest>>> getPendingRequests(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success("Pending requests",
-                helpRequestService.getPendingByPriority()));
+                helpRequestService.getPendingByPriority(page, size)));
     }
 
     @GetMapping("/{id}")

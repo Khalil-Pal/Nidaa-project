@@ -338,7 +338,7 @@
     try {
       const res  = await apiFetch(API + '/psychological-requests/pending', { headers: authHeader() });
       if (!res.ok) throw new Error();
-      const reqs = (await res.json()).data || [];
+      const reqs = ((await res.json()).data || {}).content || [];   // paged (Q-3)
       if (!reqs.length) {
         list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No pending requests.</div>';
         return;

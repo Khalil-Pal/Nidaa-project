@@ -17,6 +17,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.exception.UnauthorizedException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -175,8 +178,10 @@ public class PsychologicalRequestService {
 
     public List<PsychologicalRequest> getAllRequests() { return repo.findAll(); }
 
-    public List<PsychologicalRequest> getPendingRequests() {
-        return repo.findByStatusAndAssignedPsychologistIdIsNull("PENDING");
+    /** Unassigned pending requests, oldest first, paged (Q-3). */
+    public Page<PsychologicalRequest> getPendingRequests(int page, int size) {
+        return repo.findByStatusAndAssignedPsychologistIdIsNull("PENDING",
+                PageRequest.of(page, size, Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"))));
     }
 
     public List<PsychologicalRequest> getMyRequests() {

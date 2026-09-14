@@ -3,6 +3,8 @@ package com.humanitarian.platform.repository;
 import com.humanitarian.platform.dto.KeyCount;
 import com.humanitarian.platform.dto.PsychologistCaseLoad;
 import com.humanitarian.platform.model.PsychologicalRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,7 +20,7 @@ public interface PsychologicalRequestRepository extends JpaRepository<Psychologi
     List<PsychologicalRequest> findByBeneficiaryId(Long beneficiaryId);
     List<PsychologicalRequest> findByAssignedPsychologistId(Long psychologistId);
     List<PsychologicalRequest> findByStatus(String status);
-    List<PsychologicalRequest> findByStatusAndAssignedPsychologistIdIsNull(String status);
+    Page<PsychologicalRequest> findByStatusAndAssignedPsychologistIdIsNull(String status, Pageable pageable);
     List<PsychologicalRequest> findByCategory(String category);
     List<PsychologicalRequest> findByPreferredFormat(String format);
     List<PsychologicalRequest> findByIsCrisisTrue();

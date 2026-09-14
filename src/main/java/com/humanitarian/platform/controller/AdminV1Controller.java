@@ -14,10 +14,12 @@ import com.humanitarian.platform.service.HelpRequestService;
 import com.humanitarian.platform.service.AssignmentHistoryService;
 import com.humanitarian.platform.service.MatchingEvaluationService;
 import com.humanitarian.platform.service.PriorityScoreService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Comparator;
@@ -71,9 +73,11 @@ public class AdminV1Controller {
     }
 
     @GetMapping("/dashboard/ranked")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getRankedDashboard() {
-        List<RankedRequestDTO> ranked = helpRequestService
-                .getRankedWithSuggestions(volunteerRepository.findByIsAvailableTrue());
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getRankedDashboard(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<RankedRequestDTO> ranked = helpRequestService
+                .getRankedWithSuggestions(volunteerRepository.findByIsAvailableTrue(), page, size);
         List<PsychologicalRequest> allPsychologicalRequests = psychologicalRequestRepository.findAll();
         List<RankedPsychologicalRequestDTO> psychologicalRequests = allPsychologicalRequests.stream()
                 .map(request -> RankedPsychologicalRequestDTO.builder()
@@ -92,11 +96,13 @@ public class AdminV1Controller {
                 .toList();
 
         Map<String, Object> dashboard = new LinkedHashMap<>();
-        dashboard.put("rankedMaterialRequests", ranked);
+        dashboard.put("rankedMaterialRequests", ranked.getContent());
+        dashboard.put("materialPage", page);
+        dashboard.put("materialTotalPages", ranked.getTotalPages());
         dashboard.put("psychologicalRequests", psychologicalRequests);
         dashboard.put("crisisPsychologicalCases", crisisCases);
         dashboard.put("reviewPsychologicalCases", reviewCases);
-        dashboard.put("totalPending", ranked.size());
+        dashboard.put("totalPending", ranked.getTotalElements());
         dashboard.put("totalPsychological", psychologicalRequests.size());
         dashboard.put("totalCrisis", crisisCases.size());
         dashboard.put("totalNeedsReview", reviewCases.size());
