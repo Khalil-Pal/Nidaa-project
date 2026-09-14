@@ -45,8 +45,17 @@ public class PsychologicalRequestService {
         String rawCategory = dto.getCategory();
         String category = toCategory(rawCategory);
         String description = dto.getDescription() != null ? dto.getDescription() : "";
-        boolean crisis = crisisDetectorService.detect(rawCategory, description)
+        // An explicit crisis category or support type forces a crisis; otherwise
+        // the weighted detector decides between crisis, review and normal.
+        CrisisDetectorService.Assessment assessment =
+                crisisDetectorService.assess(rawCategory, description);
+        boolean crisis = assessment.isCrisis()
                 || crisisDetectorService.detect(dto.getSupportType(), description);
+        boolean needsReview = !crisis && assessment.needsReview();
+        if (crisis || needsReview) {
+            logger.info("Psychological request from user {} scored {} ({}) on terms {}",
+                    user.getId(), assessment.score(), crisis ? "CRISIS" : "REVIEW", assessment.matchedTerms());
+        }
 
         PsychologicalRequest r = PsychologicalRequest.builder()
                 .beneficiaryId(user.getId())
@@ -58,6 +67,7 @@ public class PsychologicalRequestService {
                 .isAnonymous(dto.getIsAnonymous() != null ? dto.getIsAnonymous() : false)
                 .status("PENDING")
                 .isCrisis(crisis)
+                .needsReview(needsReview)
                 .crisisDetectedAt(crisis ? LocalDateTime.now() : null)
                 .build();
         PsychologicalRequest saved = repo.save(r);

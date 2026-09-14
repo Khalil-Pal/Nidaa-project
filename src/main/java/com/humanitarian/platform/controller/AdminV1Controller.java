@@ -84,14 +84,21 @@ public class AdminV1Controller {
         List<PsychologicalRequest> crisisCases = allPsychologicalRequests.stream()
                 .filter(request -> Boolean.TRUE.equals(request.getIsCrisis()))
                 .toList();
+        // Review band of the crisis detector (L-2): shown alongside, never auto-routed
+        List<PsychologicalRequest> reviewCases = allPsychologicalRequests.stream()
+                .filter(request -> Boolean.TRUE.equals(request.getNeedsReview())
+                        && !Boolean.TRUE.equals(request.getIsCrisis()))
+                .toList();
 
         Map<String, Object> dashboard = new LinkedHashMap<>();
         dashboard.put("rankedMaterialRequests", ranked);
         dashboard.put("psychologicalRequests", psychologicalRequests);
         dashboard.put("crisisPsychologicalCases", crisisCases);
+        dashboard.put("reviewPsychologicalCases", reviewCases);
         dashboard.put("totalPending", ranked.size());
         dashboard.put("totalPsychological", psychologicalRequests.size());
         dashboard.put("totalCrisis", crisisCases.size());
+        dashboard.put("totalNeedsReview", reviewCases.size());
         return ResponseEntity.ok(dashboard);
     }
 }

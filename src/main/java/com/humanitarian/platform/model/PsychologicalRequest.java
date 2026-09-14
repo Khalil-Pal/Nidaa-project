@@ -56,6 +56,12 @@ public class PsychologicalRequest {
     @Column(name = "crisis_detected_at")
     private LocalDateTime crisisDetectedAt;
 
+    // Review band of the crisis detector (score 1-2): flagged for a human
+    // look, not routed automatically (V14, L-2).
+    @Column(name = "needs_review", nullable = false)
+    @Builder.Default
+    private Boolean needsReview = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

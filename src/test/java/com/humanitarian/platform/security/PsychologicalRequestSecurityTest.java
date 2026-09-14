@@ -195,6 +195,10 @@ class PsychologicalRequestSecurityTest extends SecuritySliceTest {
     @WithMockUser(roles = "BENEFICIARY")
     void displayLabelCategoryStillMapsToTheEnum() throws Exception {
         actingAs(OWNER_ID, UserRole.BENEFICIARY);
+        // the detector is mocked in this slice; a NONE assessment keeps the request out of crisis routing
+        when(crisisDetectorService.assess(any(), any())).thenReturn(
+                new com.humanitarian.platform.service.CrisisDetectorService.Assessment(
+                        0, com.humanitarian.platform.service.CrisisDetectorService.Level.NONE, java.util.List.of()));
         when(psychologicalRequestRepository.save(any(PsychologicalRequest.class)))
                 .thenAnswer(inv -> { PsychologicalRequest r = inv.getArgument(0); r.setId(5L); return r; });
 

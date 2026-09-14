@@ -18,6 +18,7 @@ psql -U postgres -d Web_DB -f database/migrations/V9__token_invalidation.sql
 psql -U postgres -d Web_DB -f database/migrations/V10__reset_attempt_limit.sql
 psql -U postgres -d Web_DB -f database/migrations/V11__soft_delete_users.sql
 psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
+psql -U postgres -d Web_DB -f database/migrations/V14__crisis_review_flag.sql
 ```
 
 ## Versions
@@ -54,6 +55,9 @@ psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
   organization files on a beneficiary's behalf, with an index and a check that
   the filer is never the beneficiary. Existing rows stay NULL (self-filed).
   Idempotent; safe to rerun.
+- `V14` adds `psychological_requests.needs_review` for descriptions that score
+  in the review band of the weighted crisis detector (flagged for a human look,
+  not auto-routed). Idempotent; safe to rerun.
 
 V1 through V8 were applied in order to a genuinely empty verification database.
 Its normalized schema dump matched the migrated development database with zero
