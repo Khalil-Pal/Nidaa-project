@@ -39,7 +39,7 @@ class ProviderAvailabilityControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"available\":true}"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403));
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     private MockMvc mockMvc(ProviderAvailabilityService service) {

@@ -82,7 +82,7 @@ class MessageControllerTest {
 
         mockMvc(service).perform(get("/api/community/messages"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403));
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
@@ -95,7 +95,7 @@ class MessageControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"Hello\",\"communityCategory\":\"UPDATE\"}"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403));
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
@@ -107,7 +107,7 @@ class MessageControllerTest {
         mockMvc(service).perform(delete("/api/community/messages/10")
                         .param("reason", "Spam"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403));
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
@@ -118,7 +118,7 @@ class MessageControllerTest {
 
         mockMvc(service).perform(delete("/api/community/messages/10"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("A deletion reason is required."));
     }
 

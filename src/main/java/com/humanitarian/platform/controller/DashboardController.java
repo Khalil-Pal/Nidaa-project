@@ -3,6 +3,7 @@ package com.humanitarian.platform.controller;
 import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import com.humanitarian.platform.repository.UserRepository;
+import com.humanitarian.platform.dto.ApiResponse;
 import com.humanitarian.platform.model.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +28,7 @@ public class DashboardController {
 
     // GET /api/dashboard/stats — real numbers for dashboard
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
 
         long total      = helpRequestRepository.count();
@@ -40,12 +41,12 @@ public class DashboardController {
         stats.put("completed",     completed);
         stats.put("psychological", psych);
 
-        return ResponseEntity.ok(stats);
+        return ResponseEntity.ok(ApiResponse.success("Statistics retrieved", stats));
     }
 
     // GET /api/dashboard/public-stats — for landing page (no auth needed)
     @GetMapping("/public-stats")
-    public ResponseEntity<Map<String, Object>> getPublicStats() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getPublicStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
 
         long completedRequests = helpRequestRepository.countByStatus("COMPLETED");
@@ -63,6 +64,6 @@ public class DashboardController {
         stats.put("psychologists",     psychologists);
         stats.put("completionRate",    completionRate);
 
-        return ResponseEntity.ok(stats);
+        return ResponseEntity.ok(ApiResponse.success("Statistics retrieved", stats));
     }
 }

@@ -1,5 +1,6 @@
 package com.humanitarian.platform.controller;
 
+import com.humanitarian.platform.dto.ApiResponse;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.service.AdminReportService;
@@ -33,7 +34,7 @@ public class AdminController {
     @Autowired(required = false) private JavaMailSender mailSender;
 
     @GetMapping("/pending")
-    public ResponseEntity<?> getPendingUsers() {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPendingUsers() {
         List<Map<String, Object>> users = userRepository.findByIsActiveFalseAndDeletedAtIsNull().stream().map(u -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id",        u.getId());
@@ -45,11 +46,11 @@ public class AdminController {
             m.put("createdAt", u.getCreatedAt());
             return m;
         }).collect(java.util.stream.Collectors.toList());
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(ApiResponse.success("Pending applications retrieved", users));
     }
 
     @GetMapping("/users")
-    public ResponseEntity<?> getAllUsers() {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllUsers() {
         // Return safe maps instead of raw User entities to avoid lazy-loading
         // serialization failures from @OneToMany collections (notifications etc.)
         List<Map<String, Object>> users = userRepository.findAll().stream().map(u -> {
@@ -66,31 +67,29 @@ public class AdminController {
             m.put("lastLogin",  u.getLastLogin());
             return m;
         }).collect(java.util.stream.Collectors.toList());
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(ApiResponse.success("Users retrieved", users));
     }
 
     @DeleteMapping("/users/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new com.humanitarian.platform.exception.ResourceNotFoundException("User not found"));
         String name = user.getFullName(), email = user.getEmail();
         userService.deleteAccount(userId);   // anonymise in place (D-2), never a hard delete
         sendEmail(email, "[Nidaa] Your account has been removed",
                 "Dear " + name + ",\n\nYour Nidaa account has been closed and your personal details removed.\n\nContact: supp0rtnidaa@yandex.ru\n— Nidaa Team");
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("success", true); res.put("message", "Deleted");
-        return ResponseEntity.ok(res);
+        return ResponseEntity.ok(ApiResponse.success("Account deleted", null));
     }
 
     // All help + psychological requests, joined to their people
     @GetMapping("/requests")
-    public ResponseEntity<?> getAllRequests() {
-        return ResponseEntity.ok(adminReportService.allRequests());
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllRequests() {
+        return ResponseEntity.ok(ApiResponse.success("Requests retrieved", adminReportService.allRequests()));
     }
 
     @PutMapping("/approve/{userId}")
-    public ResponseEntity<Map<String, Object>> approveUser(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> approveUser(@PathVariable Long userId) {
         User user = userApprovalService.approve(userId);
         String role = user.getRole().name();
         sendEmail(
@@ -102,27 +101,21 @@ public class AdminController {
                         + "Welcome to Nidaa!\n\u2014 The Nidaa Team"
         );
 
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("success", true);
-        res.put("message", "Approved");
-        res.put("userId", userId);
-        return ResponseEntity.ok(res);
+        return ResponseEntity.ok(ApiResponse.success("Approved", Map.of("userId", userId)));
     }
 
     @PutMapping("/reject/{userId}")
-    public ResponseEntity<Map<String, Object>> rejectUser(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<Void>> rejectUser(@PathVariable Long userId) {
         User user = userApprovalService.reject(userId);
         sendEmail(user.getEmail(), "[Nidaa] Update on your application",
                 "Dear " + user.getFullName() + ",\n\nWe are unable to approve your account at this time.\n\n" +
                         "Contact: supp0rtnidaa@yandex.ru\n\u2014 The Nidaa Team");
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("success", true); res.put("message", "Rejected");
-        return ResponseEntity.ok(res);
+        return ResponseEntity.ok(ApiResponse.success("Rejected", null));
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats() {
-        return ResponseEntity.ok(adminReportService.stats());
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
+        return ResponseEntity.ok(ApiResponse.success("Statistics retrieved", adminReportService.stats()));
     }
 
     private void sendEmail(String to, String subject, String body) {

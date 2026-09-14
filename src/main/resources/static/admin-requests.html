@@ -449,8 +449,7 @@
         try {
             const res  = await apiFetch(API + '/v1/admin/dashboard/ranked', { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
-            allRequests = normalizeRankedDashboard(data.data || data || {});
+            allRequests = normalizeRankedDashboard((await res.json()).data || {});
             renderTable(allRequests);
         } catch (e) {
             document.getElementById('requestsBody').innerHTML =

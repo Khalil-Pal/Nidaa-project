@@ -307,8 +307,7 @@
     try {
       const res  = await apiFetch(API + '/psychological-requests/my', { headers: authHeader() });
       if (!res.ok) throw new Error();
-      const data = await res.json();
-      const reqs = Array.isArray(data) ? data : (data.data || []);
+      const reqs = (await res.json()).data || [];
       if (!reqs.length) {
         list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No support requests yet.</div>';
         return;
@@ -339,8 +338,7 @@
     try {
       const res  = await apiFetch(API + '/psychological-requests/pending', { headers: authHeader() });
       if (!res.ok) throw new Error();
-      const data = await res.json();
-      const reqs = Array.isArray(data) ? data : (data.data || []);
+      const reqs = (await res.json()).data || [];
       if (!reqs.length) {
         list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No pending requests.</div>';
         return;
@@ -447,8 +445,7 @@
         const error = await res.json().catch(() => ({}));
         throw new Error(error.message || 'Contact is not available');
       }
-      const data = await res.json();
-      const contact = data.data || data;
+      const contact = (await res.json()).data || {};
       const roleLabel = formatPsychContactRole(contact.contactRole);
       document.getElementById('psychContactTitle').textContent =
         contact.anonymous ? 'Anonymous Request' : roleLabel + ' Contact';
@@ -479,8 +476,7 @@
     try {
       const res  = await apiFetch(API + '/psychological-requests/my-assigned', { headers: authHeader() });
       if (!res.ok) throw new Error();
-      const data = await res.json();
-      const reqs = Array.isArray(data) ? data : (data.data || []);
+      const reqs = (await res.json()).data || [];
       if (!reqs.length) {
         list.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;font-size:14px">No active sessions yet.</div>';
         return;

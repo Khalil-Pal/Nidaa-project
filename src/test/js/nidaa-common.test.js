@@ -63,7 +63,7 @@ const json = (status, body) => ({
             calls.push({ url, auth: opts && opts.headers && opts.headers.Authorization });
             if (url === '/api/auth/refresh') {
                 assert.strictEqual(JSON.parse(opts.body).refreshToken, 'r1');
-                return json(200, { token: 't2', refreshToken: 'r2', userId: 7, email: 'a@b.c', fullName: 'A', role: 'beneficiary', isActive: true });
+                return json(200, { success: true, data: { token: 't2', refreshToken: 'r2', userId: 7, email: 'a@b.c', fullName: 'A', role: 'beneficiary', isActive: true } });
             }
             return calls.filter(c => c.url === url).length === 1 ? json(401, {}) : json(200, { ok: true });
         });
@@ -86,7 +86,7 @@ const json = (status, body) => ({
             if (url === '/api/auth/refresh') {
                 refreshes++;
                 await new Promise(r => setTimeout(r, 10));
-                return json(200, { token: 't2', refreshToken: 'r2' });
+                return json(200, { success: true, data: { token: 't2', refreshToken: 'r2' } });
             }
             return ctx.localStorage.getItem('token') === 't2' ? json(200, {}) : json(401, {});
         });

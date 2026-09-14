@@ -45,11 +45,11 @@ register_and_verify() { # email role -> prints token (empty if pending approval)
     -d "{\"fullName\":\"Gate $role\",\"email\":\"$email\",\"password\":\"$PW\",\"phone\":\"+1$RANDOM$RANDOM\",\"role\":\"$role\"}"
   local code; code=$(sql "select code from pending_registrations where email='$email'")
   body -X POST "$BASE/api/auth/register/verify" -H "Content-Type: application/json" \
-    -d "{\"email\":\"$email\",\"code\":\"$code\"}" | json token
+    -d "{\"email\":\"$email\",\"code\":\"$code\"}" | json data.token
 }
 login() { body -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
   -d "{\"email\":\"$1\",\"password\":\"${2:-$PW}\"}"; }
-token() { login "$1" "${2:-$PW}" | json token; }
+token() { login "$1" "${2:-$PW}" | json data.token; }
 uid() { sql "select user_id from users where email='$1'"; }
 
 echo "== accounts (register -> verify -> approve -> login) =="
@@ -178,11 +178,11 @@ check "S-2" "img payload as title" "$(code -X POST "$BASE/api/help-requests" -H 
 check "S-2" "CSP with connect-src self on a page" "$(curl -s -D - -o /dev/null "$BASE/admin-requests.html" | grep -i 'content-security-policy' | grep -c "connect-src 'self'")" "1"
 check "S-2" "overlong description" "$(code -X POST "$BASE/api/help-requests" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d "{\"title\":\"t\",\"helpType\":\"FOOD\",\"urgencyLevel\":\"HIGH\",\"description\":\"$(printf 'd%.0s' $(seq 1 4001))\"}")" "400"
 
-LG=$(login "$BENE"); RT=$(echo "$LG" | json refreshToken); AT=$(echo "$LG" | json token)
+LG=$(login "$BENE"); RT=$(echo "$LG" | json data.refreshToken); AT=$(echo "$LG" | json data.token)
 NEW=$(body -X POST "$BASE/api/auth/refresh" -H 'Content-Type: application/json' -d "{\"refreshToken\":\"$RT\"}")
-[ -n "$(echo "$NEW" | json token)" ] && [ "$(echo "$NEW" | json refreshToken)" != "$RT" ] && pass "F-4" "refresh returns a rotated pair" || fail "F-4" "refresh: $NEW"
+[ -n "$(echo "$NEW" | json data.token)" ] && [ "$(echo "$NEW" | json data.refreshToken)" != "$RT" ] && pass "F-4" "refresh returns a rotated pair" || fail "F-4" "refresh: $NEW"
 check "F-4" "old refresh token reused" "$(code -X POST "$BASE/api/auth/refresh" -H 'Content-Type: application/json' -d "{\"refreshToken\":\"$RT\"}")" "400"
-RT2=$(echo "$NEW" | json refreshToken)
+RT2=$(echo "$NEW" | json data.refreshToken)
 check "F-4" "logout revokes refresh token" "$(code -X POST "$BASE/api/auth/logout" -H 'Content-Type: application/json' -d "{\"refreshToken\":\"$RT2\"}")" "200"
 check "F-4" "revoked refresh token" "$(code -X POST "$BASE/api/auth/refresh" -H 'Content-Type: application/json' -d "{\"refreshToken\":\"$RT2\"}")" "400"
 

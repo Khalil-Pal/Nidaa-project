@@ -369,12 +369,9 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
             const endpoint = userRole === 'beneficiary' ? '/help-requests/my' : '/help-requests?page=0&size=100';
             const res  = await apiFetch(API + endpoint, { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
-            // Backend wraps in ApiResponse{ data: Page{ content:[...] } } or ApiResponse{ data: [...] }
-            const inner = data.data ?? data;
-            allRequests = Array.isArray(inner)
-                ? inner
-                : (inner.content ?? inner.data ?? []);
+            // ApiResponse{ data: Page{ content:[...] } } or ApiResponse{ data: [...] }
+            const inner = (await res.json()).data ?? [];
+            allRequests = Array.isArray(inner) ? inner : (inner.content ?? []);
         } catch (e) {
             allRequests = [];
             grid.innerHTML = '<div style="text-align:center;padding:48px;color:#64748b;grid-column:1/-1"><i class="fa fa-triangle-exclamation" style="font-size:28px;margin-bottom:10px;display:block;color:#f59e0b"></i>Could not load requests. Make sure the server is running.</div>';
@@ -431,8 +428,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
                 const error = await res.json().catch(() => ({}));
                 throw new Error(error.message || 'Contact is not available');
             }
-            const data = await res.json();
-            const d = data.data || data;
+            const d = (await res.json()).data || {};
             document.getElementById('contactPartyLabel').textContent = formatContactRole(d.contactRole);
             document.getElementById('contactName').textContent  = d.name  || '—';
             document.getElementById('contactEmail').textContent = d.email || '—';
@@ -590,8 +586,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
         try {
             const res = await apiFetch(API + '/users/me/profile', { headers: authHeader() });
             if (!res.ok) return;
-            const body = await res.json();
-            const profile = body.data || body;
+            const profile = (await res.json()).data;
             if (profile && profile.latitude != null && profile.longitude != null) {
                 setRequestLocation(profile.latitude, profile.longitude, 'saved');
             }
@@ -637,9 +632,8 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
                 throw new Error(errData.message || 'Server error ' + res.status);
             }
 
-            const saved = await res.json();
-            // saved is ApiResponse{data: HelpRequest}
-            const newReq = saved.data || saved;
+            // ApiResponse{ data: HelpRequest }
+            const newReq = (await res.json()).data;
 
             // Add to the top of the list and re-render
             allRequests.unshift(newReq);

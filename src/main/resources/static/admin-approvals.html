@@ -207,8 +207,7 @@
     try {
       const res  = await apiFetch(API + '/admin/pending', { headers: authHeader() });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const users = Array.isArray(data) ? data : (data.data || []);
+      const users = (await res.json()).data || [];
       renderPending(users);
     } catch (e) {
       document.getElementById('pendingList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${escHtml(e.message)}</p></div>`;
@@ -219,8 +218,7 @@
     try {
       const res  = await apiFetch(API + '/admin/users', { headers: authHeader() });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const users = Array.isArray(data) ? data : (data.data || []);
+      const users = (await res.json()).data || [];
       renderAllUsers(users);
     } catch (e) {
       document.getElementById('allList').innerHTML = `<div class="empty-state"><i class="fa fa-triangle-exclamation"></i><h3>Could not load</h3><p>${escHtml(e.message)}</p></div>`;

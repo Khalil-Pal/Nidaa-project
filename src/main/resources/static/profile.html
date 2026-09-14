@@ -480,7 +480,7 @@ async function readProfileApiData(response){
     let payload={};
     try{payload=await response.json();}catch(ignored){}
     if(!response.ok)throw new Error(payload.message||`Request failed (${response.status})`);
-    return payload.data??payload;
+    return payload.data;
 }
 
 async function loadProviderSummary(){

@@ -29,13 +29,28 @@ Phase 5.
 
 ## Data model
 
-- **Volunteer and psychologist rating default.** The entities default `rating` to
-  `0.0` while the database requires 1..5, so a profile persisted through JPA with
-  the default fails. Scheduled as Phase 4 task D-3 (default `null`, CHECK allowing
-  NULL).
+- **Volunteer and psychologist rating default.** Done in Phase 4 (D-3, V18):
+  the entities default `rating` to `null` and the CHECK permits NULL.
 - **Stories on the server.** Success stories are stored in the browser's
   `localStorage`, so they are per browser and moderation is local too. The
   community feed already has the server-side pattern (`MessageService`) to copy.
+
+- **`psychologists.specialization` is an array in the database, a string in the
+  entity.** The column is `psychological_category[]`; `Psychologist.specialization`
+  is mapped as `TEXT`. Only NULL round-trips today (V16 made the column nullable,
+  approval leaves it NULL). Any screen that lets a psychologist record
+  specialisations needs the entity changed to a list of the enum first. Found during A-2.
+
+## Registration
+
+- **The registration page has no verification-code step.** The backend has been
+  two-step since May 2026 (`POST /api/auth/register` sends a code,
+  `POST /api/auth/register/verify` creates the account), but `register.html` stops
+  after step 1 with the "code sent" message and there is no page to enter the code.
+  A person can only complete registration through the API today; the gate smoke
+  path does exactly that. Needs a code-entry step on `register.html` (mirroring
+  `forgot-password.html`), then a browser check for register -> verify -> login.
+  Not in the master plan; found during P-2.
 
 ## Provider approval (Phase 4, A-2 / UX-2)
 

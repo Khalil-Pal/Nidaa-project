@@ -543,7 +543,7 @@
         if (!response.ok) {
             throw new Error(payload.message || `Request failed (${response.status})`);
         }
-        return payload.data ?? payload;
+        return payload.data;
     }
 
     function setMatchingLocationStatus(message, type = '') {

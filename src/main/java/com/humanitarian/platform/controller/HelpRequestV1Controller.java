@@ -1,5 +1,6 @@
 package com.humanitarian.platform.controller;
 
+import com.humanitarian.platform.dto.ApiResponse;
 import com.humanitarian.platform.dto.RankedRequestDTO;
 import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.repository.VolunteerRepository;
@@ -27,8 +28,9 @@ public class HelpRequestV1Controller {
 
     @GetMapping("/ranked")
     @PreAuthorize("hasRole('ADMIN') or hasRole('VOLUNTEER') or hasRole('ORGANIZATION')")
-    public ResponseEntity<List<RankedRequestDTO>> getRanked() {
+    public ResponseEntity<ApiResponse<List<RankedRequestDTO>>> getRanked() {
         List<Volunteer> available = volunteerRepository.findByIsAvailableTrue();
-        return ResponseEntity.ok(helpRequestService.getRankedWithSuggestions(available));
+        return ResponseEntity.ok(ApiResponse.success("Ranked requests retrieved",
+                helpRequestService.getRankedWithSuggestions(available)));
     }
 }

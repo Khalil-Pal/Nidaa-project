@@ -108,7 +108,7 @@ class AuthSecurityTest extends SecuritySliceTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registration("beneficiary")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("person@example.com"));
+                .andExpect(jsonPath("$.data.email").value("person@example.com"));
 
         verify(pendingRegistrationRepository).save(any());
     }
@@ -131,8 +131,8 @@ class AuthSecurityTest extends SecuritySliceTest {
                 .andExpect(jsonPath("$.message").value(not(containsStringIgnoringCase("attempt"))))
                 .andReturn();
 
-        assertEquals(stripTimestamp(unknown.getResponse().getContentAsString()),
-                stripTimestamp(wrongPassword.getResponse().getContentAsString()));
+        assertEquals(unknown.getResponse().getContentAsString(),
+                wrongPassword.getResponse().getContentAsString());
     }
 
     @Test
@@ -143,8 +143,9 @@ class AuthSecurityTest extends SecuritySliceTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(login(KNOWN, RIGHT_PASSWORD)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").isNotEmpty())
-                .andExpect(jsonPath("$.refreshToken").isNotEmpty());
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.token").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
     }
 
     @Test
@@ -213,9 +214,5 @@ class AuthSecurityTest extends SecuritySliceTest {
         assertEquals(known.getResponse().getContentAsString(), unknown.getResponse().getContentAsString());
         // a code was issued only for the real account
         verify(passwordResetTokenRepository).save(any());
-    }
-
-    private static String stripTimestamp(String body) {
-        return body.replaceAll("\"timestamp\":\"[^\"]*\",", "");
     }
 }

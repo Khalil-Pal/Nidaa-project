@@ -1,6 +1,7 @@
 package com.humanitarian.platform.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.humanitarian.platform.dto.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
      * Returns a map of field -> error message.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationErrors(
+    public ResponseEntity<ApiResponse<Void>> handleValidationErrors(
             MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
      * Instead of the ugly Jackson error, returns a clean user-friendly message.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<Map<String, Object>> handleJsonParseError(
+    public ResponseEntity<ApiResponse<Void>> handleJsonParseError(
             HttpMessageNotReadableException ex) {
 
         String message = "Invalid request body";
@@ -89,7 +89,7 @@ public class GlobalExceptionHandler {
      * Handles IllegalArgumentException — thrown manually from @JsonCreator.
      */
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(
             IllegalArgumentException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler {
      * Handles wrong email/password at login.
      */
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentials(
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(
             BadCredentialsException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid email or password", null);
     }
@@ -107,7 +107,7 @@ public class GlobalExceptionHandler {
      * Handles access denied — user doesn't have the required role.
      */
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, Object>> handleAccessDenied(
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
             AccessDeniedException ex) {
         return buildResponse(HttpStatus.FORBIDDEN,
                 "Access denied. You don't have permission to perform this action.", null);
@@ -117,28 +117,28 @@ public class GlobalExceptionHandler {
      * A path variable or query parameter of the wrong type (e.g. a non-numeric id).
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<Map<String, Object>> handleTypeMismatch(
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST,
                 "Invalid value for parameter '" + ex.getName() + "'.", null);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<Map<String, Object>> handleMissingParameter(
+    public ResponseEntity<ApiResponse<Void>> handleMissingParameter(
             MissingServletRequestParameterException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST,
                 "Missing required parameter '" + ex.getParameterName() + "'.", null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
             HttpRequestMethodNotSupportedException ex) {
         return buildResponse(HttpStatus.METHOD_NOT_ALLOWED,
                 "Method " + ex.getMethod() + " is not supported for this endpoint.", null);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNoResource(NoResourceFoundException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleNoResource(NoResourceFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, "Resource not found.", null);
     }
 
@@ -147,7 +147,7 @@ public class GlobalExceptionHandler {
      * columns and constraints, so it is logged, never returned.
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, Object>> handleDataIntegrity(
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(
             DataIntegrityViolationException ex) {
         String ref = reference();
         log.warn("Data integrity violation [ref={}]: {}", ref, ex.getMostSpecificCause().getMessage());
@@ -161,7 +161,7 @@ public class GlobalExceptionHandler {
      * and PostgreSQL messages expose schema details.
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+    public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
         String ref = reference();
         log.error("Unhandled exception [ref={}]", ref, ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -174,31 +174,28 @@ public class GlobalExceptionHandler {
 
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(ResourceNotFoundException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
     }
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<Map<String, Object>> handleBusiness(BusinessException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
 
     @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorized(UnauthorizedException ex) {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), null);
     }
 
     /**
-     * Builds a consistent error response structure.
+     * Every error body is the same envelope as every success body (P-2):
+     * {@code success} is false, {@code message} is safe to show, and
+     * {@code details} is present only for structured information such as
+     * field-level validation errors.
      */
-    private ResponseEntity<Map<String, Object>> buildResponse(
+    private ResponseEntity<ApiResponse<Void>> buildResponse(
             HttpStatus status, String message, Object details) {
-        Map<String, Object> body = new java.util.LinkedHashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-        if (details != null) body.put("details", details);
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status).body(ApiResponse.error(message, details));
     }
 }

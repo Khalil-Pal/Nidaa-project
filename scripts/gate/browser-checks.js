@@ -40,7 +40,7 @@ async function api(path, opts = {}, token) {
 async function login(email, password) {
     const r = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
     if (r.status !== 200) throw new Error(`login ${email} -> ${r.status} ${JSON.stringify(r.body)}`);
-    return r.body;
+    return r.body.data;
 }
 function expiredToken(secret, email) {
     const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');

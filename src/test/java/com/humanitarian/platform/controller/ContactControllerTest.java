@@ -32,7 +32,7 @@ class ContactControllerTest {
 
         mockMvc.perform(get("/api/help-requests/10/contact"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403));
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test

@@ -368,7 +368,7 @@ async function fetchJson(url,options={}){
     let payload={};
     try{payload=await response.json();}catch{}
     if(!response.ok)throw new Error(payload.message||'The community request failed.');
-    return payload.data??payload;
+    return payload.data;
 }
 
 async function loadPosts(reset=false){
@@ -662,12 +662,12 @@ async function loadMembers(){
         let members=[];
         if(userRole==='admin'){
             const res=await apiFetch(API+'/admin/users',{headers:authHeader()});
-            if(res.ok){const d=await res.json();const all=d.data||d||[];members=all.filter(m=>{const r=(m.role||'').toLowerCase();return r==='volunteer'||r==='psychologist'||r==='organization';}).slice(0,6);}
+            if(res.ok){const all=(await res.json()).data||[];members=all.filter(m=>{const r=(m.role||'').toLowerCase();return r==='volunteer'||r==='psychologist'||r==='organization';}).slice(0,6);}
         }
         if(!members.length){
             const res=await apiFetch(API+'/dashboard/stats',{headers:authHeader()});
             if(res.ok){
-                const d=await res.json();const s=d.data||d||{};
+                const s=(await res.json()).data||{};
                 const vc=s.totalVolunteers||s.volunteers||0;
                 const pc=s.totalPsychologists||s.psychologists||0;
                 const oc=s.totalOrganizations||s.organizations||0;

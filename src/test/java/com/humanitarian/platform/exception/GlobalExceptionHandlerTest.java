@@ -108,4 +108,21 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(post("/t/param"))
                 .andExpect(status().isMethodNotAllowed());
     }
+
+    /** P-2: every error body is the same envelope as a success body, discriminated by {@code success}. */
+    @Test
+    void errorBodiesUseTheResponseEnvelope() throws Exception {
+        mockMvc.perform(get("/t/typed/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").isString())
+                .andExpect(jsonPath("$.details").doesNotExist())
+                .andExpect(jsonPath("$.status").doesNotExist())
+                .andExpect(jsonPath("$.timestamp").doesNotExist())
+                .andExpect(jsonPath("$.error").doesNotExist());
+        mockMvc.perform(get("/t/boom"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.status").doesNotExist());
+    }
 }

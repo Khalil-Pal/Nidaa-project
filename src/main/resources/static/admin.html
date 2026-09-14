@@ -189,7 +189,7 @@
         try {
             const res = await apiFetch(API + '/admin/stats', { headers: authHeader() });
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            const stats = await res.json();
+            const stats = (await res.json()).data || {};
 
             const byStatus  = stats.byStatus  || {};
             const byType    = stats.byType    || {};

@@ -1,5 +1,6 @@
 package com.humanitarian.platform.controller;
 
+import com.humanitarian.platform.dto.ApiResponse;
 import com.humanitarian.platform.dto.RankedPsychologicalRequestDTO;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import com.humanitarian.platform.repository.AssignmentRepository;
@@ -63,9 +64,12 @@ class AdminV1ControllerTest {
                 assignmentRepository,
                 new PriorityScoreService());
 
-        ResponseEntity<Map<String, Object>> response = controller.getRankedDashboard();
-        Map<String, Object> body = response.getBody();
+        ResponseEntity<ApiResponse<Map<String, Object>>> response = controller.getRankedDashboard();
+        ApiResponse<Map<String, Object>> envelope = response.getBody();
 
+        assertNotNull(envelope);
+        assertTrue(envelope.isSuccess());
+        Map<String, Object> body = envelope.getData();
         assertNotNull(body);
         List<?> ranked = assertInstanceOf(List.class, body.get("psychologicalRequests"));
         assertEquals(2, ranked.size());

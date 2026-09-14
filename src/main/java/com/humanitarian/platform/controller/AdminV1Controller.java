@@ -2,6 +2,7 @@ package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.dto.RankedRequestDTO;
 import com.humanitarian.platform.dto.RankedPsychologicalRequestDTO;
+import com.humanitarian.platform.dto.ApiResponse;
 import com.humanitarian.platform.dto.AssignmentHistoryDTO;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.PsychologicalRequest;
@@ -57,20 +58,20 @@ public class AdminV1Controller {
     }
 
     @GetMapping("/assignments")
-    public ResponseEntity<List<AssignmentHistoryDTO>> getAssignmentHistory() {
-        return ResponseEntity.ok(assignmentHistoryService.getAllHistory());
+    public ResponseEntity<ApiResponse<List<AssignmentHistoryDTO>>> getAssignmentHistory() {
+        return ResponseEntity.ok(ApiResponse.success("Assignment history retrieved", assignmentHistoryService.getAllHistory()));
     }
 
     @GetMapping("/evaluation")
-    public ResponseEntity<Map<String, Object>> runEvaluation() {
-        return ResponseEntity.ok(matchingEvaluationService.evaluate(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> runEvaluation() {
+        return ResponseEntity.ok(ApiResponse.success("Evaluation complete", matchingEvaluationService.evaluate(
                 helpRequestRepository.findAll(),
                 volunteerRepository.findAll(),
-                assignmentRepository.findAll()));
+                assignmentRepository.findAll())));
     }
 
     @GetMapping("/dashboard/ranked")
-    public ResponseEntity<Map<String, Object>> getRankedDashboard() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getRankedDashboard() {
         List<RankedRequestDTO> ranked = helpRequestService
                 .getRankedWithSuggestions(volunteerRepository.findByIsAvailableTrue());
         List<PsychologicalRequest> allPsychologicalRequests = psychologicalRequestRepository.findAll();
@@ -99,6 +100,6 @@ public class AdminV1Controller {
         dashboard.put("totalPsychological", psychologicalRequests.size());
         dashboard.put("totalCrisis", crisisCases.size());
         dashboard.put("totalNeedsReview", reviewCases.size());
-        return ResponseEntity.ok(dashboard);
+        return ResponseEntity.ok(ApiResponse.success("Ranked dashboard retrieved", dashboard));
     }
 }

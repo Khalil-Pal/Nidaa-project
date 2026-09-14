@@ -77,7 +77,8 @@ function refreshSession() {
                 body: JSON.stringify({ refreshToken })
             });
             if (!res.ok) return false;
-            const data = await res.json();
+            const body = await res.json();
+            const data = body && body.data;
             if (!data || !data.token) return false;
             storeSession(data);
             return true;

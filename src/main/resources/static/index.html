@@ -414,7 +414,7 @@
     try {
       const res = await fetch(`${API}/dashboard/public-stats`);
       if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
+      const data = (await res.json()).data || {};
       els.forEach(el => {
         const value = data[el.dataset.stat] ?? 0;
         const observer = new IntersectionObserver((entries) => {

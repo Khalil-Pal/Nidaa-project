@@ -34,7 +34,7 @@ public class HelpRequestController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllRequests(
+    public ResponseEntity<ApiResponse<?>> getAllRequests(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
         if (size > 0) {

@@ -259,24 +259,13 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fullName, email, phone, password, role: selectedRole })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Registration failed. Please try again.');
+            const body = await res.json();
+            if (!res.ok) throw new Error(body.message || 'Registration failed. Please try again.');
 
-            if (data.pendingApproval) {
-                // Pending: do NOT save token — they cannot log in until approved
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                showAlert(
-                    '✅ Application submitted! Your account is under review. You will receive an email at ' + data.email + ' once approved.',
-                    'pending'
-                );
-                document.getElementById('registerBtn').textContent = '✓ Application Submitted';
-                document.getElementById('registerBtn').disabled = true;
-                return;
-            }
-            // Active user (beneficiary) — save the token pair and go to dashboard
-            storeSession(data);
-            window.location.href = 'dashboard.html';
+            // Step 1 of 2: the server has emailed a verification code; no session exists yet.
+            showAlert('✅ ' + (body.message || 'Verification code sent to ' + ((body.data || {}).email || email) + '.'), 'pending');
+            document.getElementById('registerBtn').textContent = '✓ Code Sent';
+            document.getElementById('registerBtn').disabled = true;
         } catch (err) {
             showAlert(err.message);
             setLoading(false);
