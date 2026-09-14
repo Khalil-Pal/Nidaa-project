@@ -30,11 +30,10 @@ public class HelpRequest {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    // No columnDefinition needed — stringtype=unspecified in JDBC URL handles enum cast
-    @Column(name = "help_type", columnDefinition = "help_type_enum")
+    @Column(name = "help_type", columnDefinition = "help_type")
     private String helpType;
 
-    @Column(name = "urgency_level", columnDefinition = "urgency_level_enum")
+    @Column(name = "urgency_level", columnDefinition = "urgency_level")
     private String urgencyLevel;
 
     @Column(name = "priority_score")

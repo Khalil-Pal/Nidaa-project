@@ -23,16 +23,16 @@ public class PsychologicalRequest {
     private Long assignedPsychologistId;
 
     // No columnDefinition needed — stringtype=unspecified handles enum cast
-    @Column(name = "support_type", columnDefinition = "support_type_enum")
+    @Column(name = "support_type", columnDefinition = "support_type")
     private String supportType;
 
-    @Column(name = "category", columnDefinition = "category_enum")
+    @Column(name = "category", columnDefinition = "psychological_category")
     private String category;
 
-    @Column(name = "urgency_level", columnDefinition = "urgency_level_enum")
+    @Column(name = "urgency_level", columnDefinition = "urgency_level")
     private String urgencyLevel;
 
-    @Column(name = "preferred_format", columnDefinition = "preferred_format_enum")
+    @Column(name = "preferred_format", columnDefinition = "consultation_format")
     private String preferredFormat;
 
     @Column(name = "preferred_time")
@@ -45,7 +45,7 @@ public class PsychologicalRequest {
     @Builder.Default
     private Boolean isAnonymous = false;
 
-    @Column(name = "status", columnDefinition = "psychological_request_status")
+    @Column(name = "status", columnDefinition = "help_request_status")
     @Builder.Default
     private String status = "PENDING";
 
