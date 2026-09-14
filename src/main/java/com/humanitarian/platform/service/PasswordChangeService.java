@@ -1,5 +1,6 @@
 package com.humanitarian.platform.service;
 
+import com.humanitarian.platform.util.VerificationCodes;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.model.PasswordResetToken;
 import com.humanitarian.platform.model.User;
@@ -17,7 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
 @Service
@@ -25,7 +25,6 @@ public class PasswordChangeService {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordChangeService.class);
 
-    private static final String CHARS         = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int    CODE_LENGTH   = 8;
     private static final int    EXPIRY_MINUTES = 10;
 
@@ -76,7 +75,7 @@ public class PasswordChangeService {
         entityManager.flush(); // ensure deletes are committed before insert
 
         // Generate and save the verification code
-        String code = generateCode();
+        String code = VerificationCodes.generate(CODE_LENGTH);
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(key)
                 .code(code)
@@ -87,7 +86,7 @@ public class PasswordChangeService {
 
         sendVerificationEmail(user, code);
 
-        return "Verification code sent to " + maskEmail(user.getEmail()) +
+        return "Verification code sent to " + VerificationCodes.maskEmail(user.getEmail()) +
                 ". It expires in " + EXPIRY_MINUTES + " minutes.";
     }
 
@@ -137,21 +136,6 @@ public class PasswordChangeService {
 
         log.info("Password changed successfully for: {}", user.getEmail());
         return "Password changed successfully.";
-    }
-
-    private String generateCode() {
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(CODE_LENGTH);
-        for (int i = 0; i < CODE_LENGTH; i++) {
-            sb.append(CHARS.charAt(random.nextInt(CHARS.length())));
-        }
-        return sb.toString();
-    }
-
-    private String maskEmail(String email) {
-        int at = email.indexOf('@');
-        if (at <= 2) return "***" + email.substring(at);
-        return email.substring(0, 2) + "***" + email.substring(at);
     }
 
     private void sendVerificationEmail(User user, String code) {

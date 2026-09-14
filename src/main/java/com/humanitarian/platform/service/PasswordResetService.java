@@ -1,5 +1,6 @@
 package com.humanitarian.platform.service;
 
+import com.humanitarian.platform.util.VerificationCodes;
 import com.humanitarian.platform.model.PasswordResetToken;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.repository.PasswordResetTokenRepository;
@@ -22,7 +23,6 @@ import com.humanitarian.platform.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
 @Service
@@ -30,7 +30,6 @@ public class PasswordResetService {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
 
-    private static final String CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789@#$!%&";
     private static final int CODE_LENGTH = 6;
     private static final int CODE_EXPIRY_MINUTES = 15;
 
@@ -84,7 +83,7 @@ public class PasswordResetService {
         entityManager.flush(); // ensure deletes are committed before insert
 
         // Generate new code and persist it in DB
-        String code = generateCode();
+        String code = VerificationCodes.generate(CODE_LENGTH);
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(normalizedEmail)
                 .code(code)
@@ -156,21 +155,6 @@ public class PasswordResetService {
         tokenRepository.deleteByEmail(normalizedEmail);
 
         log.info("Password reset successfully for: {}", normalizedEmail);
-    }
-
-    private String generateCode() {
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(CODE_LENGTH);
-        for (int i = 0; i < CODE_LENGTH; i++) {
-            sb.append(CHARS.charAt(random.nextInt(CHARS.length())));
-        }
-        return sb.toString();
-    }
-
-    private String maskEmail(String email) {
-        int at = email.indexOf('@');
-        if (at <= 2) return "***" + email.substring(at);
-        return email.substring(0, 2) + "***" + email.substring(at);
     }
 
     private void sendResetEmail(User user, String code) {

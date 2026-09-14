@@ -13,6 +13,7 @@ import com.humanitarian.platform.repository.PendingRegistrationRepository;
 import com.humanitarian.platform.repository.RefreshTokenRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.security.JwtUtils;
+import com.humanitarian.platform.util.VerificationCodes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +33,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
@@ -108,7 +108,7 @@ public class AuthService {
         // Delete any previous pending for this email (allow resend)
         pendingRepository.deleteByEmail(email);
 
-        String code = generateCode(8);
+        String code = VerificationCodes.generate(8);
 
         PendingRegistration pending = PendingRegistration.builder()
                 .email(email)
@@ -126,7 +126,7 @@ public class AuthService {
 
         logger.info("Registration verification code sent to: {}", email);
         return Map.of(
-                "message", "Verification code sent to " + maskEmail(email) + ". Enter the code to complete registration.",
+                "message", "Verification code sent to " + VerificationCodes.maskEmail(email) + ". Enter the code to complete registration.",
                 "email", email
         );
     }
@@ -299,20 +299,6 @@ public class AuthService {
                 .build();
         refreshTokenRepository.save(refreshToken);
         return token;
-    }
-
-    private String generateCode(int length) {
-        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(length);
-        for (int i = 0; i < length; i++) sb.append(chars.charAt(random.nextInt(chars.length())));
-        return sb.toString();
-    }
-
-    private String maskEmail(String email) {
-        int at = email.indexOf('@');
-        if (at <= 2) return "***" + email.substring(at);
-        return email.substring(0, 2) + "***" + email.substring(at);
     }
 
     private void sendRegistrationEmail(String email, String fullName, String code) {

@@ -9,11 +9,10 @@ import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.AssignmentRepository;
 import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
+import com.humanitarian.platform.util.RequestTransitions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ConflictException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
@@ -37,7 +36,6 @@ public class PsychologicalRequestService {
 
     @Autowired private PsychologicalRequestRepository repo;
     @Autowired private UserService                    userService;
-    @Autowired private JdbcTemplate                   jdbc;
     @Autowired private CrisisDetectorService          crisisDetectorService;
     @Autowired private AssignmentRepository           assignmentRepository;
     @Autowired private PsychologistRepository         psychologistRepository;
@@ -86,21 +84,10 @@ public class PsychologicalRequestService {
         User currentUser = userService.getCurrentUser();
         PsychologicalRequest request = findOrThrow(requestId);
 
-        // Must store psychologist_id (PK of psychologists table), not user_id
-        // psychological_requests.assigned_psychologist_id → FK to psychologists.psychologist_id
-        Long psychologistId;
-        try {
-            psychologistId = jdbc.queryForObject(
-                    "SELECT psychologist_id FROM psychologists WHERE user_id = ?",
-                    Long.class, currentUser.getId());
-        } catch (EmptyResultDataAccessException e) {
-            throw new ResourceNotFoundException("Psychologist profile not found. Contact admin.");
-        } catch (Exception e) {
-            throw new BusinessException("Error retrieving psychologist profile: " + e.getMessage());
-        }
-
-        Psychologist psychologist = psychologistRepository.findById(psychologistId)
+        // assigned_psychologist_id is the psychologists PK, not the user id
+        Psychologist psychologist = psychologistRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Psychologist profile not found. Contact admin."));
+        Long psychologistId = psychologist.getId();
         if (Boolean.TRUE.equals(request.getIsCrisis()) && !Boolean.TRUE.equals(psychologist.getIsOnDuty())) {
             throw new BusinessException("Crisis requests require an on-duty psychologist");
         }
@@ -124,13 +111,6 @@ public class PsychologicalRequestService {
 
         return findOrThrow(requestId);
     }
-
-    private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.of(
-        "PENDING",   Set.of("ASSIGNED", "CANCELLED"),
-        "ASSIGNED",  Set.of("COMPLETED", "CANCELLED"),
-        "COMPLETED", Set.of(),
-        "CANCELLED", Set.of()
-    );
 
     // Only the assigned psychologist (or an admin) may close a case; the
     // beneficiary may withdraw it. Volunteers and organizations have no role
@@ -159,7 +139,7 @@ public class PsychologicalRequestService {
         }
 
         // Transition validation
-        if (!VALID_TRANSITIONS.getOrDefault(current, Set.of()).contains(next)) {
+        if (!RequestTransitions.allows(current, next)) {
             throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
         }
 
@@ -200,17 +180,9 @@ public class PsychologicalRequestService {
 
     public List<PsychologicalRequest> getMyAssignedRequests() {
         User user = userService.getCurrentUser();
-        Long psychologistId;
-        try {
-            psychologistId = jdbc.queryForObject(
-                    "SELECT psychologist_id FROM psychologists WHERE user_id = ?",
-                    Long.class, user.getId());
-        } catch (EmptyResultDataAccessException e) {
-            return List.of();
-        } catch (Exception e) {
-            return List.of();
-        }
-        return repo.findByAssignedPsychologistId(psychologistId);
+        return psychologistRepository.findByUserId(user.getId())
+                .map(p -> repo.findByAssignedPsychologistId(p.getId()))
+                .orElseGet(List::of);
     }
 
     /**

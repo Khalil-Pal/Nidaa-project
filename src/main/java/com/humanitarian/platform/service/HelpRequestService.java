@@ -20,6 +20,7 @@ import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ConflictException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.exception.UnauthorizedException;
+import com.humanitarian.platform.util.RequestTransitions;
 import com.humanitarian.platform.util.HelpTypeNormalizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -357,13 +358,6 @@ public class HelpRequestService {
                 .orElse(false);
     }
 
-    private static final Map<String, Set<String>> VALID_TRANSITIONS = Map.of(
-            "PENDING",   Set.of("ASSIGNED", "CANCELLED"),
-            "ASSIGNED",  Set.of("COMPLETED", "CANCELLED"),
-            "COMPLETED", Set.of(),
-            "CANCELLED", Set.of()
-    );
-
     // Targets each party may move a request to. Completion is reserved for the
     // assigned provider (or an admin) because it is the delivery record; the
     // beneficiary and the filer may only withdraw.
@@ -391,7 +385,7 @@ public class HelpRequestService {
         }
 
         // Transition validation — no going backwards or into invalid states
-        if (!VALID_TRANSITIONS.getOrDefault(current, Set.of()).contains(next)) {
+        if (!RequestTransitions.allows(current, next)) {
             throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
         }
 
