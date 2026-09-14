@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -88,6 +89,19 @@ class AuthSecurityTest extends SecuritySliceTest {
     }
 
     // -- S-1 ------------------------------------------------------------------
+
+    /**
+     * F-3: the landing page's images are .webp now. The static-file rule lists
+     * extensions explicitly, so an unlisted one is answered 401 by the entry
+     * point instead of being served (the first run of the converted page lost
+     * its hero image exactly this way).
+     */
+    @Test
+    void webpImagesArePublicLikeTheOtherStaticFiles() throws Exception {
+        mockMvc.perform(get("/nidaa-hero.webp")).andExpect(status().isOk());
+        mockMvc.perform(get("/images/help-types/food-help.webp")).andExpect(status().isOk());
+        mockMvc.perform(get("/nidaa-hero.bmp")).andExpect(status().isUnauthorized());
+    }
 
     @Test
     void registrationRejectsAdminRole() throws Exception {

@@ -128,7 +128,7 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         // Static files — no auth needed
                         .requestMatchers("/*.html", "/*.css", "/*.js", "/*.png",
-                                "/*.jpg", "/*.ico", "/*.svg", "/*.woff", "/*.woff2",
+                                "/*.jpg", "/*.webp", "/*.ico", "/*.svg", "/*.woff", "/*.woff2",
                                 "/", "/favicon.ico", "/static/**", "/assets/**",
                                 "/js/**", "/css/**", "/images/**").permitAll()
                         // Auth endpoints — no auth needed
