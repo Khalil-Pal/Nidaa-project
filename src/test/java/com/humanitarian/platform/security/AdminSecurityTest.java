@@ -43,6 +43,8 @@ class AdminSecurityTest extends SecuritySliceTest {
     @MockBean private AssignmentHistoryService assignmentHistoryService;
     @MockBean private AssignmentRepository assignmentRepository;
     @MockBean private PriorityScoreService priorityScoreService;
+    @MockBean private com.humanitarian.platform.service.UserApprovalService userApprovalService;
+    @MockBean private com.humanitarian.platform.service.AdminReportService adminReportService;
 
     @Test
     @WithMockUser(roles = "VOLUNTEER")
@@ -79,6 +81,27 @@ class AdminSecurityTest extends SecuritySliceTest {
                 .andExpect(status().isOk());
         verify(userService).deleteAccount(5L);
         verify(userRepository, never()).delete(any(User.class));
+    }
+
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void nonAdminCannotApproveOrReject() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/admin/approve/5"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/admin/reject/5"))
+                .andExpect(status().isForbidden());
+        verify(userApprovalService, never()).approve(any());
+        verify(userApprovalService, never()).reject(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminApprovalGoesThroughTheService() throws Exception {
+        when(userApprovalService.approve(5L)).thenReturn(user(5L, UserRole.VOLUNTEER));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/admin/approve/5"))
+                .andExpect(status().isOk());
+        verify(userApprovalService).approve(5L);
     }
 
     @Test

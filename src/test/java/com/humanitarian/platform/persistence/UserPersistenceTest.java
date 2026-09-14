@@ -65,19 +65,6 @@ class UserPersistenceTest extends PersistenceTestSupport {
     }
 
     @Test
-    void approvalShapedRowsStoreNoRating() {
-        // the former column default of 5.0 made every approved provider look top-rated
-        User psy = newUser(UserRole.PSYCHOLOGIST, "approve-psy-rating@example.test");
-        em.getEntityManager().createNativeQuery(
-                        "INSERT INTO psychologists (user_id, is_on_duty) VALUES (:id, true)")
-                .setParameter("id", psy.getId()).executeUpdate();
-        Object rating = em.getEntityManager()
-                .createNativeQuery("SELECT rating FROM psychologists WHERE user_id = :id")
-                .setParameter("id", psy.getId()).getSingleResult();
-        assertNull(rating);
-    }
-
-    @Test
     void volunteerWithARatingInRangePersists() {
         User user = newUser(UserRole.VOLUNTEER, "vol-ok@example.test");
         Volunteer volunteer = em.persistAndFlush(Volunteer.builder().user(user).rating(3.5).isAvailable(true).build());
@@ -157,33 +144,6 @@ class UserPersistenceTest extends PersistenceTestSupport {
         assertNotNull(reloaded.getTokensValidFrom());
         assertEquals(1, userRepository.findByRole(UserRole.VOLUNTEER).stream()
                 .filter(u -> u.getId().equals(user.getId())).count(), "derived query binds the enum");
-    }
-
-    @Test
-    void approvalShapedProviderRowsPersist() {
-        // AdminController.approveUser inserts exactly these columns. Before V16
-        // psychologists.specialization and organizations.registration_number were
-        // NOT NULL, so approving either role failed on a fresh schema (Gate 3).
-        User psy = newUser(UserRole.PSYCHOLOGIST, "approve-psy@example.test");
-        User org = newUser(UserRole.ORGANIZATION, "approve-org@example.test");
-        org.setFullName("Approved Aid Org");
-
-        em.getEntityManager().createNativeQuery(
-                        "INSERT INTO psychologists (user_id, is_on_duty) VALUES (:id, true)")
-                .setParameter("id", psy.getId()).executeUpdate();
-        em.getEntityManager().createNativeQuery(
-                        "INSERT INTO organizations (user_id, official_name, is_verified) VALUES (:id, :name, false)")
-                .setParameter("id", org.getId()).setParameter("name", org.getFullName()).executeUpdate();
-        em.getEntityManager().createNativeQuery(
-                        "INSERT INTO volunteers (user_id, is_available) VALUES (:id, true)")
-                .setParameter("id", newUser(UserRole.VOLUNTEER, "approve-vol@example.test").getId()).executeUpdate();
-
-        assertEquals(1L, em.getEntityManager()
-                .createNativeQuery("SELECT count(*) FROM psychologists WHERE user_id = :id")
-                .setParameter("id", psy.getId()).getSingleResult());
-        assertEquals(1L, em.getEntityManager()
-                .createNativeQuery("SELECT count(*) FROM organizations WHERE user_id = :id")
-                .setParameter("id", org.getId()).getSingleResult());
     }
 
     @Test

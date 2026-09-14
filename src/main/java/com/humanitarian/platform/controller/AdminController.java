@@ -1,31 +1,35 @@
 package com.humanitarian.platform.controller;
 
-import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.model.User;
-import com.humanitarian.platform.repository.HelpRequestRepository;
-import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import com.humanitarian.platform.repository.UserRepository;
+import com.humanitarian.platform.service.AdminReportService;
+import com.humanitarian.platform.service.UserApprovalService;
+import com.humanitarian.platform.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
+/**
+ * Administrator endpoints. Holds no SQL and no business rules: approval,
+ * rejection, reporting and deletion live in services (A-2).
+ */
 @RestController
 @RequestMapping("/api/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
-    @Autowired private UserRepository                 userRepository;
-    @Autowired private com.humanitarian.platform.service.UserService userService;
-    @Autowired private HelpRequestRepository          helpRequestRepository;
-    @Autowired private PsychologicalRequestRepository psychRepository;
-    @Autowired private JdbcTemplate                   jdbc;
+
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
+
+    @Autowired private UserRepository      userRepository;
+    @Autowired private UserService         userService;
+    @Autowired private UserApprovalService userApprovalService;
+    @Autowired private AdminReportService  adminReportService;
     @Autowired(required = false) private JavaMailSender mailSender;
 
     @GetMapping("/pending")
@@ -69,7 +73,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new com.humanitarian.platform.exception.ResourceNotFoundException("User not found"));
         String name = user.getFullName(), email = user.getEmail();
         userService.deleteAccount(userId);   // anonymise in place (D-2), never a hard delete
         sendEmail(email, "[Nidaa] Your account has been removed",
@@ -79,146 +83,38 @@ public class AdminController {
         return ResponseEntity.ok(res);
     }
 
-    // All help + psychological requests — single SQL join, no lazy-load issues
+    // All help + psychological requests, joined to their people
     @GetMapping("/requests")
     public ResponseEntity<?> getAllRequests() {
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        // Help requests
-        String sql1 = """
-            SELECT hr.request_id AS id,
-                   hr.title, hr.help_type, hr.urgency_level, hr.status,
-                   hr.address, hr.created_at, hr.description,
-                   ru.full_name  AS requester_name,
-                   ru.email      AS requester_email,
-                   ru.phone      AS requester_phone,
-                   COALESCE(vusr.full_name, ousr.full_name) AS worker_name
-            FROM help_requests hr
-            LEFT JOIN users ru           ON ru.user_id        = hr.beneficiary_id
-            LEFT JOIN volunteers v        ON v.volunteer_id    = hr.assigned_volunteer_id
-            LEFT JOIN users vusr          ON vusr.user_id      = v.user_id
-            LEFT JOIN organizations o     ON o.organization_id = hr.assigned_organization_id
-            LEFT JOIN users ousr          ON ousr.user_id      = o.user_id
-            ORDER BY hr.created_at DESC""";
-
-        jdbc.queryForList(sql1).forEach(row -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id",             row.get("id"));
-            item.put("requestType",    "HELP");
-            item.put("title",          row.get("title"));
-            item.put("helpType",       row.get("help_type"));
-            item.put("urgencyLevel",   row.get("urgency_level"));
-            item.put("status",         row.get("status"));
-            item.put("address",        row.get("address"));
-            item.put("createdAt",      row.get("created_at"));
-            item.put("description",    row.get("description"));
-            item.put("requesterName",  nvl(row.get("requester_name"),  "—"));
-            item.put("requesterEmail", nvl(row.get("requester_email"), "—"));
-            item.put("requesterPhone", nvl(row.get("requester_phone"), "—"));
-            item.put("workerName",     nvl(row.get("worker_name"),     "Not assigned yet"));
-            result.add(item);
-        });
-
-        // Psychological requests
-        String sql2 = """
-            SELECT pr.request_id AS id,
-                   pr.category, pr.preferred_format, pr.urgency_level,
-                   pr.status, pr.created_at, pr.description,
-                   ru.full_name   AS requester_name,
-                   ru.email       AS requester_email,
-                   ru.phone       AS requester_phone,
-                   pusr.full_name AS worker_name
-            FROM psychological_requests pr
-            LEFT JOIN users ru          ON ru.user_id        = pr.beneficiary_id
-            LEFT JOIN psychologists p   ON p.psychologist_id = pr.assigned_psychologist_id
-            LEFT JOIN users pusr        ON pusr.user_id      = p.user_id
-            ORDER BY pr.created_at DESC""";
-
-        jdbc.queryForList(sql2).forEach(row -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id",             row.get("id"));
-            item.put("requestType",    "PSYCHOLOGICAL");
-            item.put("title",          nvl(row.get("category"), "Support") + " — " + nvl(row.get("preferred_format"), ""));
-            item.put("helpType",       "PSYCHOLOGICAL");
-            item.put("urgencyLevel",   row.get("urgency_level"));
-            item.put("status",         row.get("status"));
-            item.put("address",        null);
-            item.put("createdAt",      row.get("created_at"));
-            item.put("description",    row.get("description"));
-            item.put("requesterName",  nvl(row.get("requester_name"),  "—"));
-            item.put("requesterEmail", nvl(row.get("requester_email"), "—"));
-            item.put("requesterPhone", nvl(row.get("requester_phone"), "—"));
-            item.put("workerName",     nvl(row.get("worker_name"),     "Not assigned yet"));
-            result.add(item);
-        });
-
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(adminReportService.allRequests());
     }
 
     @PutMapping("/approve/{userId}")
-    @Transactional
     public ResponseEntity<Map<String, Object>> approveUser(@PathVariable Long userId) {
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        user.setIsActive(true);
-        user.setIsVerified(true);
-        userRepository.save(user);
-
+        User user = userApprovalService.approve(userId);
         String role = user.getRole().name();
-
-        if (role.equals("VOLUNTEER")) {
-
-            jdbc.update("""
-            INSERT INTO volunteers (user_id, is_available)
-            VALUES (?, true)
-            ON CONFLICT (user_id) DO NOTHING
-        """, user.getId());
-
-        } else if (role.equals("PSYCHOLOGIST")) {
-
-            jdbc.update("""
-            INSERT INTO psychologists (user_id, is_on_duty)
-            VALUES (?, true)
-            ON CONFLICT (user_id) DO NOTHING
-        """, user.getId());
-
-        } else if (role.equals("ORGANIZATION")) {
-
-            jdbc.update("""
-            INSERT INTO organizations (user_id, official_name, is_verified)
-            VALUES (?, ?, false)
-            ON CONFLICT (user_id) DO NOTHING
-        """, user.getId(), user.getFullName());
-        }
-
         sendEmail(
                 user.getEmail(),
-                "[Nidaa] Your application has been approved! ✅",
+                "[Nidaa] Your application has been approved! \u2705",
                 "Dear " + user.getFullName() + ",\n\nYour application as a "
                         + role.toLowerCase()
                         + " has been approved.\nYou can now log in at: http://localhost:8081/login.html\n\n"
-                        + "Welcome to Nidaa!\n— The Nidaa Team"
+                        + "Welcome to Nidaa!\n\u2014 The Nidaa Team"
         );
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("success", true);
         res.put("message", "Approved");
         res.put("userId", userId);
-
         return ResponseEntity.ok(res);
     }
 
     @PutMapping("/reject/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> rejectUser(@PathVariable Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = userApprovalService.reject(userId);
         sendEmail(user.getEmail(), "[Nidaa] Update on your application",
                 "Dear " + user.getFullName() + ",\n\nWe are unable to approve your account at this time.\n\n" +
-                        "Contact: supp0rtnidaa@yandex.ru\n— The Nidaa Team");
-        userRepository.delete(user);
+                        "Contact: supp0rtnidaa@yandex.ru\n\u2014 The Nidaa Team");
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("success", true); res.put("message", "Rejected");
         return ResponseEntity.ok(res);
@@ -226,57 +122,7 @@ public class AdminController {
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
-        var helpRequests  = helpRequestRepository.findAll();
-        var psychRequests = psychRepository.findAll();
-        var allUsers      = userRepository.findAll();
-        var weekAgo       = LocalDateTime.now().minusDays(7);
-
-        // Combined status counts (help + psychological)
-        Map<String,Long> byStatus = new LinkedHashMap<>();
-        helpRequests.forEach(r -> byStatus.merge(r.getStatus() != null ? r.getStatus() : "UNKNOWN", 1L, Long::sum));
-        psychRequests.forEach(r -> byStatus.merge(r.getStatus() != null ? r.getStatus() : "UNKNOWN", 1L, Long::sum));
-
-        // Type counts: help types + PSYCHOLOGICAL bucket
-        Map<String,Long> byType = new LinkedHashMap<>();
-        helpRequests.forEach(r -> byType.merge(r.getHelpType() != null ? r.getHelpType() : "OTHER", 1L, Long::sum));
-        byType.merge("PSYCHOLOGICAL", (long) psychRequests.size(), Long::sum);
-
-        // Region counts (help requests only — psych requests have no address)
-        Map<String,Long> byRegion = helpRequests.stream()
-                .filter(r -> r.getAddress() != null && !r.getAddress().isBlank())
-                .collect(Collectors.groupingBy(r -> r.getAddress().trim(), Collectors.counting()));
-
-        // This-week counts (both types)
-        long thisWeek = helpRequests.stream()
-                .filter(r -> r.getCreatedAt() != null && r.getCreatedAt().isAfter(weekAgo)).count()
-                + psychRequests.stream()
-                .filter(r -> r.getCreatedAt() != null && r.getCreatedAt().isAfter(weekAgo)).count();
-
-        long completedThisWeek = helpRequests.stream()
-                .filter(r -> "COMPLETED".equals(r.getStatus()) && r.getCompletedAt() != null
-                        && r.getCompletedAt().isAfter(weekAgo)).count()
-                + psychRequests.stream()
-                .filter(r -> "COMPLETED".equals(r.getStatus()) && r.getCompletedAt() != null
-                        && r.getCompletedAt().isAfter(weekAgo)).count();
-
-        Map<String,Long> usersByRole = allUsers.stream().filter(u -> Boolean.TRUE.equals(u.getIsActive()))
-                .collect(Collectors.groupingBy(u -> u.getRole() != null ? u.getRole().name() : "UNKNOWN", Collectors.counting()));
-
-        Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalRequests",     helpRequests.size() + psychRequests.size());
-        stats.put("byStatus",          byStatus);
-        stats.put("byType",            byType);
-        stats.put("byRegion",          byRegion);
-        stats.put("thisWeek",          thisWeek);
-        stats.put("completedThisWeek", completedThisWeek);
-        stats.put("totalUsers",        allUsers.size());
-        stats.put("activeUsers",       allUsers.stream().filter(u -> Boolean.TRUE.equals(u.getIsActive())).count());
-        stats.put("usersByRole",       usersByRole);
-        return ResponseEntity.ok(stats);
-    }
-
-    private String nvl(Object v, String fallback) {
-        return v != null ? v.toString() : fallback;
+        return ResponseEntity.ok(adminReportService.stats());
     }
 
     private void sendEmail(String to, String subject, String body) {
@@ -286,6 +132,6 @@ public class AdminController {
             msg.setFrom("supp0rtnidaa@yandex.ru");
             msg.setTo(to); msg.setSubject(subject); msg.setText(body);
             mailSender.send(msg);
-        } catch (Exception e) { System.err.println("Email failed: " + e.getMessage()); }
+        } catch (Exception e) { log.error("Email to {} failed: {}", to, e.getMessage()); }
     }
 }
