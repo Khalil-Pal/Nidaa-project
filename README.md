@@ -93,9 +93,9 @@ Material requests receive points for:
 | Elderly people present | +10 |
 | Disabled people present | +15 |
 | Number of people | +2 each, capped at +20 |
-| Waiting time | +1 per two full hours |
+| Waiting time | +1 per two full hours, capped at +20 |
 
-Psychological requests receive urgency points, a `+35` crisis bonus, and the same waiting-time growth.
+The total is capped at 100. Psychological requests receive urgency points, a `+35` crisis bonus, and the same waiting-time growth. Scores of pending requests are recomputed every 30 minutes so waiting time keeps counting.
 
 ### Geographic assignment
 

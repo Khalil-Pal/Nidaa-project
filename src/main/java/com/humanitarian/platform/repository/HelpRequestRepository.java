@@ -17,6 +17,7 @@ public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> 
     List<HelpRequest> findByBeneficiaryId(Long beneficiaryId);
     Page<HelpRequest> findByBeneficiaryId(Long beneficiaryId, Pageable pageable);
     List<HelpRequest> findByStatus(String status);
+    Page<HelpRequest> findByStatus(String status, Pageable pageable);
     List<HelpRequest> findByHelpType(String helpType);
     List<HelpRequest> findByUrgencyLevel(String urgencyLevel);
     List<HelpRequest> findByStatusOrderByPriorityScoreDesc(String status);
@@ -60,4 +61,15 @@ public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> 
     int updateStatusCancelled(@Param("id") Long id,
                               @Param("newStatus") String newStatus,
                               @Param("cancelledAt") java.time.LocalDateTime cancelledAt);
+
+    /**
+     * Writes only priority_score, so the scheduler's recalculation neither
+     * rewrites every column nor touches the columns other triggers watch.
+     * Runs in its own transaction: one failing row does not abort the batch.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @Query(value = "UPDATE help_requests SET priority_score = :score WHERE request_id = :id",
+            nativeQuery = true)
+    int updatePriorityScore(@Param("id") Long id, @Param("score") int score);
 }

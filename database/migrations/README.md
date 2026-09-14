@@ -19,6 +19,7 @@ psql -U postgres -d Web_DB -f database/migrations/V10__reset_attempt_limit.sql
 psql -U postgres -d Web_DB -f database/migrations/V11__soft_delete_users.sql
 psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
 psql -U postgres -d Web_DB -f database/migrations/V14__crisis_review_flag.sql
+psql -U postgres -d Web_DB -f database/migrations/V15__drop_priority_triggers.sql
 ```
 
 ## Versions
@@ -58,6 +59,10 @@ psql -U postgres -d Web_DB -f database/migrations/V14__crisis_review_flag.sql
 - `V14` adds `psychological_requests.needs_review` for descriptions that score
   in the review band of the weighted crisis detector (flagged for a human look,
   not auto-routed). Idempotent; safe to rerun.
+- `V15` drops the V1 priority triggers, whose weights contradicted the
+  documented model in `PriorityScoreService` and silently overrode every score
+  the application computed. Scores already in the table are refreshed by the
+  scheduler within 30 minutes. Idempotent; safe to rerun.
 
 V1 through V8 were applied in order to a genuinely empty verification database.
 Its normalized schema dump matched the migrated development database with zero

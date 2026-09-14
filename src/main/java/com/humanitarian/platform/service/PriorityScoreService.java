@@ -7,8 +7,20 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
+/**
+ * The priority model documented in README "Request priority". These weights
+ * are the single source of truth: the legacy database trigger that used to
+ * recompute priority_score with different weights was removed in V15.
+ *
+ * The result is always within priority_score_range CHECK (0..100). Aging is
+ * capped so a long-waiting LOW request rises in the queue without ever
+ * outranking a fresh CRITICAL one on waiting time alone.
+ */
 @Service
 public class PriorityScoreService {
+
+    public static final int MAX_SCORE = 100;
+    public static final int MAX_AGING_BONUS = 20;
 
     public int calculate(HelpRequest request) {
         int score = urgencyScore(request.getUrgencyLevel());
@@ -28,7 +40,7 @@ public class PriorityScoreService {
 
         score += waitingTimeScore(request.getCreatedAt());
 
-        return score;
+        return clamp(score);
     }
 
     public int calculate(PsychologicalRequest request) {
@@ -38,7 +50,7 @@ public class PriorityScoreService {
             score += 35;
         }
 
-        return score + waitingTimeScore(request.getCreatedAt());
+        return clamp(score + waitingTimeScore(request.getCreatedAt()));
     }
 
     private int urgencyScore(String urgencyLevel) {
@@ -51,13 +63,18 @@ public class PriorityScoreService {
         };
     }
 
+    /** Half a point per full hour waited, capped at {@link #MAX_AGING_BONUS}. */
     private int waitingTimeScore(LocalDateTime createdAt) {
         if (createdAt == null) {
             return 0;
         }
 
         long hours = ChronoUnit.HOURS.between(createdAt, LocalDateTime.now());
-        return (int) (Math.max(hours, 0) * 0.5);
+        return (int) Math.min(Math.max(hours, 0) * 0.5, MAX_AGING_BONUS);
+    }
+
+    private static int clamp(int score) {
+        return Math.max(0, Math.min(score, MAX_SCORE));
     }
 
     private String normalize(String value) {
