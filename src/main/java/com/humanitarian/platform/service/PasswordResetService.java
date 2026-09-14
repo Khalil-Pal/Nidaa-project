@@ -52,6 +52,9 @@ public class PasswordResetService {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
+    @Autowired
+    private EmailTemplateService emailTemplateService;
+
     @Value("${spring.mail.username:}")
     private String senderEmail;
 
@@ -176,9 +179,7 @@ public class PasswordResetService {
         return;
     }
     try {
-        // Get HTML template from service
-        EmailTemplateService templateService = new EmailTemplateService();
-        String htmlContent = templateService.generatePasswordResetEmail(
+        String htmlContent = emailTemplateService.generatePasswordResetEmail(
                 user.getFullName(),
                 user.getEmail(),
                 code

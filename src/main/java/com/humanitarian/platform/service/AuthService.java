@@ -75,6 +75,7 @@ public class AuthService {
     @Autowired private AuthenticationManager         authenticationManager;
     @Autowired(required = false) private JavaMailSender mailSender;
     @Autowired private EntityManager entityManager;
+    @Autowired private EmailTemplateService          emailTemplateService;
 
     @Value("${spring.mail.username:}")
     private String senderEmail;
@@ -320,8 +321,7 @@ public class AuthService {
         return;
     }
     try {
-        EmailTemplateService templateService = new EmailTemplateService();
-        String htmlContent = templateService.generateVerificationEmail(fullName, code, "BENEFICIARY");
+        String htmlContent = emailTemplateService.generateVerificationEmail(fullName, code, "BENEFICIARY");
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");

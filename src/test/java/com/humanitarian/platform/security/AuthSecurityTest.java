@@ -9,6 +9,7 @@ import com.humanitarian.platform.repository.PendingRegistrationRepository;
 import com.humanitarian.platform.repository.RefreshTokenRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.service.AuthService;
+import com.humanitarian.platform.service.EmailTemplateService;
 import com.humanitarian.platform.service.PasswordResetService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({AuthController.class, PasswordResetController.class})
-@Import({AuthService.class, PasswordResetService.class})
+@Import({AuthService.class, PasswordResetService.class, EmailTemplateService.class})
 class AuthSecurityTest extends SecuritySliceTest {
 
     private static final String KNOWN = "known@example.com";
