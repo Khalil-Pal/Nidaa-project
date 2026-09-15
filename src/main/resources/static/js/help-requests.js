@@ -76,11 +76,19 @@
                 if (status === 'ASSIGNED' || status === 'COMPLETED') {
                     actionBtn = `<button class="btn-action btn-view" data-action="contact" data-id="${id}"><i class="fa fa-address-card" style="font-size:11px;margin-right:4px"></i>Contact Responder</button>`;
                 }
+                // R-1: once the help was delivered the beneficiary is asked to rate it
+                if (status === 'COMPLETED') {
+                    actionBtn += ` <button class="btn-action btn-view" data-action="report" data-id="${id}"><i class="fa fa-star" style="font-size:11px;margin-right:4px"></i>Rate this help</button>`;
+                }
             } else if (userRole === 'volunteer' || userRole === 'organization') {
                 if (status === 'PENDING') {
                     actionBtn = `<button class="btn-action btn-accept" style="background:var(--green)" data-action="start" data-id="${id}"><i class="fa fa-play" style="font-size:11px;margin-right:4px"></i>Start Working</button>`;
                 } else if (status === 'ASSIGNED' || status === 'COMPLETED') {
                     actionBtn = `<button class="btn-action btn-view" data-action="contact" data-id="${id}"><i class="fa fa-address-card" style="font-size:11px;margin-right:4px"></i>Contact & Status</button>`;
+                }
+                // R-1: the volunteer records what was delivered (reports are volunteer-only in the data model)
+                if (status === 'COMPLETED' && userRole === 'volunteer') {
+                    actionBtn += ` <button class="btn-action btn-view" data-action="report" data-id="${id}"><i class="fa fa-clipboard-check" style="font-size:11px;margin-right:4px"></i>Record what you delivered</button>`;
                 }
             }
 
@@ -270,7 +278,133 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
         if (updateBtn) { updateBtn.disabled = false; updateBtn.textContent = 'Update Status'; }
     }
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeContactModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeContactModal(); closeReportModal(); } });
+
+    // ── R-1: delivery report and beneficiary rating ───────────────────────────
+    let reportAssignmentId = null;
+
+    function closeReportModal() {
+        document.getElementById('reportOverlay').classList.remove('open');
+        reportAssignmentId = null;
+    }
+
+    function reportToast(text) {
+        const t = document.createElement('div');
+        t.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#047857;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;font-size:14px;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.1)';
+        t.textContent = '✅ ' + text;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
+
+    /** The report lives on the assignment; the request's history says which assignment completed it. */
+    async function completedAssignmentId(requestId) {
+        const res = await apiFetch(API + '/v1/assignments/help-requests/' + requestId);
+        if (!res.ok) return null;
+        const history = (await res.json()).data || [];
+        const done = history.filter(a => (a.status || '').toUpperCase() === 'COMPLETED');
+        const pick = done.length ? done[done.length - 1] : history[history.length - 1];
+        return pick ? pick.assignmentId : null;
+    }
+
+    async function openReportModal(requestId) {
+        const req = allRequests.find(r => (r.requestId || r.id) == requestId);
+        document.getElementById('reportRequestTitle').textContent = (req && req.title) || 'Help Request';
+        document.getElementById('reportTitle').textContent = userRole === 'beneficiary' ? 'Rate this help' : 'Delivery Report';
+        const body = document.getElementById('reportBody');
+        body.innerHTML = '<p class="report-note">Loading…</p>';
+        document.getElementById('reportOverlay').classList.add('open');
+
+        reportAssignmentId = await completedAssignmentId(requestId);
+        if (!reportAssignmentId) {
+            body.innerHTML = '<p class="report-note">No completed assignment was found for this request.</p>';
+            return;
+        }
+        const res = await apiFetch(API + '/assignments/' + reportAssignmentId + '/report');
+        if (res.status === 404) { renderReport(null); return; }
+        if (!res.ok) {
+            body.innerHTML = '<p class="report-note">Could not load the report (HTTP ' + res.status + ').</p>';
+            return;
+        }
+        renderReport((await res.json()).data || null);
+    }
+
+    function renderReport(report) {
+        const body = document.getElementById('reportBody');
+        let html = '';
+        if (report) {
+            html += '<div class="report-block"><h4>What was delivered</h4><p>' + escHtml(report.description) + '</p>' +
+                '<div class="report-meta">Recorded by ' + escHtml(report.volunteerName || 'the volunteer') +
+                (report.createdAt ? ' · ' + escHtml(formatDate(report.createdAt)) : '') + '</div></div>';
+            if (report.beneficiaryRating) {
+                html += '<div class="report-block"><h4>Beneficiary\'s rating</h4>' +
+                    '<div class="rating-given" aria-label="' + report.beneficiaryRating + ' out of 5">' +
+                    '★'.repeat(report.beneficiaryRating) + '☆'.repeat(5 - report.beneficiaryRating) + '</div>' +
+                    (report.feedbackFromBeneficiary ? '<p>' + escHtml(report.feedbackFromBeneficiary) + '</p>' : '') + '</div>';
+            } else if (userRole === 'beneficiary') {
+                html += '<form id="feedbackForm"><fieldset style="border:none;padding:0;margin:0">' +
+                    '<legend style="font-size:14px;font-weight:600;margin-bottom:4px">How was this help?</legend>' +
+                    '<div class="stars">' + [1, 2, 3, 4, 5].map(n =>
+                        '<input type="radio" name="rating" id="rating' + n + '" value="' + n + '" required/>' +
+                        '<label for="rating' + n + '" title="' + n + ' of 5">' + n + '</label>').join('') + '</div></fieldset>' +
+                    '<div class="form-group"><label for="feedbackText">Anything to add? <span style="font-weight:400;color:var(--muted)">(optional)</span></label>' +
+                    '<textarea id="feedbackText" maxlength="2000" placeholder="What went well, what could be better"></textarea></div>' +
+                    '<button type="submit" class="btn-update-status" id="feedbackSubmitBtn">Send rating</button></form>';
+            } else {
+                html += '<p class="report-note">The beneficiary has not rated this help yet.</p>';
+            }
+        } else if (userRole === 'volunteer') {
+            html += '<p class="report-note">Record what you delivered. The beneficiary sees it and is asked to rate the help.</p>' +
+                '<form id="reportForm"><div class="form-group"><label for="reportDescription">What was delivered</label>' +
+                '<textarea id="reportDescription" maxlength="4000" required placeholder="e.g. Food parcels for three people, delivered Tuesday afternoon"></textarea></div>' +
+                '<button type="submit" class="btn-update-status" id="reportSubmitBtn">Record delivery</button></form>';
+        } else {
+            html += '<p class="report-note">The volunteer has not recorded the delivery yet. You can rate this help once they have.</p>';
+        }
+        body.innerHTML = html;
+        const reportForm = document.getElementById('reportForm');
+        if (reportForm) reportForm.addEventListener('submit', (e) => { e.preventDefault(); submitReport(); });
+        const feedbackForm = document.getElementById('feedbackForm');
+        if (feedbackForm) feedbackForm.addEventListener('submit', (e) => { e.preventDefault(); submitFeedback(); });
+    }
+
+    async function submitReport() {
+        const description = document.getElementById('reportDescription').value.trim();
+        if (!description) { alert('Please describe what was delivered.'); return; }
+        const btn = document.getElementById('reportSubmitBtn');
+        btn.disabled = true; btn.textContent = 'Saving...';
+        try {
+            const res = await apiFetch(API + '/assignments/' + reportAssignmentId + '/report', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+            renderReport(data.data);
+            reportToast('Delivery recorded.');
+        } catch (e) {
+            alert('Could not record the delivery: ' + e.message);
+            btn.disabled = false; btn.textContent = 'Record delivery';
+        }
+    }
+
+    async function submitFeedback() {
+        const picked = document.querySelector('#feedbackForm input[name="rating"]:checked');
+        if (!picked) { alert('Please choose a rating from 1 to 5.'); return; }
+        const btn = document.getElementById('feedbackSubmitBtn');
+        btn.disabled = true; btn.textContent = 'Sending...';
+        try {
+            const res = await apiFetch(API + '/assignments/' + reportAssignmentId + '/feedback', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rating: Number(picked.value), feedback: document.getElementById('feedbackText').value.trim() || null })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+            renderReport(data.data);
+            reportToast('Thank you for rating this help.');
+        } catch (e) {
+            alert('Could not send the rating: ' + e.message);
+            btn.disabled = false; btn.textContent = 'Send rating';
+        }
+    }
 
     function openModal()  { document.getElementById('overlay').classList.add('open'); }
     function closeModal() { document.getElementById('overlay').classList.remove('open'); }
@@ -453,6 +587,8 @@ wireEvent('useMyLocationBtn', 'click', () => { useMyLocation(); });
 wireEvent('clearLocationBtn', 'click', () => { clearRequestLocation(); });
 wireEvent('submitStatusChangeBtn', 'click', () => { submitStatusChange(); });
 wireEvent('closeContactModalBtn', 'click', () => { closeContactModal(); });
+wireEvent('closeReportModalBtn', 'click', () => { closeReportModal(); });
+wireEvent('reportOverlay', 'click', function (event) { if (event.target === this) closeReportModal(); });
 
 // ---- Delegated actions (F-5) ----------------------------------------------
 // Rendered markup carries data-action / data-id instead of inline handlers;
@@ -463,4 +599,5 @@ wireEvent('cardsGrid', 'click', (event) => {
     const id = Number(btn.dataset.id);
     if (btn.dataset.action === 'start') startWork(id, btn);
     else if (btn.dataset.action === 'contact') openContactModal(id);
+    else if (btn.dataset.action === 'report') openReportModal(id);
 });

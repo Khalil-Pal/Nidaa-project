@@ -32,7 +32,7 @@ Rules:
   explicit `BEGIN;`/`COMMIT;` wrappers from V2–V18, because Flyway runs each
   migration in its own transaction. No database had a Flyway history yet.)
 - Version numbers are integers and need not be consecutive: `V12` was never
-  issued, so the history runs V1–V11, V13–V18. Do not fill the gap.
+  issued. Do not fill the gap.
 - Flyway applies each file exactly once and never reruns it. The "idempotent"
   notes below describe the SQL itself (`IF NOT EXISTS`, guarded `UPDATE`s) and
   matter only if someone applies a file by hand outside Flyway.
@@ -93,6 +93,9 @@ The first administrator is still inserted by hand (see below).
   yet"), drops the misleading default of 5.0, and resets the default-only values
   already stored. Real ratings arrive with Phase 5 (AGG-1). Idempotent; safe to
   rerun.
+- `V19` adds `UNIQUE (assignment_id)` on `reports` so there is exactly one
+  completion report per assignment even when two submissions race (R-1), and
+  drops the plain index the unique one makes redundant. Idempotent; safe to rerun.
 
 Every gate since Gate 3 has built a database from these files alone
 (`scripts/gate/fresh-db.sh`), checked that `flyway_schema_history` lists exactly

@@ -98,6 +98,19 @@
         .status-select:focus{border-color:var(--blue)}
         .btn-update-status{width:100%;padding:12px;background:var(--blue);color:white;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;font-family:'Inter',sans-serif;transition:background .2s}
         .btn-update-status:hover{background:#1e40af}
+        /* Delivery report / rating modal (R-1) */
+        .report-block{border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;background:#f8fafc}
+        .report-block h4{font-size:13px;font-weight:700;color:var(--dark);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}
+        .report-block p{font-size:14px;color:var(--dark);line-height:1.55;margin:0;white-space:pre-wrap}
+        .report-meta{font-size:12px;color:var(--muted);margin-top:8px}
+        .report-note{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 14px}
+        .stars{display:flex;gap:6px;margin:6px 0 12px}
+        .stars input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+        .stars label{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:1.5px solid var(--border);border-radius:10px;font-size:18px;color:#94a3b8;cursor:pointer;margin:0;transition:all .15s}
+        .stars label:hover{border-color:#f59e0b;color:#d97706}
+        .stars input:checked + label{background:#fffbeb;border-color:#f59e0b;color:#b45309}
+        .stars input:focus-visible + label{outline:3px solid #2563eb;outline-offset:2px}
+        .rating-given{font-size:15px;color:#b45309;font-weight:700;letter-spacing:2px}
         .btn-close-contact{width:100%;padding:10px;background:none;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;font-family:'Inter',sans-serif;color:var(--muted);transition:all .2s}
         .btn-close-contact:hover{border-color:var(--blue);color:var(--blue)}
         @media(max-width:900px){.cards-grid{grid-template-columns:1fr}}
@@ -270,6 +283,16 @@
             <button class="btn-update-status" id="submitStatusChangeBtn">Update Status</button>
         </div>
         <button class="btn-close-contact" id="closeContactModalBtn">Close</button>
+    </div>
+</div>
+
+<!-- R-1: what was delivered, and how the beneficiary rated it -->
+<div class="contact-overlay" id="reportOverlay" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+    <div class="contact-box">
+        <div class="contact-title" id="reportTitle">Delivery Report</div>
+        <div class="contact-sub" id="reportRequestTitle">Loading...</div>
+        <div id="reportBody"></div>
+        <button class="btn-close-contact" id="closeReportModalBtn">Close</button>
     </div>
 </div>
 </body>

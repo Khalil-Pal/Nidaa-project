@@ -18,6 +18,9 @@
  *   N-1  a volunteer accepting a request produces an unread notification on the
  *        beneficiary's open page within 60 s without a reload; opening it lists
  *        the notification and clicking it marks it read and goes to the request
+ *   R-1  on a completed request the volunteer's card offers "Record what you
+ *        delivered" and the beneficiary's "Rate this help"; both prompts work and
+ *        the second view shows what the first recorded
  *
  * Prerequisites: the app running against the gate database (see acceptance.sh),
  * psql access to that database (REG reads the e-mailed code from
@@ -336,6 +339,49 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
             await page.close();
             // leave the request in a terminal state so the volunteer is free for the next run
             await api(`/api/help-requests/${reqId}/status?status=COMPLETED`, { method: 'PUT' }, vol.token);
+
+            // ---------------- R-1: the prompts on the completed request ----------------
+            {
+                const vpage = await browser.newPage();
+                vpage.on('dialog', async (d) => { await d.dismiss(); });
+                await signIn(vpage, vol);
+                await vpage.goto(BASE + '/help-requests.html', { waitUntil: 'networkidle0' });
+                await vpage.waitForFunction(() => document.querySelectorAll('#cardsGrid .req-card').length > 0, { timeout: 15000 });
+                const card = await vpage.evaluateHandle((id) => [...document.querySelectorAll('#cardsGrid .req-card')]
+                    .find((c) => c.querySelector('.fa-hashtag') && c.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(id)), reqId);
+                const promptText = await card.evaluate((c) => { const b = c.querySelector('button[data-action="report"]'); return b ? b.textContent.trim() : null; });
+                check('R-1', `volunteer's completed card offers "${promptText}"`, promptText === 'Record what you delivered');
+                await card.evaluate((c) => c.querySelector('button[data-action="report"]').click());
+                await vpage.waitForSelector('#reportDescription', { timeout: 15000 });
+                await vpage.type('#reportDescription', 'Food parcel for one person, delivered by bike');
+                await vpage.click('#reportSubmitBtn');
+                await vpage.waitForFunction(() => !document.getElementById('reportForm') && document.querySelector('#reportBody .report-block'), { timeout: 15000 });
+                const recorded = await vpage.$eval('#reportBody', (el) => el.textContent);
+                check('R-1', 'after submitting, the modal shows the recorded delivery and "not rated yet"', /delivered by bike/.test(recorded) && /not rated/.test(recorded));
+                await vpage.close();
+
+                const bpage = await browser.newPage();
+                await signIn(bpage, bene);
+                await bpage.goto(BASE + '/help-requests.html', { waitUntil: 'networkidle0' });
+                await bpage.waitForFunction(() => document.querySelectorAll('#cardsGrid .req-card').length > 0, { timeout: 15000 });
+                const bcard = await bpage.evaluateHandle((id) => [...document.querySelectorAll('#cardsGrid .req-card')]
+                    .find((c) => c.querySelector('.fa-hashtag') && c.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(id)), reqId);
+                const bprompt = await bcard.evaluate((c) => { const b = c.querySelector('button[data-action="report"]'); return b ? b.textContent.trim() : null; });
+                check('R-1', `beneficiary's completed card offers "${bprompt}"`, bprompt === 'Rate this help');
+                await bcard.evaluate((c) => c.querySelector('button[data-action="report"]').click());
+                await bpage.waitForSelector('#feedbackForm', { timeout: 15000 });
+                const seesReport = await bpage.$eval('#reportBody', (el) => /delivered by bike/.test(el.textContent));
+                check('R-1', 'the beneficiary sees what the volunteer recorded before rating', seesReport);
+                await bpage.click('label[for="rating5"]');
+                await bpage.type('#feedbackText', 'Fast and friendly');
+                await bpage.click('#feedbackSubmitBtn');
+                await bpage.waitForFunction(() => !document.getElementById('feedbackForm') && document.querySelector('.rating-given'), { timeout: 15000 });
+                const stars = await bpage.$eval('.rating-given', (el) => el.getAttribute('aria-label'));
+                check('R-1', `rating shown as "${stars}"`, stars === '5 out of 5');
+                const row = sql(`select beneficiary_rating||'/'||feedback_from_beneficiary from reports r join assignments a on a.assignment_id=r.assignment_id where a.request_id=${reqId}`);
+                check('R-1', `database row: ${row}`, row === '5/Fast and friendly');
+                await bpage.close();
+            }
         }
 
         // ---------------- F-4: expired access token is refreshed silently ----------------

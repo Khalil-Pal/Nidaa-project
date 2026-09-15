@@ -139,6 +139,26 @@ check "N-1" "another user lists: not theirs" "$(body "$BASE/api/notifications" -
 check "N-1" "owner marks it read" "$(body -X PUT "$BASE/api/notifications/$NID/read" -H "Authorization: Bearer $B" | json data.read)" "True"
 check "N-1" "status column follows read_at" "$(sql "select cast(status as text)||'/'||(read_at is not null) from notifications where notification_id=$NID")" "READ/true"
 check "N-1" "no token" "$(code "$BASE/api/notifications/unread-count")" "401"
+
+# R-1: one completion report per assignment, by the assigned volunteer; one rating, by the beneficiary
+ASG=$(body "$BASE/api/v1/assignments/help-requests/$R_ID" -H "Authorization: Bearer $V" | python -c "import sys,json; a=[x for x in json.load(sys.stdin)['data'] if x['status']=='COMPLETED']; print(a[-1]['assignmentId'])")
+check "R-1" "no report yet" "$(code "$BASE/api/assignments/$ASG/report" -H "Authorization: Bearer $B")" "404"
+check "R-1" "beneficiary files the provider's report" "$(code -X POST "$BASE/api/assignments/$ASG/report" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"description":"x"}')" "403"
+check "R-1" "unassigned volunteer files a report" "$(code -X POST "$BASE/api/assignments/$ASG/report" -H 'Content-Type: application/json' -H "Authorization: Bearer $V2" -d '{"description":"x"}')" "404"
+check "R-1" "beneficiary rates before the report exists" "$(code -X POST "$BASE/api/assignments/$ASG/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":5}')" "400"
+check "R-1" "assigned volunteer records the delivery" "$(body -X POST "$BASE/api/assignments/$ASG/report" -H 'Content-Type: application/json' -H "Authorization: Bearer $V" -d '{"description":"Food parcels for three people, delivered Tuesday"}' | json data.volunteerId)" "$(sql "select volunteer_id from volunteers where user_id=$(uid "$VOL")")"
+check "R-1" "second report" "$(code -X POST "$BASE/api/assignments/$ASG/report" -H 'Content-Type: application/json' -H "Authorization: Bearer $V" -d '{"description":"again"}')" "409"
+check "R-1" "exactly one row" "$(sql "select count(*) from reports where assignment_id=$ASG")" "1"
+check "R-1" "beneficiary was asked to rate" "$(sql "select count(*) from notifications where user_id=$(uid "$BENE") and title like 'Delivery recorded%'")" "1"
+check "R-1" "volunteer rates own delivery" "$(code -X POST "$BASE/api/assignments/$ASG/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $V" -d '{"rating":5}')" "403"
+check "R-1" "rating out of range" "$(code -X POST "$BASE/api/assignments/$ASG/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":6}')" "400"
+check "R-1" "beneficiary rates once" "$(body -X POST "$BASE/api/assignments/$ASG/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":4,"feedback":"Kind and on time"}' | json data.beneficiaryRating)" "4"
+check "R-1" "second rating" "$(code -X POST "$BASE/api/assignments/$ASG/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":1}')" "409"
+check "R-1" "stored rating and feedback" "$(sql "select beneficiary_rating||'/'||feedback_from_beneficiary from reports where assignment_id=$ASG")" "4/Kind and on time"
+check "R-1" "volunteer was told about the rating" "$(sql "select count(*) from notifications where user_id=$(uid "$VOL") and title='You received a rating: 4/5'")" "1"
+check "R-1" "admin reads the report" "$(body "$BASE/api/assignments/$ASG/report" -H "Authorization: Bearer $A" | json data.beneficiaryRating)" "4"
+check "R-1" "other beneficiary reads the report" "$(code "$BASE/api/assignments/$ASG/report" -H "Authorization: Bearer $B2")" "404"
+check "R-1" "no photo upload endpoint" "$(code -X POST "$BASE/api/assignments/$ASG/report/photos" -H "Authorization: Bearer $V")" "404"
 R_B=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" -d '{"title":"Gate request B","helpType":"WATER","urgencyLevel":"LOW"}' | json data.id)
 check "S-5" "beneficiary cancels own B" "$(code -X PUT "$BASE/api/help-requests/$R_B/status?status=CANCELLED" -H "Authorization: Bearer $B")" "200"
 check "N-1" "cancelling an unassigned own request notifies nobody" "$(sql "select count(*) from notifications where reference_type='HELP_REQUEST' and reference_id=$R_B")" "0"

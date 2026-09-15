@@ -256,6 +256,32 @@ Message responses expose the message ID, author ID/name/role, content, normalize
 category, and timestamp. They never expose `receiver_id`, direct-message content,
 or internal deletion flags.
 
+## Completion Reports
+
+`AssignmentReportService` (R-1) records what a volunteer delivered and how the
+beneficiary rated it, on the `reports` row of the assignment. The assigned
+volunteer may record once the assignment is `COMPLETED`; exactly one report per
+assignment (`UNIQUE (assignment_id)`, V19: a second submission is 409 whether the
+service or the database catches it). The beneficiary rates once (1–5, optional
+text) after the report exists; beneficiary, assigned provider and administrators
+may read it, and anyone else gets 404 for any assignment id, the same rule as the
+request itself. Recording notifies the beneficiary (and the filer) to rate;
+rating notifies the volunteer.
+
+`reports.volunteer_id` is `NOT NULL`: the table records volunteer deliveries, so
+an organization's completed assignment has no report row to write (400 with a
+plain message; `FUTURE_WORK.md`). `photos` stays unused: file upload is its own
+security surface and no endpoint accepts one.
+
+| Method | Endpoint | Access | Behavior |
+|---|---|---|---|
+| `POST` | `/api/assignments/{id}/report` | Assigned volunteer | `{"description"}`; assignment must be COMPLETED; one per assignment |
+| `POST` | `/api/assignments/{id}/feedback` | Beneficiary of the request | `{"rating": 1..5, "feedback"?}`; once; needs the report |
+| `GET` | `/api/assignments/{id}/report` | Beneficiary, assigned provider, admin | The report with the rating once given; 404 if none yet |
+
+The assignment id comes from the request's history
+(`GET /api/v1/assignments/help-requests/{requestId}`), which the pages already use.
+
 ## Notifications
 
 `NotificationService` (N-1) writes a row to `notifications` inside the transaction

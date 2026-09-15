@@ -54,6 +54,18 @@ Phase 5.
   Belongs with Phase 5 CS-1 (consultation records), which decides what a closed
   case records. Found during B-4.
 
+## Completion reports (Phase 5, R-1)
+
+- **Organization completion reports.** `reports.volunteer_id` is `NOT NULL` with a
+  foreign key to `volunteers`, so a completed assignment delivered by an
+  organization has no report row to write; the endpoint answers 400 with a plain
+  message. Supporting it needs `volunteer_id` nullable, an `organization_id`
+  column, a CHECK that exactly one is set (the `assignments` pattern from V7), and
+  the AGG-1 counters for organizations.
+- **Report photos.** `reports.photos` exists and is never written: file upload is
+  its own security surface (type sniffing, size limits, storage, serving) and no
+  endpoint accepts one.
+
 ## Operations
 
 - **Public `/actuator/health`.** The deny-by-default chain answers it 401, so a
