@@ -15,8 +15,9 @@ changes the schema.
 Without starting the application:
 
 ```bash
-./mvnw flyway:info    -Dflyway.url=jdbc:postgresql://localhost:5432/Web_DB -Dflyway.user=postgres -Dflyway.password=...
-./mvnw flyway:migrate -Dflyway.url=jdbc:postgresql://localhost:5432/Web_DB -Dflyway.user=postgres -Dflyway.password=...
+# the password comes from the environment, never from the command line (shell history)
+./mvnw flyway:info    -Dflyway.url=jdbc:postgresql://localhost:5432/Web_DB -Dflyway.user=postgres -Dflyway.password="$DB_PASSWORD"
+./mvnw flyway:migrate -Dflyway.url=jdbc:postgresql://localhost:5432/Web_DB -Dflyway.user=postgres -Dflyway.password="$DB_PASSWORD"
 ```
 
 `scripts/gate/fresh-db.sh` builds a database from the migrations alone this way
@@ -30,7 +31,11 @@ Rules:
   `\restrict` lines and `search_path` reset were removed from V1, and the
   explicit `BEGIN;`/`COMMIT;` wrappers from V2–V18, because Flyway runs each
   migration in its own transaction. No database had a Flyway history yet.)
-- Version numbers are integers; `V12` was never used and that is fine.
+- Version numbers are integers and need not be consecutive: `V12` was never
+  issued, so the history runs V1–V11, V13–V18. Do not fill the gap.
+- Flyway applies each file exactly once and never reruns it. The "idempotent"
+  notes below describe the SQL itself (`IF NOT EXISTS`, guarded `UPDATE`s) and
+  matter only if someone applies a file by hand outside Flyway.
 - One concern per migration, a comment at the top saying why.
 
 The first administrator is still inserted by hand (see below).
@@ -89,9 +94,10 @@ The first administrator is still inserted by hand (see below).
   already stored. Real ratings arrive with Phase 5 (AGG-1). Idempotent; safe to
   rerun.
 
-V1 through V8 were applied in order to a genuinely empty verification database.
-Its normalized schema dump matched the migrated development database with zero
-differences.
+Every gate since Gate 3 has built a database from these files alone
+(`scripts/gate/fresh-db.sh`), checked that `flyway_schema_history` lists exactly
+the files present, and started the application against it with `ddl-auto=none`;
+the results are in `docs/gates/`.
 
 ## Creating the First Administrator
 
@@ -145,22 +151,18 @@ VALUES ('admin@example.org',
 
 Never keep the plaintext password in a script or shell history.
 
-## V4 Mandatory Preflight
+## V4 Precondition (manual application only)
 
-V4 is a shipped migration and intentionally remains byte-for-byte unchanged. Before
-its first application to any database that was not created immediately from V1,
-run:
+V4 adds the required `messages.message_type` without a default or backfill, so it
+can only run against a `messages` table that is empty:
 
 ```sql
-SELECT COUNT(*) AS message_rows_before_v4 FROM messages;
+SELECT COUNT(*) AS message_rows_before_v4 FROM messages;   -- must be 0
 ```
 
-The result must be `0`. V4 adds required `message_type` without a default or
-backfill; if the result is greater than zero, stop and design an environment-specific
-classification/backfill migration before applying V4. Do not rerun V4 after it has
-succeeded. A new empty database following V1 through V8 satisfies this precondition
-automatically.
-
-The warning is documented here instead of editing the already-applied V4 file and
-creating migration-checksum drift. V5 uses `IF NOT EXISTS`, so rerunning it safely
-reports notices for columns and indexes already present.
+Under Flyway this holds by construction: V4 runs only on an empty database (a
+database built before Flyway is baselined at V18 and never runs V1–V18). The
+precondition matters only if the files are applied by hand to a database that
+already holds messages; in that case stop and write an environment-specific
+backfill migration first. The note lives here rather than in the shipped V4 file,
+whose checksum must not change.

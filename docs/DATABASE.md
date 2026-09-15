@@ -10,6 +10,10 @@ start-up (DEP-1; see `database/migrations/README.md` for the rules and the
 version notes). `scripts/gate/fresh-db.sh` builds a database from those files
 alone with `./mvnw flyway:migrate` and prints the inventory below.
 
+The versions run V1–V11 and V13–V18: **V12 was never issued**. The gap is
+deliberate history, not a missing file; Flyway does not require consecutive
+numbers and `flyway_schema_history` records exactly the files that exist.
+
 ## Trigger, function and view inventory
 
 Recorded after Phase 3 (migrations V1–V15). Every entry must be expected and
