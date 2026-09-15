@@ -4,8 +4,9 @@ Run on 15 September 2026 against commit `b2d90ce` (23 Phase 4 commits after Gate
 one per task ID). Tooling: `scripts/gate/` — `fresh-db.sh` (now Flyway),
 `invariants.sql`, `smtp-sink.py`, `acceptance.sh` (98 API checks), `browser-checks.js`,
 `a11y-audit.js`, `keyboard-checks.js`, `lighthouse.js`. Figures below are copied
-from their output. Two items could not be executed on the gate machine and are
-marked **NOT RUN** rather than PASS; see G6.
+from their output. One item could not be executed on the gate machine and is
+marked **NOT RUN** rather than PASS; see G6. DEP-4 was NOT RUN at the time of the
+first write-up and is now recorded from the GitHub Actions runs after the push.
 
 ## G1 · Build and test
 
@@ -65,7 +66,7 @@ marked **NOT RUN** rather than PASS; see G6.
 | DEP-1 | PASS | Flyway 10.22 applies V1–V18 to an empty database; `flyway_schema_history` matches the files; an existing database is baselined at 18 on first start (`Web_DB`, `nidaa_test`); Flyway-built and psql-built schemas are column-, constraint- and trigger-identical (271 / 97 / 6) |
 | DEP-2 | PASS | `/v3/api-docs` 200 anonymously (67 operations, bearer scheme), `/swagger-ui.html` → UI renders with Authorize, 0 CSP violations; `/api/admin/users` stays 401 |
 | DEP-3 | **NOT RUN on this machine** | Docker is not installed here. Verified instead: the Dockerfile's build steps on a `git archive HEAD` copy produce the jar with the example configuration; that jar, started with only `docker-compose.yml`'s environment variables against an empty PostgreSQL and the SMTP sink, migrated the schema, registered and verified a user through the sink and served an authenticated request. `docker compose up --build` must be run once where Docker exists |
-| DEP-4 | **NOT RUN until pushed** | the workflow's steps were executed locally on a clean checkout with only the workflow's variables: 295 tests then (296 now), 57 persistence tests run / 0 skipped, coverage 71.2 % lines / 14.2 % branches. The first GitHub Actions run happens on the Phase 4 push and is recorded below once seen |
+| DEP-4 | **PASS after one fix** | Locally, the workflow's steps had been executed on a clean checkout with only the workflow's variables (296 tests, 57 persistence run / 0 skipped). First GitHub Actions run on the push (`3f6e23d`, run 35011208749): **failure** — `./mvnw: Permission denied`, exit 126: `mvnw` was tracked with mode `100644` from the Windows checkout, so the Linux runner could not start Maven; the gate step "Persistence tests ran, not skipped" then failed as designed (`no persistence test reports found`). Fixed in `c581b90` (`git update-index --chmod=+x mvnw`, content unchanged). Second run (run 35011449486): **success** — all steps green, `Tests run: 296, Failures: 0, Errors: 0, Skipped: 0`, `persistence tests: 57 run, 0 skipped` against the workflow's PostgreSQL 17 service, `Line coverage: 71.3% (2413 of 3384 lines); branch coverage: 14.2% (650 of 4579 branches)`, reports uploaded as the artifact |
 | DEP-5 | PASS | `index.html` (200) and `/api/admin/users` (401) both carry `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=31536000 ; includeSubDomains`, `Content-Security-Policy` |
 | DEP-6 | PASS (verified at commit) | default profile: DEBUG + SQL on console and `logs/nidaa.log`; `--spring.profiles.active=prod`: 0 `Hibernate:` lines, 0 DEBUG lines, denial logged with `[request id] [user]` |
 | DOC-SEC | PASS | every finding ID from S-1 to DEP-6 appears in `docs/SECURITY.md` §4; §3.7 Accountability and §5 verification added |
@@ -80,8 +81,10 @@ marked **NOT RUN** rather than PASS; see G6.
    violating row is a COMPLETED assignment; the documented design consumes capacity on
    completion and restores it only on cancellation. Recommended: amend the query to
    `status = 'CANCELLED'`. Nothing was changed on either side pending the decision.
-2. **Docker not available on the gate machine** (DEP-3 NOT RUN); **CI runs on push**
-   (DEP-4). Both are recorded honestly above rather than marked PASS.
+2. **Docker not available on the gate machine** (DEP-3 NOT RUN), recorded honestly
+   above rather than marked PASS. **The first CI run failed** (DEP-4): `mvnw` had no
+   executable bit in git. Fixed in one commit (`c581b90`), second run green — the
+   workflow caught exactly the class of environment gap it exists to catch.
 3. **Plan inventory gaps found and handled inside the task:** F-3 listed three images
    (3.3 MB) but `index.html` also loaded six help-type PNGs (11.3 MB) — converted with
    the same treatment; P-2 said "about 12" endpoints — it was 21.
@@ -104,8 +107,9 @@ marked **NOT RUN** rather than PASS; see G6.
 **Security-relevant changes:** all in `docs/SECURITY.md` (§3.2 status contract with
 409 and the envelope, §3.5 guarded updates, §3.7 accountability, §4 rows D-6…DEP-6).
 
-**Commits:** 23 on `audit-remediation`, one per task ID, `Audit-Ref` in each; the
-branch is pushed with this record.
+**Commits:** 23 on `audit-remediation` for the Phase 4 tasks, one per task ID,
+`Audit-Ref` in each, plus this record and the `mvnw` mode fix (`c581b90`, `Audit-Ref:
+DEP-4`); the branch is pushed with this record.
 
 **Summary.** Phase 4 hardened the code and its presentation: the schema is owned by
 Flyway and agrees with the entities down to the enum types; every response has one
@@ -114,5 +118,6 @@ administrators' actions are audited and every log line carries a request id;
 statistics and listings no longer load tables; the pages are keyboard-operable, pass
 WCAG A/AA in axe, and run under `script-src 'self'`; the landing page dropped from
 13.9 MB to 178 KB of images; Swagger, Docker, CI, security headers and rolling logs are
-in place. Outstanding: the capacity-invariant decision, the psychologist-verification
-decision, running `docker compose up` on a machine with Docker, and the first CI run.
+in place, and CI is green on GitHub. Outstanding: the capacity-invariant decision,
+the psychologist-verification decision, and running `docker compose up` on a machine
+with Docker.
