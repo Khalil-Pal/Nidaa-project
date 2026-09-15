@@ -172,7 +172,8 @@ check "L-1" "request with coordinates is ASSIGNED" "$(echo "$L1" | json data.sta
 check "L-1" "assignment_source = AUTO_GEO" "$(sql "select assignment_source from assignments where request_id=${L1_ID:-0}")" "AUTO_GEO"
 
 check "F-2" "no page defines its own API/authHeader/escHtml/logout/buildSidebar" "$(grep -lE "const API\s*=|function authHeader|function escHtml|function logout\b|function buildSidebar" src/main/resources/static/*.html | wc -l)" "0"
-check "F-2" "every API page includes the shared module once" "$(for f in src/main/resources/static/*.html; do grep -q 'apiFetch\|fetch(' "$f" && grep -c 'nidaa-common.js' "$f"; done | sort -u | tr -d '\n')" "1"
+# since F-5 the page scripts live in js/<page>.js; a page whose script calls the API must load the shared module once
+check "F-2" "every API page includes the shared module once" "$(for f in src/main/resources/static/*.html; do js="src/main/resources/static/js/$(basename "${f%.html}" | tr 'A-Z' 'a-z').js"; [ -f "$js" ] && grep -q 'apiFetch\|fetch(' "$js" && grep -c 'nidaa-common.js' "$f"; done | sort -u | tr -d '\n')" "1"
 
 check "S-2" "img payload as title" "$(code -X POST "$BASE/api/help-requests" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"title":"<img src=x onerror=alert(1)>","helpType":"FOOD","urgencyLevel":"HIGH"}')" "400"
 check "S-2" "CSP with connect-src self on a page" "$(curl -s -D - -o /dev/null "$BASE/admin-requests.html" | grep -i 'content-security-policy' | grep -c "connect-src 'self'")" "1"
