@@ -27,6 +27,9 @@ logs/
 *.backup
 database/backups/
 !database/migrations/*.sql
+# the schema and the gate invariants are source, not dumps
+!src/main/resources/db/migration/*.sql
+!scripts/gate/*.sql
 
 # OS files
 .DS_Store

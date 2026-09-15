@@ -81,6 +81,9 @@ first write-up and is now recorded from the GitHub Actions runs after the push.
    violating row is a COMPLETED assignment; the documented design consumes capacity on
    completion and restores it only on cancellation. Recommended: amend the query to
    `status = 'CANCELLED'`. Nothing was changed on either side pending the decision.
+   *Resolved after this gate: the owner chose the amendment; the query now checks
+   CANCELLED only plus its converse, both 0 on both databases. Decision record:
+   `docs/adr/005-capacity-consumed-on-completion.md`.*
 2. **Docker not available on the gate machine** (DEP-3 NOT RUN), recorded honestly
    above rather than marked PASS. **The first CI run failed** (DEP-4): `mvnw` had no
    executable bit in git. Fixed in one commit (`c581b90`), second run green — the

@@ -93,7 +93,8 @@ row anonymised, old email 401.
    numeric-capacity delivery counts as a violation. Not changed on either side;
    **decision requested**: amend the invariant to `status = 'CANCELLED'`, or change the
    design so completion also releases capacity (which would return delivered goods to
-   inventory).
+   inventory). *Resolved after Gate 4: the query was amended; see
+   `docs/adr/005-capacity-consumed-on-completion.md`.*
 2. **Psychologist approval never marks the professional verified.** Approval sets
    `is_on_duty = true` but leaves `psychologists.is_verified = false`, and crisis
    routing requires both. On a fresh database no crisis case is ever routed unless

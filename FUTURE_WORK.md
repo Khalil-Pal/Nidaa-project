@@ -41,6 +41,12 @@ Phase 5.
   approval leaves it NULL). Any screen that lets a psychologist record
   specialisations needs the entity changed to a list of the enum first. Found during A-2.
 
+- **A lifecycle CHECK on `assignments`.** ADR 005 fixes that only CANCELLED
+  restores capacity. The database does not enforce it: a constraint
+  `(status <> 'COMPLETED' OR capacity_restored_at IS NULL)` would. The four CHECKs
+  on `assignments` today are about row shape, not lifecycle, so this is a schema
+  decision for Phase 5's assignment work rather than a follow-up to the gate query.
+
 - **`psychological_requests.completed_at` is never written.** Completing a
   psychological case updates `status` only, so the statistics panel's
   "completed this week" never counts psychological cases and the column stays
