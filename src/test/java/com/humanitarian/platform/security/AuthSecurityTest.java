@@ -103,6 +103,15 @@ class AuthSecurityTest extends SecuritySliceTest {
         mockMvc.perform(get("/nidaa-hero.bmp")).andExpect(status().isUnauthorized());
     }
 
+    /** DEP-2: the API explorer is public; a protected endpoint called from it still needs a token. */
+    @Test
+    void apiExplorerIsReachableWithoutAToken() throws Exception {
+        // no springdoc in this slice, so "permitted" shows as 404 rather than 401
+        mockMvc.perform(get("/v3/api-docs")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/admin/users")).andExpect(status().isUnauthorized());
+    }
+
     @Test
     void registrationRejectsAdminRole() throws Exception {
         mockMvc.perform(post("/api/auth/register")

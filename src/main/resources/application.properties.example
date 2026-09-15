@@ -106,3 +106,13 @@ logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} -
 
 # ==================== ACTUATOR ====================
 management.endpoints.web.exposure.include=health,info
+
+# ==================== API EXPLORER (DEP-2) ====================
+# Swagger UI at /swagger-ui.html, generated from the controllers; the raw
+# document is at /v3/api-docs. Set springdoc.api-docs.enabled=false to hide both.
+springdoc.api-docs.path=/v3/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.operations-sorter=alpha
+springdoc.swagger-ui.tags-sorter=alpha
+springdoc.swagger-ui.try-it-out-enabled=true
+springdoc.paths-to-match=/api/**

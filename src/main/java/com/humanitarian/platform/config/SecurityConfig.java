@@ -132,6 +132,9 @@ public class SecurityConfig {
                                 "/*.jpg", "/*.webp", "/*.ico", "/*.svg", "/*.woff", "/*.woff2",
                                 "/", "/favicon.ico", "/static/**", "/assets/**",
                                 "/js/**", "/css/**", "/images/**").permitAll()
+                        // API explorer (DEP-2): the document and the UI are public; calling a
+                        // protected endpoint from it still needs a token via "Authorize"
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Auth endpoints — no auth needed
                         .requestMatchers("/api/auth/**").permitAll()
                         // Landing-page statistics are read by logged-out visitors

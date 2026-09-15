@@ -26,6 +26,7 @@
     <properties>
         <!-- Flyway 9.22 (Boot 3.2 default) predates PostgreSQL 17; 10.x supports it -->
         <flyway.version>10.22.0</flyway.version>
+        <springdoc.version>2.3.0</springdoc.version>
         <java.version>17</java.version>
         <jjwt.version>0.12.3</jjwt.version>
         <bucket4j.version>8.10.1</bucket4j.version>
@@ -124,6 +125,13 @@
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
             <version>${bucket4j.version}</version>
+        </dependency>
+
+        <!-- OpenAPI document and Swagger UI at /swagger-ui.html (DEP-2) -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
         </dependency>
 
         <!-- === УТИЛИТЫ === -->

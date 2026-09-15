@@ -350,6 +350,11 @@ Access tokens expire after 15 minutes by default. Use `/api/auth/refresh` with t
 
 ## Core API Endpoints
 
+The live, generated reference is the Swagger UI at `http://localhost:8081/swagger-ui.html`
+(OpenAPI document at `/v3/api-docs`). Use **Authorize** with the `data.token` value from
+`POST /api/auth/login` to call protected endpoints from the browser. The table below is
+a hand-written summary of the most used routes.
+
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
 | `POST` | `/api/auth/register` | Public | Start email-verified registration. |
