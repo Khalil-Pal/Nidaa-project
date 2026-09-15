@@ -85,7 +85,9 @@ first write-up and is now recorded from the GitHub Actions runs after the push.
    CANCELLED only plus its converse, both 0 on both databases. Decision record:
    `docs/adr/005-capacity-consumed-on-completion.md`.*
 2. **Docker not available on the gate machine** (DEP-3 NOT RUN), recorded honestly
-   above rather than marked PASS. **The first CI run failed** (DEP-4): `mvnw` had no
+   above rather than marked PASS. *Owner's decision after this gate: NOT RUN is
+   accepted for Gate 4, and **Gate 7 is blocked** until `docker compose up --build`
+   has been run once on a machine with Docker and its outcome recorded.* **The first CI run failed** (DEP-4): `mvnw` had no
    executable bit in git. Fixed in one commit (`c581b90`), second run green — the
    workflow caught exactly the class of environment gap it exists to catch.
 3. **Plan inventory gaps found and handled inside the task:** F-3 listed three images
@@ -124,6 +126,7 @@ administrators' actions are audited and every log line carries a request id;
 statistics and listings no longer load tables; the pages are keyboard-operable, pass
 WCAG A/AA in axe, and run under `script-src 'self'`; the landing page dropped from
 13.9 MB to 178 KB of images; Swagger, Docker, CI, security headers and rolling logs are
-in place, and CI is green on GitHub. Outstanding: the capacity-invariant decision,
-the psychologist-verification decision, and running `docker compose up` on a machine
-with Docker.
+in place, and CI is green on GitHub. Outstanding at sign-off: the capacity-invariant
+decision, the psychologist-verification decision, and running `docker compose up` on a
+machine with Docker. *All three were decided after the gate (items 1, 2 and 6 above);
+the Docker run is carried forward as a Gate 7 blocker.*
