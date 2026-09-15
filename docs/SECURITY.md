@@ -66,7 +66,7 @@ malicious administrator.
 | Access token: HMAC-signed JWT, 15 minutes, subject = email, no role claim (role is read from the database on every request so a role change takes effect immediately) | `JwtUtils`, `JwtAuthenticationFilter` |
 | Refresh token: opaque random string, 7 days, stored server-side, **rotated on every use** | `AuthService.refresh()`, `RefreshTokenRepository` |
 | Silent renewal in the browser: on 401 the shared module refreshes once and retries; concurrent failures share one refresh | `static/js/nidaa-common.js` `apiFetch()` (F-4) |
-| Password change or reset ends every session: refresh tokens deleted, and access tokens issued before `users.tokens_valid_from` are refused | `UserRepository.updatePassword()`, `JwtAuthenticationFilter.isRevoked()` (S-7, migration V9) |
+| Password change or reset ends every session: refresh tokens deleted, and access tokens issued before `users.tokens_valid_from` are refused | `PasswordResetService`, `PasswordChangeService` (set `tokensValidFrom` and save), `JwtAuthenticationFilter.isRevoked()` (S-7, migration V9) |
 | Deactivated or locked accounts lose access immediately, not at token expiry | `JwtAuthenticationFilter.isRevoked()` (S-7) |
 | Logout revokes the refresh token server-side | `AuthService.logout()`, `nidaa-common.js logout()` |
 | Login lockout: 5 failures per (email, client IP) for 15 minutes, expired entries evicted on every read | `AuthService.login()` (S-9) |
@@ -78,7 +78,7 @@ Authorization is layered so that forgetting one layer fails closed rather than o
 
 | Layer | Rule | Where |
 |---|---|---|
-| URL patterns (deny by default) | Listing help requests: ADMIN, VOLUNTEER, ORGANIZATION. Creating them: BENEFICIARY, VOLUNTEER, ORGANIZATION. Everything under `/api/psychological-requests`: BENEFICIARY, PSYCHOLOGIST, ADMIN. Provider resources and availability: VOLUNTEER, ORGANIZATION. `/api/admin/**` and `/api/v1/admin/**`: ADMIN. Anything else: any authenticated user. | `SecurityConfig.filterChain()` (P-1) |
+| URL patterns (deny by default) | Listing help requests: ADMIN, VOLUNTEER, ORGANIZATION. Creating them: BENEFICIARY, VOLUNTEER, ORGANIZATION. Everything under `/api/psychological-requests`: BENEFICIARY, PSYCHOLOGIST, ADMIN. Provider resources and availability: VOLUNTEER, ORGANIZATION. `/api/psychologists/**` (duty toggle): PSYCHOLOGIST. `/api/admin/**` and `/api/v1/admin/**`: ADMIN. Static files, `/api/auth/**`, the public statistics and the API explorer (`/swagger-ui/**`, `/v3/api-docs/**`): anonymous. Anything else: any authenticated user. | `SecurityConfig.filterChain()` (P-1, UX-2, DEP-2) |
 | Method annotations | `@PreAuthorize` on controllers for role checks the URL rules do not express | controllers |
 | Row-level ownership | A request is returned only to an admin, its beneficiary, whoever filed it for them, or the assigned provider, **resolved by profile id**, never by comparing a user id to a profile id. Everyone else receives **404, not 403**, so the response does not confirm the record exists. | `HelpRequestService.getRequestById()`, `PsychologicalRequestService.getRequestById()` (S-4) |
 | Status transitions per role | Beneficiary and filer: `CANCELLED` only. Assigned provider or psychologist: `COMPLETED`, `CANCELLED`. Admin: any valid transition. Authorization is checked **before** transition validity so an unrelated caller learns nothing about the current state. | `HelpRequestService.updateStatus()`, `PsychologicalRequestService.updateStatus()` (S-5) |
@@ -89,7 +89,10 @@ Authorization is layered so that forgetting one layer fails closed rather than o
 Status-code contract: **401** means no valid token (missing, malformed, expired,
 revoked). **403** means a valid token without the role. **404** means the record
 does not exist *or* the caller may not see it. **400** means the request was
-rejected by validation or a business rule.
+rejected by validation or a business rule. **409** means the record changed under
+the caller: another actor won a status race or already applied the same
+transition (B-4). Every body, success or error, is the one envelope
+`{"success", "message", "data"?, "details"?}` (P-2), whichever layer wrote it.
 
 ### 3.3 Input handling
 
@@ -119,7 +122,8 @@ rejected by validation or a business rule.
 | Rate limiting: 5 requests/minute per IP on `/api/auth/**`; 100/minute per authenticated user elsewhere; 429 with `Retry-After`; idle buckets swept | `RateLimitFilter` (S-9), configurable via `app.ratelimit.*` |
 | Password-reset and password-change codes are discarded after 5 wrong attempts | `PasswordResetService`, `PasswordChangeService` (S-9, migration V10) |
 | Priority recalculation is paged and per-row, so one bad row cannot stop scoring for the whole system | `PriorityScoreScheduler` (D-5) |
-| Capacity reservation under concurrency uses pessimistic row locks; request claiming uses a conditional `UPDATE ... WHERE status = 'PENDING'` whose row count decides the race | `ProviderResourceService`, `HelpRequestRepository.assignVolunteer/assignOrganization` |
+| Capacity reservation under concurrency uses pessimistic row locks; request claiming **and every status transition** use a conditional `UPDATE ... WHERE status = :expected` whose row count decides the race; the loser gets 409, never a silent overwrite | `ProviderResourceService`, `HelpRequestRepository`, `PsychologicalRequestRepository` (B-4) |
+| Listing endpoints are paged (default 20) so a large queue cannot be pulled in one response; statistics are `COUNT`/`GROUP BY` queries, never table loads | request services, `AdminReportService` (Q-2, Q-3) |
 
 ### 3.6 Data protection
 
@@ -129,6 +133,15 @@ rejected by validation or a business rule.
 | Soft-deleted accounts cannot log in, be resolved by email, or appear in approval queues | `UserRepository.findByEmail()` (D-2) |
 | Crisis detection is scored on word boundaries; generic words no longer flag ordinary requests as crises | `CrisisDetectorService` (L-2) |
 | Secrets (`DB_PASSWORD`, `JWT_SECRET`, `MAIL_PASSWORD`) have no defaults; startup fails without them; the tracked configuration file contains placeholders only | `application.properties.example` (S-3a) |
+
+### 3.7 Accountability
+
+| Control | Where |
+|---|---|
+| Every request carries a correlation id (`X-Request-Id`, generated unless the caller supplies a safe token) that appears in every log line written while it is handled, together with the authenticated user | `RequestCorrelationFilter`, `JwtAuthenticationFilter`, `logback-spring.xml` (C-4, DEP-6) |
+| Administrator actions are written to `activity_logs` in the same transaction as the action: approval, rejection, deletion, (de)activation of an account, and any status override on a request; with actor, entity, details, IP and user agent | `AdminAuditService` (C-4) |
+| Authorization failures are logged at WARN with principal, method and path from both enforcement points (URL rules and ownership checks); assignment decisions and crisis detections are logged, the latter without the person's text | `SecurityConfig`, `GlobalExceptionHandler`, request and assignment services (C-4) |
+| The log file rolls daily or at 10 MB, 14 days kept, 500 MB cap; the `prod` profile logs at INFO and never prints SQL | `logback-spring.xml`, `application-prod.properties` (DEP-6) |
 
 ## 4. Audit findings and their resolution
 
@@ -162,6 +175,15 @@ frontend, testing) preceded the remediation. Findings, in the order they were fi
 | L-2 | High | Crisis detection matched "urgent" and "help me" as substrings, flooding the crisis queue | Weighted two-tier scoring on word boundaries; review flag | `d397bfe` |
 | D-5 | Medium | Aging bonus uncapped; a single row over 100 would stop recalculation for everyone; a V1 trigger silently overrode the documented model | Cap and clamp; per-row paged recalculation; trigger removed | `d85c493` |
 | T-2 | — | No test touched a real database, which is why D-1, the phone NOT NULL failure and the cascade failures shipped | 44 `@DataJpaTest` tests against a migration-built database | `cd15e71` |
+| D-6 | Medium | `users.role` was `varchar` while its default cast to the `user_role` enum, forcing native-SQL workarounds around every role write | Column converted to the enum (V17); workarounds deleted | `cf664d3` |
+| A-2 | Medium | Approval spanned a JPA update and three `JdbcTemplate` inserts inside a controller, so a failure part-way left an account active with no profile | One transactional `UserApprovalService`; reports in `AdminReportService`; no SQL in controllers | `d709593` |
+| P-2 | Low | Success bodies had three shapes and error bodies a fourth, so clients read `data.data \|\| data` | One envelope from controllers, exception handler and filters | `74f1156` |
+| B-4 | High | Status `UPDATE`s matched on id alone, so two callers reading the same state both wrote and the second silently won | `AND status = :expected`; 0 rows is 409 | `10f5f66` |
+| C-4 | Medium | Nothing logged authorization failures, admin actions, assignment decisions or crisis detections, and log lines could not be tied to a request | Correlation id, `activity_logs` audit, decision logging | `71b6bc9` |
+| UX-2 | Medium | `is_on_duty` gated crisis routing and could only be changed with SQL | Duty toggle endpoint and UI; the UI says when verification still blocks routing | `d40cd2a` |
+| F-5 | High | 177 inline handlers and inline page scripts kept `script-src 'unsafe-inline'`; 57 WCAG A/AA violations (unnamed controls, unlabelled inputs) | Scripts in `/js`, handlers wired by id, `script-src 'self'`; 0 axe violations | `cf06f88` |
+| DEP-5 | Medium | `Strict-Transport-Security` was never sent behind a TLS proxy | Four headers on every response, HSTS unconditional | `5515453` |
+| DEP-6 | Low | SQL statements printed in every environment; a 237 KB log file was committed | `prod` profile without SQL, rolling file, log removed from the repository | `ad511f5` |
 
 ## 5. How the controls are verified
 
@@ -170,13 +192,24 @@ frontend, testing) preceded the remediation. Findings, in the order they were fi
   so URL rules, method security, ownership and transitions are all exercised through
   `MockMvc`. They include an expired token, a token issued before a password change,
   a token for a deactivated account, both account-enumeration vectors, the lockout,
-  the XSS payload as a title, and the CSP header.
+  the XSS payload as a title, the four security headers, the strict `script-src`,
+  the lost-race 409 and the audit call on an admin override.
+- **`StaticPagesCspTest`** fails the build if any page or page script regains an
+  inline `<script>`, an `on*` attribute or a `javascript:` URL.
 - **Persistence tests** (`src/test/java/.../persistence`) run against a PostgreSQL
-  database built only from the migrations; they cover every enum label, the CHECK
-  and FK constraints the controls depend on, and soft deletion with dependent rows.
+  database that Flyway builds from the migrations; they cover every enum label, the
+  CHECK and FK constraints the controls depend on, soft deletion with dependent
+  rows, the guarded status updates, approval with its `activity_logs` row, and the
+  duty flag's effect on the crisis-routing pool. CI runs them against a real
+  PostgreSQL service and fails if they skip (DEP-4).
+- **Browser checks** (`scripts/gate/`): the XSS payload rendered as text, silent
+  token refresh, zero CSP violations and zero axe-core WCAG A/AA violations on all
+  18 pages, keyboard-only operation of the beneficiary-facing pages.
 - **Live verification**: every finding above was also reproduced and re-checked with
-  `curl` against the running application and the real database before its commit.
-- The suite grew from 89 to 252 tests during the remediation; all pass.
+  `curl` or in Chrome against the running application and the real database before
+  its commit; B-4 with twelve concurrent completions of one request (one 200,
+  eleven 409).
+- The suite grew from 89 to 296 tests during the remediation; all pass.
 
 ## 6. Known limitations and residual risks
 
@@ -221,7 +254,13 @@ Chosen deliberately and documented, rather than gaps:
 - Origins: `CORS_ORIGINS`. Rate limits: `RATELIMIT_AUTH_PER_MINUTE`,
   `RATELIMIT_API_PER_MINUTE`, `RATELIMIT_ENABLED`.
 - Creating the first administrator, and every schema change, is documented in
-  `database/migrations/README.md`.
+  `database/migrations/README.md`; Flyway applies the migrations at start-up.
+- Run with `SPRING_PROFILES_ACTIVE=prod` (docker compose does) for INFO logging
+  without SQL and error pages without exception text. The API explorer at
+  `/swagger-ui.html` is public; set `springdoc.api-docs.enabled=false` to hide it.
+- Administrator actions are in `activity_logs`; each row's `details` names what
+  changed, and the log line for the same action carries the request id, so the two
+  can be joined by time and actor when investigating.
 - Two SMTP application passwords and one database password that appeared in this
   repository's history before the remediation must be treated as compromised and
   rotated by the account owner; the code no longer contains any of them.
