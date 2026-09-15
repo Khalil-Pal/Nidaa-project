@@ -13,7 +13,7 @@ document.getElementById('topbarName').textContent = fullName.split(' ')[0];
 
 const roleColors = {
   volunteer:'#1d4ed8', psychologist:'#7c3aed',
-  organization:'#ea580c', beneficiary:'#047857', admin:'#b91c1c'
+  organization:'#c2410c', beneficiary:'#047857', admin:'#b91c1c'
 };
 const rolePillClass = {
   volunteer:'pill-volunteer', psychologist:'pill-psychologist',

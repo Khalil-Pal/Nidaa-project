@@ -21,7 +21,7 @@ const PROVIDER_SERVICE_META={
     CLOTHING:{label:'Clothing',icon:'fa-shirt',tone:'clothing',order:4}
 };
 
-const roleColors={volunteer:'#047857',psychologist:'#7c3aed',admin:'#b91c1c',beneficiary:'#1d4ed8',organization:'#ea580c'};
+const roleColors={volunteer:'#047857',psychologist:'#7c3aed',admin:'#b91c1c',beneficiary:'#1d4ed8',organization:'#c2410c'};
 const roleBg    ={volunteer:'#f0fdf4',psychologist:'#faf5ff',admin:'#fef2f2',beneficiary:'#eff6ff',organization:'#fff7ed'};
 
 document.getElementById('topbarName').textContent=firstName;

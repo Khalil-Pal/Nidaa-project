@@ -28,7 +28,7 @@ document.getElementById('topbarRole').textContent=roleDisplay;
 
 const ENGAGEMENT_KEY='nidaa_community_engagement';
 const PAGE_SIZE=20;
-const roleColors={volunteer:'#047857',psychologist:'#7c3aed',admin:'#b91c1c',beneficiary:'#1d4ed8',organization:'#ea580c'};
+const roleColors={volunteer:'#047857',psychologist:'#7c3aed',admin:'#b91c1c',beneficiary:'#1d4ed8',organization:'#c2410c'};
 const roleBg={volunteer:'#f0fdf4',psychologist:'#faf5ff',admin:'#fef2f2',organization:'#fff7ed',beneficiary:'#eff6ff'};
 const catMeta={
     'ALL':             {label:'All',          color:'#1d4ed8',bg:'#eff6ff'},
@@ -412,7 +412,7 @@ async function loadMembers(){
                     list.innerHTML=
                         (vc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#047857">${vc}<div class="online-dot"></div></div><div><div class="member-name">${vc} Volunteer${vc!==1?'s':''}</div><span class="member-role-badge" style="background:#f0fdf4;color:#047857">Volunteer</span></div></div></div>`:'')+
                         (pc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#7c3aed">${pc}<div class="online-dot"></div></div><div><div class="member-name">${pc} Psychologist${pc!==1?'s':''}</div><span class="member-role-badge" style="background:#faf5ff;color:#7c3aed">Psychologist</span></div></div></div>`:'')+
-                        (oc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#ea580c">${oc}<div class="online-dot"></div></div><div><div class="member-name">${oc} Organization${oc!==1?'s':''}</div><span class="member-role-badge" style="background:#fff7ed;color:#ea580c">Organization</span></div></div></div>`:'');
+                        (oc?`<div class="member-card"><div class="member-card-top"><div class="member-av" style="background:#c2410c">${oc}<div class="online-dot"></div></div><div><div class="member-name">${oc} Organization${oc!==1?'s':''}</div><span class="member-role-badge" style="background:#fff7ed;color:#c2410c">Organization</span></div></div></div>`:'');
                     return;
                 }
             }
