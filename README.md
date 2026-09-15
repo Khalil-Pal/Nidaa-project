@@ -448,6 +448,13 @@ Linux or macOS:
 ./mvnw test
 ```
 
+`./mvnw verify` also writes a JaCoCo coverage report to `target/site/jacoco/`.
+Every push and pull request runs the whole suite in GitHub Actions
+([.github/workflows/ci.yml](.github/workflows/ci.yml)) against a real
+PostgreSQL 17 service, so the persistence tests run there rather than skip; the
+job fails if they skip, prints line and branch coverage in the job summary, and
+uploads the test and coverage reports as an artifact.
+
 The current tests cover:
 
 - Application-context startup.

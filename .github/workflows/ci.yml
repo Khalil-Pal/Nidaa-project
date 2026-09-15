@@ -1,0 +1,98 @@
+# Nidaa CI (DEP-4): the whole test suite on every push and pull request, against
+# a real PostgreSQL so the persistence tests run rather than skip. A skipping
+# persistence suite fails the job on purpose: three earlier phases passed their
+# mocked tests while the real schema disagreed with the code.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-postgres
+          POSTGRES_DB: nidaa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nidaa_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+
+    env:
+      # Throwaway values for an ephemeral database and a build that never sends mail.
+      # Production values come from .env / the environment and are never in the repository.
+      DB_URL: jdbc:postgresql://localhost:5432/nidaa_test?stringtype=unspecified
+      NIDAA_TEST_DB_URL: jdbc:postgresql://localhost:5432/nidaa_test?stringtype=unspecified
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-postgres
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789abcdef
+      MAIL_PASSWORD: ci-unused
+      MAIL_AUTH: "false"
+      MAIL_SSL: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # application.properties is git-ignored (it is copied from the example by each
+      # developer); the example is the template every value in it comes from the environment.
+      - name: Configuration from the example
+        run: cp src/main/resources/application.properties.example src/main/resources/application.properties
+
+      - name: Frontend unit tests
+        run: node --test src/test/js/nidaa-common.test.js
+
+      # Flyway (DEP-1) creates the test schema from src/main/resources/db/migration when the
+      # first Spring context starts, so the migrations themselves are under test here.
+      - name: Build, test, coverage
+        run: ./mvnw -B --no-transfer-progress verify
+
+      - name: Persistence tests ran, not skipped
+        if: always()
+        run: |
+          set -e
+          files=$(ls target/surefire-reports/TEST-com.humanitarian.platform.persistence.*.xml 2>/dev/null | wc -l)
+          if [ "$files" -eq 0 ]; then echo "::error::no persistence test reports found"; exit 1; fi
+          skipped=$(grep -ho 'skipped="[0-9]*"' target/surefire-reports/TEST-com.humanitarian.platform.persistence.*.xml | grep -o '[0-9]*' | awk '{ s+=$1 } END { print s+0 }')
+          run=$(grep -ho 'tests="[0-9]*"' target/surefire-reports/TEST-com.humanitarian.platform.persistence.*.xml | grep -o '[0-9]*' | awk '{ s+=$1 } END { print s+0 }')
+          echo "persistence tests: $run run, $skipped skipped"
+          if [ "$skipped" -ne 0 ] || [ "$run" -eq 0 ]; then echo "::error::persistence tests skipped: the test database was not reachable"; exit 1; fi
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          csv=target/site/jacoco/jacoco.csv
+          if [ ! -f "$csv" ]; then echo "no coverage report"; exit 0; fi
+          # jacoco.csv columns: ..., INSTRUCTION_MISSED, INSTRUCTION_COVERED, BRANCH_MISSED, BRANCH_COVERED, LINE_MISSED, LINE_COVERED, ...
+          awk -F, 'NR>1 { lm+=$8; lc+=$9; bm+=$6; bc+=$7 } END {
+            printf "Line coverage: %.1f%% (%d of %d lines); branch coverage: %.1f%% (%d of %d branches)\n", 100*lc/(lm+lc), lc, lm+lc, 100*bc/(bm+bc), bc, bm+bc }' "$csv" | tee coverage.txt
+          { echo "### Coverage"; echo; cat coverage.txt; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            target/surefire-reports
+            target/site/jacoco
+          retention-days: 14
