@@ -70,6 +70,10 @@ Phase 5.
 
 ## Operations
 
+- **Public `/actuator/health`.** The deny-by-default chain answers it 401, so a
+  Docker or orchestrator health check cannot use it yet; permitting just
+  `/actuator/health` (not `/actuator/**`) would allow `docker compose` and CI
+  readiness probes. Found while checking DEP-3's compose contract.
 - **Shared rate-limit store** if the application is ever run on more than one node.
 - **Flyway** for the migrations: done in Phase 4 (DEP-1). Existing databases are
   baselined at V18 on first start; `database/migrations/README.md` has the rules.

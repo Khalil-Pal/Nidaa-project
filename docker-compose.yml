@@ -1,0 +1,59 @@
+# Nidaa from nothing (DEP-3): PostgreSQL 17, the application, and a local mail
+# sink so registration (which emails a verification code) works offline.
+#
+#   cp .env.example .env      # set DB_PASSWORD and JWT_SECRET
+#   docker compose up --build
+#
+# Then http://localhost:8081 (application), http://localhost:8025 (mail sink UI).
+# Flyway creates the schema on the empty database at first start; the first
+# administrator is inserted by hand (database/migrations/README.md).
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: nidaa
+      POSTGRES_USER: nidaa
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - nidaa-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nidaa -d nidaa"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Catches every email the application sends; nothing leaves the machine.
+  mail:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+      mail:
+        condition: service_started
+    environment:
+      SERVER_PORT: "8081"
+      DB_URL: jdbc:postgresql://db:5432/nidaa?stringtype=unspecified
+      DB_USERNAME: nidaa
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (at least 32 random bytes)}
+      # Local mail sink by default; point these at a real SMTP server to send mail.
+      MAIL_HOST: ${MAIL_HOST:-mail}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-noreply@nidaa.local}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-unused}
+      MAIL_AUTH: ${MAIL_AUTH:-false}
+      MAIL_SSL: ${MAIL_SSL:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+volumes:
+  nidaa-db:

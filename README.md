@@ -291,6 +291,25 @@ $env:MAIL_PASSWORD = "your-smtp-application-password"
 $env:NIDAA_ADMIN_EMAIL = "admin@example.com"
 ```
 
+## Running with Docker
+
+The quickest way to see the platform working from nothing (needs Docker with
+Compose v2, nothing else):
+
+```bash
+cp .env.example .env          # set DB_PASSWORD and JWT_SECRET
+docker compose up --build
+```
+
+This starts PostgreSQL 17, the application on http://localhost:8081 and a local
+mail sink on http://localhost:8025 that shows the verification and reset
+emails, so registration works without an SMTP account. Flyway creates the
+schema on the empty database at first start; insert the first administrator as
+described in [database/migrations/README.md](database/migrations/README.md).
+The image never contains `.env` or `application.properties`
+(`.dockerignore`); every setting reaches the container as an environment
+variable from `docker-compose.yml`.
+
 ## Running Locally
 
 Clone the repository:
