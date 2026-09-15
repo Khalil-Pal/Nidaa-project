@@ -50,6 +50,7 @@ class RequestLifecycleTest {
     @Mock private AutomaticAssignmentService automaticAssignmentService;
     @Mock private GeoMatchingService geoMatchingService;
     @Mock private ProviderResourceService providerResourceService;
+    @Mock private com.humanitarian.platform.service.NotificationService notifications;
     @Spy private PriorityScoreService priorityScoreService = new PriorityScoreService();
 
     @InjectMocks private HelpRequestService helpRequestService;
@@ -154,5 +155,10 @@ class RequestLifecycleTest {
         verify(providerResourceService, never()).restoreReservation(
                 any(ProviderCapacityReservation.class));
         verify(helpRequestRepository).updateStatusCompleted(eq(10L), eq("COMPLETED"), any(), eq("ASSIGNED"));
+
+        // N-1: the beneficiary hears about the acceptance and the completion; the actor is never told about their own action
+        verify(notifications).notify(eq(beneficiary.getId()), eq("Your request was accepted"), anyString(), eq("HELP_REQUEST"), eq(10L));
+        verify(notifications).notify(eq(beneficiary.getId()), eq("Request completed"), anyString(), eq("HELP_REQUEST"), eq(10L));
+        verify(notifications, never()).notify(eq(volunteer.getId()), anyString(), anyString(), anyString(), any());
     }
 }

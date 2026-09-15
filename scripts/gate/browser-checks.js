@@ -15,6 +15,9 @@
  *   VER  admin-users.html shows a psychologist's credential status and the
  *        "Verify Credentials" action in the details modal sets it (audited on the
  *        server); the badge in the table follows
+ *   N-1  a volunteer accepting a request produces an unread notification on the
+ *        beneficiary's open page within 60 s without a reload; opening it lists
+ *        the notification and clicking it marks it read and goes to the request
  *
  * Prerequisites: the app running against the gate database (see acceptance.sh),
  * psql access to that database (REG reads the e-mailed code from
@@ -279,6 +282,60 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
             }, bene.email);
             check('VER', 'a beneficiary row carries no credentials badge', beneRow && !beneRow.badge);
             await page.close();
+        }
+
+        // ---------------- N-1: the bell updates without a reload ----------------
+        {
+            // the L-1 section left its request ASSIGNED to the volunteer, which makes them unavailable
+            const open = await api('/api/help-requests/my', {}, bene.token);
+            for (const r of (open.body && open.body.data) || []) {
+                if (r.status === 'ASSIGNED') await api(`/api/help-requests/${r.id}/status?status=COMPLETED`, { method: 'PUT' }, vol.token);
+            }
+            // a fresh request from the beneficiary, then the page open before anything happens
+            const created = await api('/api/help-requests', { method: 'POST', body: JSON.stringify({
+                title: 'Browser gate: notification', helpType: 'FOOD', urgencyLevel: 'MEDIUM', peopleCount: 1 }) }, bene.token);
+            const reqId = created.body && created.body.data && created.body.data.id;
+            check('N-1', `request created for the notification check (${created.status}, id ${reqId})`, created.status === 200 && !!reqId);
+            const page = await browser.newPage();
+            await signIn(page, bene);
+            await page.goto(BASE + '/dashboard.html', { waitUntil: 'networkidle0' });
+            await page.waitForSelector('#notifBell', { timeout: 10000 });
+            const before = await page.evaluate(() => ({ hidden: document.getElementById('notifCount').hidden, text: document.getElementById('notifCount').textContent }));
+            const unreadBefore = before.hidden ? 0 : Number(before.text);
+
+            // the volunteer accepts from another client; the beneficiary's page is not touched
+            const accepted = await api(`/api/help-requests/${reqId}/assign`, { method: 'PUT' }, vol.token);
+            check('N-1', `volunteer accepted through the API (${accepted.status})`, accepted.status === 200);
+            const t0 = Date.now();
+            await page.waitForFunction((n) => {
+                const c = document.getElementById('notifCount');
+                return c && !c.hidden && Number(c.textContent) > n;
+            }, { timeout: 70000, polling: 500 }, unreadBefore);
+            const seconds = Math.round((Date.now() - t0) / 1000);
+            const label = await page.$eval('#notifBell', (el) => el.getAttribute('aria-label'));
+            check('N-1', `bell count rose ${unreadBefore} -> ${await page.$eval('#notifCount', (el) => el.textContent)} after ${seconds}s without reload; aria-label "${label}"`,
+                seconds <= 65 && /unread/.test(label) && page.url().includes('dashboard.html'));
+
+            await page.click('#notifBell');
+            await page.waitForFunction(() => document.querySelectorAll('#notifList .notif-item').length > 0, { timeout: 10000 });
+            const first = await page.$eval('#notifList .notif-item', (el) => ({ title: el.querySelector('.notif-title').textContent, unread: el.classList.contains('unread'), ref: el.dataset.ref }));
+            check('N-1', `panel lists "${first.title}" (unread ${first.unread}, ref ${first.ref})`, first.title === 'Your request was accepted' && first.unread && first.ref === 'HELP_REQUEST');
+            await Promise.all([
+                page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }),
+                page.click('#notifList .notif-item')
+            ]);
+            check('N-1', `clicking it goes to ${page.url().replace(BASE, '')}`, page.url().includes('help-requests.html'));
+            const unreadNow = await api('/api/notifications/unread-count', {}, bene.token);
+            check('N-1', `it is read on the server (unread now ${unreadNow.body.data.unread})`, unreadNow.body.data.unread === unreadBefore);
+
+            // the volunteer cannot read the beneficiary's notification
+            const mine = await api('/api/notifications?size=1', {}, bene.token);
+            const nid = mine.body.data.content[0].id;
+            const foreign = await api(`/api/notifications/${nid}/read`, { method: 'PUT' }, vol.token);
+            check('N-1', `another user marking it read -> ${foreign.status}`, foreign.status === 404);
+            await page.close();
+            // leave the request in a terminal state so the volunteer is free for the next run
+            await api(`/api/help-requests/${reqId}/status?status=COMPLETED`, { method: 'PUT' }, vol.token);
         }
 
         // ---------------- F-4: expired access token is refreshed silently ----------------

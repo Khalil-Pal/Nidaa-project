@@ -42,17 +42,20 @@ public class UserApprovalService {
     private final PsychologistRepository psychologistRepository;
     private final OrganizationRepository organizationRepository;
     private final AdminAuditService adminAudit;
+    private final NotificationService notifications;
 
     public UserApprovalService(UserRepository userRepository,
                                VolunteerRepository volunteerRepository,
                                PsychologistRepository psychologistRepository,
                                OrganizationRepository organizationRepository,
-                               AdminAuditService adminAudit) {
+                               AdminAuditService adminAudit,
+                               NotificationService notifications) {
         this.userRepository = userRepository;
         this.volunteerRepository = volunteerRepository;
         this.psychologistRepository = psychologistRepository;
         this.organizationRepository = organizationRepository;
         this.adminAudit = adminAudit;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -87,6 +90,11 @@ public class UserApprovalService {
             default -> { /* beneficiaries and admins have no profile row */ }
         }
         adminAudit.record("USER_APPROVED", "USER", userId, Map.of("role", user.getRole().name()));
+        // N-1: waiting for them at first sign-in. A rejected application is deleted
+        // outright (reject), so it can only be told by e-mail, which the controller sends.
+        notifications.notify(userId, "Your application was approved",
+                "Welcome to Nidaa. Your account as a " + user.getRole().name().toLowerCase(java.util.Locale.ROOT)
+                        + " is active.", NotificationService.REF_USER, userId);
         return user;
     }
 

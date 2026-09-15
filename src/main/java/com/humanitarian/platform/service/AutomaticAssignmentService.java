@@ -42,6 +42,7 @@ public class AutomaticAssignmentService {
     private final AssignmentRepository assignmentRepository;
     private final GeoMatchingService geoMatchingService;
     private final ProviderResourceService providerResourceService;
+    private final NotificationService notifications;
 
     public AutomaticAssignmentService(HelpRequestRepository helpRequestRepository,
                                       PsychologicalRequestRepository psychologicalRequestRepository,
@@ -50,7 +51,8 @@ public class AutomaticAssignmentService {
                                       PsychologistRepository psychologistRepository,
                                       AssignmentRepository assignmentRepository,
                                       GeoMatchingService geoMatchingService,
-                                      ProviderResourceService providerResourceService) {
+                                      ProviderResourceService providerResourceService,
+                                      NotificationService notifications) {
         this.helpRequestRepository = helpRequestRepository;
         this.psychologicalRequestRepository = psychologicalRequestRepository;
         this.volunteerRepository = volunteerRepository;
@@ -59,6 +61,7 @@ public class AutomaticAssignmentService {
         this.assignmentRepository = assignmentRepository;
         this.geoMatchingService = geoMatchingService;
         this.providerResourceService = providerResourceService;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -144,6 +147,16 @@ public class AutomaticAssignmentService {
                     request.getId(), candidate.providerType(), candidate.providerId(),
                     String.format(Locale.ROOT, "%.2f", candidate.distanceKm()),
                     candidates.indexOf(candidate) + 1, candidates.size());
+            // N-1: both sides of an automatic match are told; the filer too when someone filed it
+            notifications.notify(candidate.userId(), "A request was matched to you",
+                    "\"" + request.getTitle() + "\" was assigned to you as the nearest available provider.",
+                    NotificationService.REF_HELP_REQUEST, request.getId());
+            for (Long recipient : new java.util.LinkedHashSet<>(java.util.Arrays.asList(
+                    request.getBeneficiaryId(), request.getFiledByUserId()))) {
+                notifications.notify(recipient, "Your request was matched",
+                        "\"" + request.getTitle() + "\" was matched to the nearest available provider, who will be in touch.",
+                        NotificationService.REF_HELP_REQUEST, request.getId());
+            }
             return true;
         }
 
@@ -217,6 +230,13 @@ public class AutomaticAssignmentService {
                     .build());
             logger.info("Crisis request {} routed to psychologist {} ({} open cases)",
                     request.getId(), psychologist.getId(), openCases.getOrDefault(psychologist.getId(), 0L));
+            // N-1: the psychologist must see a crisis case at once; the person is told someone is coming
+            notifications.notify(psychologist.getUser().getId(), "Crisis case routed to you",
+                    "An urgent psychological support request was routed to you. Please open it now.",
+                    NotificationService.REF_PSYCHOLOGICAL_REQUEST, request.getId());
+            notifications.notify(request.getBeneficiaryId(), "A psychologist has been assigned to you",
+                    "Your request was marked urgent and a psychologist on duty has been assigned. They will contact you shortly.",
+                    NotificationService.REF_PSYCHOLOGICAL_REQUEST, request.getId());
             return true;
         }
 

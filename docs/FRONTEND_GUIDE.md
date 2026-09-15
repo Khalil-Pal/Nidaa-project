@@ -49,6 +49,15 @@ token server-side), `escHtml()`, `timeAgo()`, `currentUser()` and
 `buildSidebar(currentPage)`. Pages must not redeclare any of these; add shared
 behaviour to the module rather than copying it into a page.
 
+`buildSidebar()` also mounts the notification bell (N-1) into `.topbar-actions` of
+every signed-in page: the unread count comes from `GET /api/notifications/unread-count`
+on load and every 60 seconds (`setInterval`, no WebSocket), opening the bell lists
+the latest ten, "Mark all read" calls `read-all`, and clicking an item marks it read
+and goes to the page for its `referenceType` (`notificationHref()`: help requests,
+psychological support, community, settings for provider resources). Pages add no
+markup for it; the module builds and wires the elements, so it works under the
+strict Content Security Policy.
+
 ## Layout And Navigation
 
 `css/shared-layout.css` contains the canonical top bar and sidebar styles. Pages may
@@ -172,6 +181,7 @@ and responsible administrator.
 | Community likes | `nidaa_community_engagement` in `localStorage` | No |
 | Community comments | `nidaa_community_engagement` in `localStorage` | No |
 | Community photo posts | Not currently supported | No |
+| In-app notifications and their read state | PostgreSQL through `/api/notifications` | Yes, owner-only |
 | JWT and safe user summary | `localStorage` | Session convenience only |
 | Cached profile display preferences/avatar | `localStorage` on relevant pages | Browser-local |
 

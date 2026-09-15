@@ -203,7 +203,8 @@ const SIDEBAR_PAGES = {
 /**
  * Fills #sidebarNav with the links for the signed-in user's role and marks
  * the current page. The role may be passed explicitly; by default it is
- * read from the stored user.
+ * read from the stored user. Every signed-in page calls this, so it is also
+ * where the notification bell is mounted into the topbar (N-1).
  */
 function buildSidebar(currentPage, role) {
     const nav = document.getElementById('sidebarNav');
@@ -213,6 +214,107 @@ function buildSidebar(currentPage, role) {
         '<a href="' + p.href + '" class="nav-item' + (p.href === currentPage ? ' active' : '') + '">' +
         '<i class="fa ' + p.icon + '"></i> ' + escHtml(p.label) + '</a>'
     ).join('');
+    mountNotificationBell();
+}
+
+// ---- Notifications (N-1) ---------------------------------------------------
+// A bell in the topbar with the unread count, polled every 60 s (no WebSocket;
+// that dependency was removed in Phase 4). Opening it lists the latest
+// notifications; clicking one marks it read and, when the reference has a
+// page, goes there.
+
+const NOTIFICATION_POLL_MS = 60000;
+const NOTIFICATION_PAGE_SIZE = 10;
+
+/** The page that shows a notification's subject, or null when there is none to go to. */
+function notificationHref(referenceType) {
+    switch (referenceType) {
+        case 'HELP_REQUEST':          return 'help-requests.html';
+        case 'PSYCHOLOGICAL_REQUEST': return 'psychological.html';
+        case 'MESSAGE':               return 'community.html';
+        case 'PROVIDER_RESOURCE':     return 'settings.html';
+        default:                      return null;
+    }
+}
+
+function mountNotificationBell() {
+    const host = document.querySelector && document.querySelector('.topbar-actions');
+    if (!host || document.getElementById('notifBell') || !localStorage.getItem('token')) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'notif';
+    wrap.innerHTML =
+        '<button type="button" class="notif-bell" id="notifBell" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">' +
+        '<i class="fa fa-bell" aria-hidden="true"></i><span class="notif-count" id="notifCount" hidden></span></button>' +
+        '<div class="notif-panel" id="notifPanel" role="region" aria-label="Notifications" hidden>' +
+        '<div class="notif-head"><span>Notifications</span>' +
+        '<button type="button" class="notif-readall" id="notifReadAll">Mark all read</button></div>' +
+        '<div class="notif-list" id="notifList"></div></div>';
+    host.insertBefore(wrap, host.firstChild);
+
+    const bell = document.getElementById('notifBell');
+    const panel = document.getElementById('notifPanel');
+    const setOpen = (open) => {
+        panel.hidden = !open;
+        bell.setAttribute('aria-expanded', String(open));
+        if (open) loadNotifications();
+    };
+    bell.addEventListener('click', () => setOpen(panel.hidden));
+    document.getElementById('notifReadAll').addEventListener('click', async () => {
+        const res = await apiFetch(API + '/notifications/read-all', { method: 'PUT' });
+        if (res.ok) { await loadNotifications(); refreshUnreadCount(); }
+    });
+    document.getElementById('notifList').addEventListener('click', async (event) => {
+        const item = event.target.closest('button[data-id]');
+        if (!item) return;
+        await apiFetch(API + '/notifications/' + Number(item.dataset.id) + '/read', { method: 'PUT' });
+        const href = notificationHref(item.dataset.ref);
+        if (href) { window.location.href = href; return; }
+        item.classList.remove('unread');
+        refreshUnreadCount();
+    });
+    document.addEventListener('click', (event) => { if (!wrap.contains(event.target) && !panel.hidden) setOpen(false); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !panel.hidden) { setOpen(false); bell.focus(); } });
+
+    refreshUnreadCount();
+    setInterval(refreshUnreadCount, NOTIFICATION_POLL_MS);
+}
+
+async function refreshUnreadCount() {
+    try {
+        const res = await apiFetch(API + '/notifications/unread-count');
+        if (!res.ok) return;
+        const unread = Number(((await res.json()).data || {}).unread || 0);
+        const count = document.getElementById('notifCount');
+        const bell = document.getElementById('notifBell');
+        if (!count || !bell) return;
+        count.textContent = unread > 99 ? '99+' : String(unread);
+        count.hidden = unread === 0;
+        bell.setAttribute('aria-label', unread === 0 ? 'Notifications' : 'Notifications, ' + unread + ' unread');
+    } catch (e) {
+        // the next poll tries again; a failed count must not break the page
+    }
+}
+
+async function loadNotifications() {
+    const list = document.getElementById('notifList');
+    if (!list) return;
+    list.innerHTML = '<div class="notif-empty">Loading\u2026</div>';
+    try {
+        const res = await apiFetch(API + '/notifications?page=0&size=' + NOTIFICATION_PAGE_SIZE);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const items = ((await res.json()).data || {}).content || [];
+        if (!items.length) { list.innerHTML = '<div class="notif-empty">Nothing yet.</div>'; return; }
+        list.innerHTML = items.map(n =>
+            '<button type="button" class="notif-item' + (n.read ? '' : ' unread') + '" data-id="' + Number(n.id) + '"' +
+            ' data-ref="' + escHtml(n.referenceType || '') + '">' +
+            '<span class="notif-title">' + escHtml(n.title) + '</span>' +
+            '<span class="notif-content">' + escHtml(n.content) + '</span>' +
+            '<span class="notif-time">' + escHtml(timeAgo(new Date(n.createdAt).getTime())) + '</span></button>'
+        ).join('');
+    } catch (e) {
+        list.innerHTML = '<div class="notif-empty">Could not load notifications.</div>';
+    }
 }
 
 // ---- Event wiring helpers (F-5) --------------------------------------------

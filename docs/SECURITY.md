@@ -78,6 +78,7 @@ Authorization is layered so that forgetting one layer fails closed rather than o
 
 | Layer | Rule | Where |
 |---|---|---|
+| Notifications are the caller's own: every read and write is scoped to the authenticated user inside the service, and another person's id is **404**, never 403, so ids cannot be probed | `NotificationService`, `NotificationRepository.findByIdAndUserId()` (N-1) |
 | URL patterns (deny by default) | Listing help requests: ADMIN, VOLUNTEER, ORGANIZATION. Creating them: BENEFICIARY, VOLUNTEER, ORGANIZATION. Everything under `/api/psychological-requests`: BENEFICIARY, PSYCHOLOGIST, ADMIN. Provider resources and availability: VOLUNTEER, ORGANIZATION. `/api/psychologists/**` (duty toggle): PSYCHOLOGIST. `/api/admin/**` and `/api/v1/admin/**`: ADMIN. Static files, `/api/auth/**`, the public statistics and the API explorer (`/swagger-ui/**`, `/v3/api-docs/**`): anonymous. Anything else: any authenticated user. | `SecurityConfig.filterChain()` (P-1, UX-2, DEP-2) |
 | Method annotations | `@PreAuthorize` on controllers for role checks the URL rules do not express | controllers |
 | Row-level ownership | A request is returned only to an admin, its beneficiary, whoever filed it for them, or the assigned provider, **resolved by profile id**, never by comparing a user id to a profile id. Everyone else receives **404, not 403**, so the response does not confirm the record exists. | `HelpRequestService.getRequestById()`, `PsychologicalRequestService.getRequestById()` (S-4) |

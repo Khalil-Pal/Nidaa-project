@@ -36,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,6 +53,7 @@ class AutomaticAssignmentServiceTest {
     @Mock private AssignmentRepository assignmentRepository;
     @Spy private GeoMatchingService geoMatchingService = new GeoMatchingService();
     @Mock private ProviderResourceService providerResourceService;
+    @Mock private com.humanitarian.platform.service.NotificationService notifications;
 
     @InjectMocks private AutomaticAssignmentService service;
 
@@ -290,11 +293,13 @@ class AutomaticAssignmentServiceTest {
     void crisisGoesToOnDutyPsychologistWithLowestActiveLoad() {
         PsychologicalRequest request = PsychologicalRequest.builder()
                 .id(30L)
+                .beneficiaryId(300L)
                 .isCrisis(true)
                 .status("PENDING")
                 .build();
         Psychologist busy = Psychologist.builder()
                 .id(40L)
+                .user(User.builder().id(400L).build())
                 .isVerified(true)
                 .isOnDuty(true)
                 .rating(5.0)
@@ -302,6 +307,7 @@ class AutomaticAssignmentServiceTest {
                 .build();
         Psychologist available = Psychologist.builder()
                 .id(41L)
+                .user(User.builder().id(401L).build())
                 .isVerified(true)
                 .isOnDuty(true)
                 .rating(4.5)
@@ -323,6 +329,10 @@ class AutomaticAssignmentServiceTest {
         assertEquals("PSYCHOLOGICAL_REQUEST", captor.getValue().getRequestType());
         assertEquals("AUTO_CRISIS", captor.getValue().getAssignmentSource());
         assertEquals(41L, captor.getValue().getPsychologistId());
+        // N-1: the chosen psychologist and the person are told; the busy one is not
+        verify(notifications).notify(eq(401L), eq("Crisis case routed to you"), anyString(), eq("PSYCHOLOGICAL_REQUEST"), eq(30L));
+        verify(notifications).notify(eq(300L), eq("A psychologist has been assigned to you"), anyString(), eq("PSYCHOLOGICAL_REQUEST"), eq(30L));
+        verify(notifications, never()).notify(eq(400L), anyString(), anyString(), anyString(), any());
     }
 
     @Test

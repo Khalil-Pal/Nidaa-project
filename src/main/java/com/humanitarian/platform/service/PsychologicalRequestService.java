@@ -41,6 +41,7 @@ public class PsychologicalRequestService {
     @Autowired private PsychologistRepository         psychologistRepository;
     @Autowired private AutomaticAssignmentService     automaticAssignmentService;
     @Autowired private AdminAuditService              adminAudit;
+    @Autowired private NotificationService            notifications;
 
     @Transactional
     public PsychologicalRequest createRequest(PsychologicalRequestDto dto) {
@@ -116,6 +117,12 @@ public class PsychologicalRequestService {
                 .build();
         assignmentRepository.save(assignment);
 
+        // N-1: the beneficiary learns a psychologist took the case. Their own request,
+        // so nothing about them is revealed; anonymity protects the beneficiary, not the psychologist.
+        notifications.notify(request.getBeneficiaryId(), "A psychologist accepted your request",
+                currentUser.getFullName() + " accepted your psychological support request and will contact you.",
+                NotificationService.REF_PSYCHOLOGICAL_REQUEST, requestId);
+
         return findOrThrow(requestId);
     }
 
@@ -161,7 +168,27 @@ public class PsychologicalRequestService {
         if (currentUser.getRole() == UserRole.ADMIN) {
             adminAudit.record("REQUEST_STATUS_CHANGED", "PSYCHOLOGICAL_REQUEST", id, Map.of("from", current, "to", next));
         }
+        // N-1: the other party hears about the change
+        String word = next.toLowerCase(java.util.Locale.ROOT);
+        for (Long recipient : caseParties(request, currentUser.getId())) {
+            notifications.notify(recipient, "Support request " + word,
+                    "Your psychological support request is now " + word + ".",
+                    NotificationService.REF_PSYCHOLOGICAL_REQUEST, id);
+        }
         return findOrThrow(id);
+    }
+
+    /** The beneficiary and the assigned psychologist, minus whoever acted. */
+    private Set<Long> caseParties(PsychologicalRequest request, Long actorId) {
+        Set<Long> parties = new java.util.LinkedHashSet<>();
+        parties.add(request.getBeneficiaryId());
+        if (request.getAssignedPsychologistId() != null) {
+            psychologistRepository.findById(request.getAssignedPsychologistId())
+                    .ifPresent(p -> parties.add(p.getUser().getId()));
+        }
+        parties.remove(null);
+        parties.remove(actorId);
+        return parties;
     }
 
     private Set<String> permittedTargets(User me, PsychologicalRequest request) {

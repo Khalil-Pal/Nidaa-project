@@ -19,7 +19,9 @@ public class Notification {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "type")
+    // notification_type: IN_APP is the only channel delivered today; EMAIL, SMS and
+    // PUSH stay in the database enum for channels the model anticipates (N-1).
+    @Column(name = "type", columnDefinition = "notification_type")
     private String type;
 
     @Column(name = "title", nullable = false)
@@ -34,7 +36,10 @@ public class Notification {
     @Column(name = "reference_type")
     private String referenceType;
 
-    @Column(name = "status")
+    // notification_status: an in-app notification is SENT the moment it is stored
+    // and READ once the person opens it (read_at); PENDING/FAILED belong to the
+    // asynchronous channels above.
+    @Column(name = "status", columnDefinition = "notification_status")
     @Builder.Default
     private String status = "PENDING";
 

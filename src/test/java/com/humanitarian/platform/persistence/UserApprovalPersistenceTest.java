@@ -11,6 +11,7 @@ import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
 import com.humanitarian.platform.service.AdminAuditService;
+import com.humanitarian.platform.service.NotificationService;
 import com.humanitarian.platform.service.UserApprovalService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -33,8 +34,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * and that gave every approved provider a 5.0 rating (fixed in V18).
  */
 @EnabledIf(value = PersistenceTestSupport.CONDITION, disabledReason = "nidaa_test database not reachable")
-@Import({UserApprovalService.class, AdminAuditService.class})
+@Import({UserApprovalService.class, AdminAuditService.class, NotificationService.class})
 class UserApprovalPersistenceTest extends PersistenceTestSupport {
+
+    // NotificationService reads the caller only for listing; approval only writes
+    @org.springframework.boot.test.mock.mockito.MockBean private com.humanitarian.platform.service.UserService userService;
 
     @Autowired private UserApprovalService approvalService;
     @Autowired private UserRepository userRepository;
@@ -59,6 +63,16 @@ class UserApprovalPersistenceTest extends PersistenceTestSupport {
         Volunteer v = volunteerRepository.findByUserId(u.getId()).orElseThrow();
         assertTrue(v.getIsAvailable());
         assertNull(v.getRating(), "unrated, not 5.0");
+
+        // N-1: an in-app notification waits for them, stored as SENT in the enum columns
+        Object[] n = (Object[]) em.getEntityManager()
+                .createNativeQuery("SELECT CAST(type AS text), CAST(status AS text), title, reference_type, reference_id FROM notifications WHERE user_id = :id")
+                .setParameter("id", u.getId()).getSingleResult();
+        assertEquals("IN_APP", n[0]);
+        assertEquals("SENT", n[1]);
+        assertEquals("Your application was approved", n[2]);
+        assertEquals("USER", n[3]);
+        assertEquals(u.getId(), ((Number) n[4]).longValue());
     }
 
     @Test

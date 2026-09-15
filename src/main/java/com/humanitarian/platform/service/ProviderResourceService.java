@@ -34,13 +34,16 @@ public class ProviderResourceService {
     private final ProviderResourceRepository providerResourceRepository;
     private final AssignmentRepository assignmentRepository;
     private final UserService userService;
+    private final NotificationService notifications;
 
     public ProviderResourceService(ProviderResourceRepository providerResourceRepository,
                                    AssignmentRepository assignmentRepository,
-                                   UserService userService) {
+                                   UserService userService,
+                                   NotificationService notifications) {
         this.providerResourceRepository = providerResourceRepository;
         this.assignmentRepository = assignmentRepository;
         this.userService = userService;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -115,6 +118,13 @@ public class ProviderResourceService {
             reservedAmount = Math.min(resource.getCapacityAmount(), requestedAmount);
             resource.setCapacityAmount(resource.getCapacityAmount() - reservedAmount);
             providerResourceRepository.save(resource);
+            if (resource.getCapacityAmount() == 0) {
+                // N-1: the provider stops receiving matches for this type until they raise the capacity
+                notifications.notify(userId, "Your " + helpType.toLowerCase(java.util.Locale.ROOT) + " capacity is used up",
+                        "The last of your declared " + helpType.toLowerCase(java.util.Locale.ROOT)
+                                + " capacity was reserved for an assignment. Raise it in Settings to receive more requests.",
+                        NotificationService.REF_PROVIDER_RESOURCE, resource.getId());
+            }
         }
 
         return Optional.of(new ProviderCapacityReservation(

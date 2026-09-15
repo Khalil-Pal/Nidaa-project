@@ -125,8 +125,23 @@ check "S-5" "unassigned volunteer completes A" "$(code -X PUT "$BASE/api/help-re
 check "S-5" "beneficiary completes own A" "$(code -X PUT "$BASE/api/help-requests/$R_ID/status?status=COMPLETED" -H "Authorization: Bearer $B")" "403"
 check "S-5" "assigned volunteer completes A" "$(code -X PUT "$BASE/api/help-requests/$R_ID/status?status=COMPLETED" -H "Authorization: Bearer $V")" "200"
 check "G2" "smoke: A is COMPLETED with timestamp" "$(sql "select status||'/'||(completed_at is not null) from help_requests where request_id=$R_ID")" "COMPLETED/true"
+
+# N-1: the beneficiary was told about the acceptance and the completion, in the caller's transaction;
+# the acting volunteer was told nothing about their own actions; ownership is 404, never 403
+NB=$(body "$BASE/api/notifications?size=5" -H "Authorization: Bearer $B")
+check "N-1" "beneficiary has the two notifications for A, newest first" "$(echo "$NB" | python -c "import sys,json; c=json.load(sys.stdin)['data']['content']; print('/'.join(x['title'] for x in c if x['referenceId']==$R_ID))")" "Request completed/Your request was accepted"
+check "N-1" "both unread, IN_APP, referencing the request" "$(echo "$NB" | python -c "import sys,json; c=[x for x in json.load(sys.stdin)['data']['content'] if x['referenceId']==$R_ID]; print(str(all(not x['read'] and x['type']=='IN_APP' and x['referenceType']=='HELP_REQUEST' for x in c)).lower())")" "true"
+check "N-1" "unread count" "$(body "$BASE/api/notifications/unread-count" -H "Authorization: Bearer $B" | json data.unread)" "$(sql "select count(*) from notifications where user_id=$(uid "$BENE") and read_at is null")"
+check "N-1" "the acting volunteer got nothing about A" "$(sql "select count(*) from notifications where user_id=$(uid "$VOL") and reference_id=$R_ID")" "0"
+NID=$(echo "$NB" | python -c "import sys,json; c=json.load(sys.stdin)['data']['content']; print([x for x in c if x['referenceId']==$R_ID][0]['id'])")
+check "N-1" "another user marks it read" "$(code -X PUT "$BASE/api/notifications/$NID/read" -H "Authorization: Bearer $B2")" "404"
+check "N-1" "another user lists: not theirs" "$(body "$BASE/api/notifications" -H "Authorization: Bearer $B2" | python -c "import sys,json; print(sum(1 for x in json.load(sys.stdin)['data']['content'] if x['referenceId']==$R_ID))")" "0"
+check "N-1" "owner marks it read" "$(body -X PUT "$BASE/api/notifications/$NID/read" -H "Authorization: Bearer $B" | json data.read)" "True"
+check "N-1" "status column follows read_at" "$(sql "select cast(status as text)||'/'||(read_at is not null) from notifications where notification_id=$NID")" "READ/true"
+check "N-1" "no token" "$(code "$BASE/api/notifications/unread-count")" "401"
 R_B=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" -d '{"title":"Gate request B","helpType":"WATER","urgencyLevel":"LOW"}' | json data.id)
 check "S-5" "beneficiary cancels own B" "$(code -X PUT "$BASE/api/help-requests/$R_B/status?status=CANCELLED" -H "Authorization: Bearer $B")" "200"
+check "N-1" "cancelling an unassigned own request notifies nobody" "$(sql "select count(*) from notifications where reference_type='HELP_REQUEST' and reference_id=$R_B")" "0"
 check "S-5" "other beneficiary cancels B" "$(code -X PUT "$BASE/api/help-requests/$R_B/status?status=CANCELLED" -H "Authorization: Bearer $B2")" "403"
 check "S-5" "psychologist completes unassigned case" "$(code -X PUT "$BASE/api/psychological-requests/$P_ID/status?status=COMPLETED" -H "Authorization: Bearer $S")" "403"
 
@@ -202,6 +217,7 @@ check "VER" "verified_by is the admin, action audited once" "$(sql "select (veri
 check "VER" "repeating the same state is a no-op" "$(body -X PUT "$BASE/api/admin/psychologists/$PSY_UID/verification" -H 'Content-Type: application/json' -H "Authorization: Bearer $A" -d '{"verified":true}' | json data.verified)/$(sql "select count(*) from activity_logs where action='PSYCHOLOGIST_VERIFIED' and entity_id=$PSY_UID")" "True/1"
 check "VER" "verified but off duty: not in the routing pool" "$(sql "select count(*) from psychologists where is_verified and is_on_duty")" "0"
 check "VER" "psychologist goes on duty (UX-2)" "$(code -X PUT "$BASE/api/psychologists/me/duty" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d '{"onDuty":true}')" "200"
+check "N-1" "approval notified the volunteer, not the admin" "$(sql "select count(*) filter (where user_id=$(uid "$VOL"))||'/'||count(*) filter (where user_id=$(uid "$ADMIN")) from notifications where title='Your application was approved'")" "1/0"
 check "VER" "users list shows the two flags to the admin" "$(body "$BASE/api/admin/users" -H "Authorization: Bearer $A" | python -c "import sys,json; u=[x for x in json.load(sys.stdin)['data'] if x['id']==$PSY_UID][0]; print(str(u.get('credentialsVerified')).lower()+'/'+str(u.get('onDuty')).lower())")" "true/true"
 
 crisis() { body -X POST "$BASE/api/psychological-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" \
@@ -212,6 +228,7 @@ check "L-2" "'self-harming' (inflected)" "$(crisis 'I have been self-harming aga
 check "L-2" "'hopeless' -> review" "$(crisis 'Everything feels hopeless')" "false/true"
 check "L-2" "crisis case routed to on-duty psychologist" "$(sql "select count(*) from assignments where assignment_source='AUTO_CRISIS'")" "$(sql "select count(*) from psychological_requests where is_crisis and status='ASSIGNED'")"
 # with VER above the pool is no longer empty, so this must have happened at least twice (two crisis texts)
+check "N-1" "each routed crisis case notified the psychologist and the person" "$(sql "select count(*) filter (where user_id=$PSY_UID and title='Crisis case routed to you')||'/'||count(*) filter (where user_id=$(uid "$BENE") and title='A psychologist has been assigned to you') from notifications where reference_type='PSYCHOLOGICAL_REQUEST'")" "2/2"
 check "L-2" "the two crisis cases were actually auto-routed" "$(sql "select count(*) from assignments where assignment_source='AUTO_CRISIS' and psychologist_id=(select psychologist_id from psychologists where user_id=$PSY_UID)")" "2"
 
 check "D-5" "no priority_score above 100" "$(sql "select count(*) from help_requests where priority_score > 100")" "0"

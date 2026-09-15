@@ -44,6 +44,7 @@ class MessageServiceTest {
     @Mock private MessageDeletionRepository messageDeletionRepository;
     @Mock private UserRepository userRepository;
     @Mock private UserService userService;
+    @Mock private com.humanitarian.platform.service.NotificationService notifications;
 
     @InjectMocks private MessageService service;
 
@@ -148,6 +149,10 @@ class MessageServiceTest {
         assertEquals("Contains private information", audit.getReason());
         assertEquals("Original content", audit.getOriginalContent());
         assertEquals("Original Author", response.getOriginalAuthorName());
+        // N-1: the author is told, with the reason; the admin is not named in it
+        verify(notifications).notify(org.mockito.ArgumentMatchers.eq(4L), org.mockito.ArgumentMatchers.eq("A moderator removed your community post"),
+                org.mockito.ArgumentMatchers.eq("Your post was removed. Reason: Contains private information"),
+                org.mockito.ArgumentMatchers.eq("MESSAGE"), org.mockito.ArgumentMatchers.eq(10L));
     }
 
     @Test

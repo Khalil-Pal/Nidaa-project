@@ -65,7 +65,8 @@ class MessageControllerTest {
                 .thenReturn(new PageImpl<>(List.of(direct, community), pageable, 2));
         when(userRepository.findAllById(any())).thenReturn(List.of(volunteer));
         MessageService service = new MessageService(
-                messageRepository, deletionRepository, userRepository, userService);
+                messageRepository, deletionRepository, userRepository, userService,
+                org.mockito.Mockito.mock(com.humanitarian.platform.service.NotificationService.class));
 
         mockMvc(service).perform(get("/api/community/messages"))
                 .andExpect(status().isOk())

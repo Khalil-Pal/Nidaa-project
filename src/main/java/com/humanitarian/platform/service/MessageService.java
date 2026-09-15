@@ -41,15 +41,18 @@ public class MessageService {
     private final MessageDeletionRepository messageDeletionRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final NotificationService notifications;
 
     public MessageService(MessageRepository messageRepository,
                           MessageDeletionRepository messageDeletionRepository,
                           UserRepository userRepository,
-                          UserService userService) {
+                          UserService userService,
+                          NotificationService notifications) {
         this.messageRepository = messageRepository;
         this.messageDeletionRepository = messageDeletionRepository;
         this.userRepository = userRepository;
         this.userService = userService;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -112,6 +115,10 @@ public class MessageService {
                 .build();
         MessageDeletion savedDeletion = messageDeletionRepository.save(deletion);
         User originalAuthor = userRepository.findById(message.getSenderId()).orElse(null);
+        // N-1: the author is told, with the moderator's reason, not the moderator's name
+        notifications.notify(message.getSenderId(), "A moderator removed your community post",
+                "Your post was removed. Reason: " + normalizedReason,
+                NotificationService.REF_MESSAGE, message.getId());
 
         return toDeletionResponse(savedDeletion, originalAuthor, admin);
     }

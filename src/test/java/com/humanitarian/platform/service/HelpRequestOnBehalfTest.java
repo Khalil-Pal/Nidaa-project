@@ -47,6 +47,7 @@ class HelpRequestOnBehalfTest {
     @Mock private VolunteerRepository volunteerRepository;
     @Mock private OrganizationRepository organizationRepository;
     @Mock private AutomaticAssignmentService automaticAssignmentService;
+    @Mock private com.humanitarian.platform.service.NotificationService notifications;
     @Mock private ProviderResourceService providerResourceService;
 
     @InjectMocks private HelpRequestService service;

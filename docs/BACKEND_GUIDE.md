@@ -256,6 +256,33 @@ Message responses expose the message ID, author ID/name/role, content, normalize
 category, and timestamp. They never expose `receiver_id`, direct-message content,
 or internal deletion flags.
 
+## Notifications
+
+`NotificationService` (N-1) writes a row to `notifications` inside the transaction
+of the event it announces, so the notification exists exactly when the event does.
+Emitted for: a help request accepted manually or matched automatically (to the
+beneficiary and, when someone filed it for them, the filer; the matched provider
+too), every status change (to each party other than the actor), a psychological
+case accepted, a crisis case routed (to the psychologist and the person), an
+account approved, a provider's numeric capacity reaching zero, and a community
+post removed by a moderator (with the reason, not the moderator's name). A
+rejected application cannot be notified in-app because rejection deletes the
+account row; the e-mail the controller sends is the only channel for it.
+
+Only `IN_APP` is delivered: the row is stored as `SENT` and the browser polls for
+it. The `notification_type` enum also lists `EMAIL`, `SMS` and `PUSH`; the model
+anticipates those channels and nothing sends them.
+
+| Method | Endpoint | Behavior |
+|---|---|---|
+| `GET` | `/api/notifications?page=&size=` | The caller's notifications, newest first, paged (max 50) |
+| `GET` | `/api/notifications/unread-count` | `{"unread": n}` for the caller |
+| `PUT` | `/api/notifications/{id}/read` | Marks one of the caller's notifications read; someone else's id is **404** |
+| `PUT` | `/api/notifications/read-all` | Marks all of the caller's unread notifications read; returns the count |
+
+Every call is scoped to the authenticated user inside the service; there is no
+admin view of other people's notifications.
+
 ## Contact Reveal
 
 Contact services reveal phone/email only to the request owner and assigned provider.

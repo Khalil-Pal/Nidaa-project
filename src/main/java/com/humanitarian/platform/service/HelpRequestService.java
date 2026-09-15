@@ -79,6 +79,9 @@ public class HelpRequestService {
     @Autowired
     private AdminAuditService adminAudit;
 
+    @Autowired
+    private NotificationService notifications;
+
     @Transactional
     public HelpRequest createRequest(HelpRequestDto dto) {
         User currentUser = userService.getCurrentUser();
@@ -267,6 +270,12 @@ public class HelpRequestService {
                 assignedVolunteerId != null ? assignedVolunteerId : assignedOrganizationId, currentUser.getId());
 
         HelpRequest saved = findOrThrow(requestId);
+        // N-1: the people waiting learn of the acceptance without reloading
+        for (Long recipient : requestParties(saved, currentUser.getId())) {
+            notifications.notify(recipient, "Your request was accepted",
+                    currentUser.getFullName() + " accepted \"" + saved.getTitle() + "\" and will be in touch.",
+                    NotificationService.REF_HELP_REQUEST, requestId);
+        }
         Map<String, Object> result = new HashMap<>();
         result.put("requestId",  requestId);
         result.put("status",     saved.getStatus());
@@ -421,7 +430,42 @@ public class HelpRequestService {
             adminAudit.record("REQUEST_STATUS_CHANGED", "HELP_REQUEST", id, Map.of("from", current, "to", next));
         }
 
+        // N-1: every other party to the request hears about the change
+        for (Long recipient : requestParties(request, currentUser.getId())) {
+            notifications.notify(recipient, "Request " + statusWord(next),
+                    "\"" + request.getTitle() + "\" is now " + statusWord(next) + ".",
+                    NotificationService.REF_HELP_REQUEST, id);
+        }
+
         return findOrThrow(id);
+    }
+
+    /**
+     * The people with a stake in a request other than the actor: the beneficiary,
+     * the filer if someone filed it for them, and the assigned provider.
+     */
+    private Set<Long> requestParties(HelpRequest request, Long actorId) {
+        Set<Long> parties = new java.util.LinkedHashSet<>();
+        parties.add(request.getBeneficiaryId());
+        parties.add(request.getFiledByUserId());
+        if (request.getAssignedVolunteerId() != null) {
+            volunteerRepository.findById(request.getAssignedVolunteerId())
+                    .ifPresent(v -> parties.add(v.getUser().getId()));
+        }
+        if (request.getAssignedOrganizationId() != null) {
+            organizationRepository.findById(request.getAssignedOrganizationId())
+                    .ifPresent(o -> parties.add(o.getUser().getId()));
+        }
+        parties.remove(null);
+        parties.remove(actorId);
+        return parties;
+    }
+
+    private static String statusWord(String status) {
+        return switch (status) {
+            case "IN_PROGRESS" -> "in progress";
+            default -> status.toLowerCase(java.util.Locale.ROOT);
+        };
     }
 
     private Set<String> permittedTargets(User me, HelpRequest request) {

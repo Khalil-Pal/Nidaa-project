@@ -39,6 +39,7 @@ class ProviderResourceServiceTest {
     @Mock private ProviderResourceRepository providerResourceRepository;
     @Mock private AssignmentRepository assignmentRepository;
     @Mock private UserService userService;
+    @Mock private com.humanitarian.platform.service.NotificationService notifications;
 
     @InjectMocks private ProviderResourceService service;
 

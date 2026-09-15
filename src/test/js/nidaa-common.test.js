@@ -140,5 +140,24 @@ const json = (status, body) => ({
         assert.strictEqual((html.match(/nav-item/g) || []).length, 7);
     }
 
+    // N-1: a notification's reference maps to the page that shows it, or nowhere
+    {
+        const ctx = freshContext(async () => json(200, {}));
+        assert.strictEqual(ctx.notificationHref('HELP_REQUEST'), 'help-requests.html');
+        assert.strictEqual(ctx.notificationHref('PSYCHOLOGICAL_REQUEST'), 'psychological.html');
+        assert.strictEqual(ctx.notificationHref('MESSAGE'), 'community.html');
+        assert.strictEqual(ctx.notificationHref('PROVIDER_RESOURCE'), 'settings.html');
+        assert.strictEqual(ctx.notificationHref('USER'), null);
+        assert.strictEqual(ctx.notificationHref(undefined), null);
+    }
+
+    // N-1: the bell mounts only into a topbar; a page without one (or a document without querySelector) gets none
+    {
+        const ctx = freshContext(async () => json(200, {}));
+        ctx.localStorage.setItem('token', 't1');
+        ctx.document = { getElementById: () => null, querySelector: () => null };
+        ctx.mountNotificationBell();   // no .topbar-actions: nothing to do, nothing thrown
+    }
+
     console.log('nidaa-common.test.js: all assertions passed');
 })().catch(err => { console.error(err); process.exit(1); });
