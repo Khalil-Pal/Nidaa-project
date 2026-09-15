@@ -98,11 +98,9 @@ spring.servlet.multipart.max-request-size=50MB
 spring.servlet.multipart.enabled=true
 
 # ==================== LOGGING ====================
-logging.level.root=INFO
-logging.level.com.humanitarian.platform=DEBUG
-logging.level.org.hibernate.SQL=INFO
-logging.level.org.springframework.security=INFO
-logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+# Appenders, pattern (with the request id and user from the MDC) and levels are in
+# logback-spring.xml; the prod profile lowers the application to INFO and hides SQL.
+# Override a level from the environment if needed, e.g. LOGGING_LEVEL_COM_HUMANITARIAN_PLATFORM=DEBUG
 
 # ==================== ACTUATOR ====================
 management.endpoints.web.exposure.include=health,info
