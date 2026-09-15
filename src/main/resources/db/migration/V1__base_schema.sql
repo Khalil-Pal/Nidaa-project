@@ -7,7 +7,6 @@
 -- assigned_by columns are nullable so V2 legacy conversion and V7's explicit
 -- role/source constraints can be applied without an invalid intermediate shape.
 
-\restrict QoR2d30UpFVnxt7XVoQKyaPjrpXOczCoSDgBaqlB6S3bGuBCfvawQZ3Mavyh28P
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -15,10 +14,10 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
+-- pg_dump's search_path reset is omitted: every object below is schema-qualified and the
+-- later migrations, which run on the same Flyway connection, use unqualified names.
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
@@ -2240,4 +2239,3 @@ ALTER TABLE ONLY public.volunteers
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QoR2d30UpFVnxt7XVoQKyaPjrpXOczCoSDgBaqlB6S3bGuBCfvawQZ3Mavyh28P

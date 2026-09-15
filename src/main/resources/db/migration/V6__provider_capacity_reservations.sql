@@ -1,4 +1,3 @@
-BEGIN;
 
 ALTER TABLE assignments
     ADD COLUMN IF NOT EXISTS resource_user_id BIGINT,
@@ -62,4 +61,3 @@ COMMENT ON COLUMN assignments.reserved_capacity_amount IS
 COMMENT ON COLUMN assignments.capacity_restored_at IS
     'Set once when a cancelled assignment returns its reserved capacity.';
 
-COMMIT;

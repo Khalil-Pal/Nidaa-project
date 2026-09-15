@@ -5,7 +5,7 @@ boundary and record the output in `docs/gates/`.
 
 | Script | Gate items | What it does |
 |---|---|---|
-| `fresh-db.sh [db]` | G2, G3 | Builds a database from `database/migrations/V*.sql` in version order, re-runs V9+ to prove idempotency (exit codes, not stderr), prints the trigger/function/view inventory |
+| `fresh-db.sh [db]` | G2, G3, DEP-1 | Builds an empty database with `./mvnw flyway:migrate` from `src/main/resources/db/migration`, checks `flyway_schema_history` lists exactly the files, prints the trigger/function/view inventory |
 | `invariants.sql` | G3 | The invariant query set from the Master Plan appendix; every count must be 0 |
 | `smtp-sink.py [port]` | G2 | Accepts every email and prints sender, recipients and subject; registration is transactional with the verification email, so the smoke path needs a mail server |
 | `acceptance.sh` | G4, G5 | Re-verifies every task's acceptance criterion through the API against the fresh database: registration, approval, login, ownership, transitions, rate limiting, on-behalf filing, geolocation matching, validation, crisis scoring, soft delete, and the invariants |

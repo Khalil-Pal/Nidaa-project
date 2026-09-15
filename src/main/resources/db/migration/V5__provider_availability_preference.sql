@@ -1,4 +1,3 @@
-BEGIN;
 
 -- is_available is the provider's effective claim state. The separate
 -- availability_preference survives an active assignment so release can restore
@@ -25,4 +24,3 @@ COMMENT ON COLUMN organizations.is_available IS
 COMMENT ON COLUMN organizations.availability_preference IS
     'Provider-selected state restored when an active assignment releases its claim.';
 
-COMMIT;

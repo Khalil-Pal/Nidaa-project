@@ -4,9 +4,7 @@
 -- email and name, and phone = NULL. That requires phone to be nullable and
 -- non-unique (the UNIQUE constraint also blocked households sharing a phone;
 -- both changes were planned for D-6 and are made here instead).
-BEGIN;
 
 ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_phone_key;
 
-COMMIT;

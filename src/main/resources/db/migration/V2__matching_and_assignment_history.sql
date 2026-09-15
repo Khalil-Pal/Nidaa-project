@@ -1,4 +1,3 @@
-BEGIN;
 
 ALTER TABLE assignments
     ALTER COLUMN request_id DROP NOT NULL;
@@ -98,4 +97,3 @@ CREATE INDEX IF NOT EXISTS idx_assignments_psychological_request
 CREATE INDEX IF NOT EXISTS idx_assignments_psychologist
     ON assignments(psychologist_id, status);
 
-COMMIT;

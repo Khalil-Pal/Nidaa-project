@@ -3,7 +3,6 @@
 -- records the volunteer or organization that filed the request for them, and
 -- stays NULL for self-filed requests (every row that exists before this
 -- migration).
-BEGIN;
 
 ALTER TABLE help_requests
     ADD COLUMN IF NOT EXISTS filed_by_user_id BIGINT NULL REFERENCES users(user_id);
@@ -23,4 +22,3 @@ BEGIN
     END IF;
 END $$;
 
-COMMIT;

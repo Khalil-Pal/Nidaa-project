@@ -24,6 +24,8 @@
 
     <!-- ==================== СВОЙСТВА ПРОЕКТА ==================== -->
     <properties>
+        <!-- Flyway 9.22 (Boot 3.2 default) predates PostgreSQL 17; 10.x supports it -->
+        <flyway.version>10.22.0</flyway.version>
         <java.version>17</java.version>
         <jjwt.version>0.12.3</jjwt.version>
         <bucket4j.version>8.10.1</bucket4j.version>
@@ -37,6 +39,17 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Flyway runs src/main/resources/db/migration at start-up (DEP-1) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <version>${flyway.version}</version>
         </dependency>
 
 
@@ -159,6 +172,20 @@
     <!-- ==================== СБОРКА ==================== -->
     <build>
         <plugins>
+
+            <!-- Flyway from the command line, for building a database without starting the
+                 application (gate check G2, scripts/gate/fresh-db.sh):
+                 ./mvnw flyway:migrate -Dflyway.url=... -Dflyway.user=... -Dflyway.password=... -->
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway.version}</version>
+                <configuration>
+                    <locations>
+                        <location>filesystem:src/main/resources/db/migration</location>
+                    </locations>
+                </configuration>
+            </plugin>
 
             <!-- Spring Boot Maven Plugin - создаёт исполняемый JAR файл -->
             <plugin>

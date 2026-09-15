@@ -71,5 +71,5 @@ Phase 5.
 ## Operations
 
 - **Shared rate-limit store** if the application is ever run on more than one node.
-- **Flyway** for the migrations (Phase 4, DEP-1); until then
-  `database/migrations/README.md` is the order of record.
+- **Flyway** for the migrations: done in Phase 4 (DEP-1). Existing databases are
+  baselined at V18 on first start; `database/migrations/README.md` has the rules.

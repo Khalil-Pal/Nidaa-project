@@ -5,10 +5,8 @@
 -- on every insert and on every Hibernate UPDATE (which lists every column), so
 -- the Java model was never the persisted score. The application is now the
 -- single source of truth and clamps the result to the 0..100 CHECK itself.
-BEGIN;
 
 DROP TRIGGER IF EXISTS calculate_priority_before_insert ON help_requests;
 DROP TRIGGER IF EXISTS calculate_priority_before_update ON help_requests;
 DROP FUNCTION IF EXISTS calculate_priority_score();
 
-COMMIT;

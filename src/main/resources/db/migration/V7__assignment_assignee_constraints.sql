@@ -1,4 +1,3 @@
-BEGIN;
 
 ALTER TABLE assignments
     ALTER COLUMN volunteer_id DROP NOT NULL,
@@ -63,4 +62,3 @@ COMMENT ON COLUMN assignments.volunteer_id IS
 COMMENT ON COLUMN assignments.assigned_by IS
     'Human assigner for MANUAL or ADMIN rows; NULL for automatic assignment sources.';
 
-COMMIT;

@@ -299,8 +299,8 @@ For a backend feature:
 
 ## Known Boundaries
 
-- Migrations are complete but still applied manually; there is no automatic
-  Flyway/Liquibase runner.
+- Migrations are applied by Flyway at start-up from `src/main/resources/db/migration`
+  (DEP-1); databases built by hand before that are baselined at V18.
 - Direct-message controllers/services are not operational yet, although the entity
   and repository path remain available and are isolated by `MessageType.DIRECT`.
 - Community likes and comments are browser-local; only the message feed and

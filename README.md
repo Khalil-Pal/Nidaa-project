@@ -181,7 +181,7 @@ Controller -> Service -> Repository -> PostgreSQL
 ```text
 Nidaa-project/
 |-- database/
-|   |-- migrations/                     # Versioned PostgreSQL changes
+|   |-- migrations/                     # Migration notes and rules (the SQL lives under src/main/resources/db/migration)
 |   `-- backups/                        # Local database backups, ignored by Git
 |-- postman/
 |   |-- collections/Nidaa API/          # Version-controlled API requests
@@ -226,66 +226,20 @@ Create the database if it does not already exist:
 CREATE DATABASE "Web_DB";
 ```
 
-Apply migrations in version order:
+Migrations are applied by Flyway when the application starts (DEP-1). An empty
+database receives `V1`–`V18` in order; a database built by hand before Flyway is
+baselined at version 18 on first start and only later versions run on it. To
+apply them without starting the application:
 
 ```bash
-psql -h 127.0.0.1 -U postgres -d Web_DB \
-  -f database/migrations/V1__base_schema.sql
-psql -h 127.0.0.1 -U postgres -d Web_DB \
-  -f database/migrations/V2__matching_and_assignment_history.sql
-psql -h 127.0.0.1 -U postgres -d Web_DB \
-  -f database/migrations/V3__location_resources_and_message_moderation.sql
-psql -h 127.0.0.1 -U postgres -d Web_DB \
-  -f database/migrations/V4__message_types_and_community_channel.sql
-psql -h 127.0.0.1 -U postgres -d Web_DB \
-  -f database/migrations/V5__provider_availability_preference.sql
-psql -h 127.0.0.1 -U postgres -d Web_DB \
-  -f database/migrations/V6__provider_capacity_reservations.sql
-psql -h 127.0.0.1 -U postgres -d Web_DB \
-  -f database/migrations/V7__assignment_assignee_constraints.sql
-psql -h 127.0.0.1 -U postgres -d Web_DB \
-  -f database/migrations/V8__drop_legacy_volunteer_coordinates.sql
+./mvnw flyway:migrate \
+  -Dflyway.url=jdbc:postgresql://127.0.0.1:5432/Web_DB \
+  -Dflyway.user=postgres -Dflyway.password="$DB_PASSWORD"
 ```
 
-Windows PowerShell example when PostgreSQL is not on `PATH`:
-
-```powershell
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
-  -h 127.0.0.1 -U postgres -d Web_DB `
-  -f ".\database\migrations\V1__base_schema.sql"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
-  -h 127.0.0.1 -U postgres -d Web_DB `
-  -f ".\database\migrations\V2__matching_and_assignment_history.sql"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
-  -h 127.0.0.1 -U postgres -d Web_DB `
-  -f ".\database\migrations\V3__location_resources_and_message_moderation.sql"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
-  -h 127.0.0.1 -U postgres -d Web_DB `
-  -f ".\database\migrations\V4__message_types_and_community_channel.sql"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
-  -h 127.0.0.1 -U postgres -d Web_DB `
-  -f ".\database\migrations\V5__provider_availability_preference.sql"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
-  -h 127.0.0.1 -U postgres -d Web_DB `
-  -f ".\database\migrations\V6__provider_capacity_reservations.sql"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
-  -h 127.0.0.1 -U postgres -d Web_DB `
-  -f ".\database\migrations\V7__assignment_assignee_constraints.sql"
-& "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
-  -h 127.0.0.1 -U postgres -d Web_DB `
-  -f ".\database\migrations\V8__drop_legacy_volunteer_coordinates.sql"
-```
-
-V1 creates the base schema; V2 through V8 add assignment history, provider
-resources, community message isolation, provider availability, capacity
-reservations, explicit assignment invariants, and removal of duplicate volunteer
-coordinates. See [database/migrations/README.md](database/migrations/README.md) for
-migration notes.
-
-Before applying V4 to an existing environment, run `SELECT COUNT(*) FROM messages`.
-Proceed only when it returns zero; populated message rows require an explicit
-classification/backfill plan. The V4 file remains unchanged because it has already
-been applied and should not acquire checksum drift.
+The files live in `src/main/resources/db/migration/`; see
+[database/migrations/README.md](database/migrations/README.md) for what each
+version does and the rules (never edit a shipped migration; add a new one).
 
 ## Configuration
 
@@ -530,7 +484,7 @@ Before deploying Nidaa outside a development environment:
 2. Remove secret-bearing fallback values from tracked configuration.
 3. Restrict public role registration so administrator accounts cannot be self-provisioned.
 4. Restrict CORS to trusted frontend origins.
-5. Adopt an automated migration tool such as Flyway or Liquibase.
+5. ~~Adopt an automated migration tool such as Flyway or Liquibase.~~ Done: Flyway (Phase 4, DEP-1).
 6. Before applying V8 to an upgraded database, migrate any non-null legacy
    volunteer coordinates into `profiles`; V8 deliberately aborts if any remain.
 7. Add geocoding or browser location capture with explicit user consent.

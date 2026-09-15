@@ -5,9 +5,10 @@ maintained at every gate (Master Plan, G3); the data dictionary and the entity
 relationship diagram are added in Phase 7.
 
 Schema management: `spring.jpa.hibernate.ddl-auto=none`; the schema comes only from
-`database/migrations/V*.sql`, applied in version order (see
-`database/migrations/README.md`). `scripts/gate/fresh-db.sh` builds a database from
-those files alone and prints the inventory below.
+`src/main/resources/db/migration/V*.sql`, applied in version order by Flyway at
+start-up (DEP-1; see `database/migrations/README.md` for the rules and the
+version notes). `scripts/gate/fresh-db.sh` builds a database from those files
+alone with `./mvnw flyway:migrate` and prints the inventory below.
 
 ## Trigger, function and view inventory
 

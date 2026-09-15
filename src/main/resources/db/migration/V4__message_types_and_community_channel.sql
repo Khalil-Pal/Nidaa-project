@@ -1,4 +1,3 @@
-BEGIN;
 
 -- Messages share one table, but direct conversations and community posts have
 -- different addressing rules. Every insert must choose its type explicitly.
@@ -28,4 +27,3 @@ COMMENT ON COLUMN messages.receiver_id IS
 COMMENT ON COLUMN messages.community_category IS
     'Normalized community feed category; must be NULL for DIRECT messages.';
 
-COMMIT;

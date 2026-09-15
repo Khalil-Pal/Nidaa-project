@@ -1,4 +1,3 @@
-BEGIN;
 
 -- profiles.latitude and profiles.longitude are the canonical location for
 -- every user role: BENEFICIARY, VOLUNTEER, ORGANIZATION, and PSYCHOLOGIST.
@@ -59,4 +58,3 @@ CREATE TABLE IF NOT EXISTS message_deletions (
     deleted_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
-COMMIT;

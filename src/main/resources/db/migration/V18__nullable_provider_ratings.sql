@@ -5,7 +5,6 @@
 -- looked top-rated before anyone had rated them. Nothing has ever written a
 -- real rating (that arrives with R-1 / CS-1 / AGG-1), so existing values are
 -- defaults and are reset. Safe to re-run.
-BEGIN;
 
 ALTER TABLE volunteers ALTER COLUMN rating DROP DEFAULT;
 ALTER TABLE volunteers DROP CONSTRAINT IF EXISTS rating_range;
@@ -21,4 +20,3 @@ ALTER TABLE psychologists ADD CONSTRAINT rating_range
 UPDATE volunteers    SET rating = NULL WHERE rating = 5.0;
 UPDATE psychologists SET rating = NULL WHERE rating = 5.0;
 
-COMMIT;

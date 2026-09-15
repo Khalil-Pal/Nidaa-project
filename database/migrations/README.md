@@ -1,29 +1,39 @@
 # Database Migrations
 
-The application uses `spring.jpa.hibernate.ddl-auto=none`, so schema migrations
-must be applied manually to PostgreSQL.
+The schema is owned by the versioned SQL files in
+`src/main/resources/db/migration/` and applied by **Flyway** when the application
+starts (Phase 4, DEP-1). `spring.jpa.hibernate.ddl-auto=none`: Hibernate never
+changes the schema.
 
-Apply migrations once in filename order:
+- An **empty database** receives every migration from `V1` in version order.
+- A database that was **built by hand before Flyway** (any schema, no
+  `flyway_schema_history` table) is *baselined* at version 18 on first start:
+  Flyway records that V1–V18 are already present and runs only later versions.
+- `flyway_schema_history` is the record of what ran; `SELECT version,
+  description, success FROM flyway_schema_history ORDER BY installed_rank`.
+
+Without starting the application:
 
 ```bash
-psql -U postgres -d Web_DB -f database/migrations/V1__base_schema.sql
-psql -U postgres -d Web_DB -f database/migrations/V2__matching_and_assignment_history.sql
-psql -U postgres -d Web_DB -f database/migrations/V3__location_resources_and_message_moderation.sql
-psql -U postgres -d Web_DB -f database/migrations/V4__message_types_and_community_channel.sql
-psql -U postgres -d Web_DB -f database/migrations/V5__provider_availability_preference.sql
-psql -U postgres -d Web_DB -f database/migrations/V6__provider_capacity_reservations.sql
-psql -U postgres -d Web_DB -f database/migrations/V7__assignment_assignee_constraints.sql
-psql -U postgres -d Web_DB -f database/migrations/V8__drop_legacy_volunteer_coordinates.sql
-psql -U postgres -d Web_DB -f database/migrations/V9__token_invalidation.sql
-psql -U postgres -d Web_DB -f database/migrations/V10__reset_attempt_limit.sql
-psql -U postgres -d Web_DB -f database/migrations/V11__soft_delete_users.sql
-psql -U postgres -d Web_DB -f database/migrations/V13__filed_by.sql
-psql -U postgres -d Web_DB -f database/migrations/V14__crisis_review_flag.sql
-psql -U postgres -d Web_DB -f database/migrations/V15__drop_priority_triggers.sql
-psql -U postgres -d Web_DB -f database/migrations/V16__provider_profile_optional_columns.sql
-psql -U postgres -d Web_DB -f database/migrations/V17__users_role_enum.sql
-psql -U postgres -d Web_DB -f database/migrations/V18__nullable_provider_ratings.sql
+./mvnw flyway:info    -Dflyway.url=jdbc:postgresql://localhost:5432/Web_DB -Dflyway.user=postgres -Dflyway.password=...
+./mvnw flyway:migrate -Dflyway.url=jdbc:postgresql://localhost:5432/Web_DB -Dflyway.user=postgres -Dflyway.password=...
 ```
+
+`scripts/gate/fresh-db.sh` builds a database from the migrations alone this way
+and checks the history against the files (gate check G2).
+
+Rules:
+
+- **Never edit a migration that has shipped.** Flyway stores a checksum of each
+  file and refuses to start if one changes. Add a new `V<n>__<name>.sql` instead.
+  (The files were adjusted once, when Flyway was introduced: pg_dump's psql-only
+  `\restrict` lines and `search_path` reset were removed from V1, and the
+  explicit `BEGIN;`/`COMMIT;` wrappers from V2–V18, because Flyway runs each
+  migration in its own transaction. No database had a Flyway history yet.)
+- Version numbers are integers; `V12` was never used and that is fine.
+- One concern per migration, a comment at the top saying why.
+
+The first administrator is still inserted by hand (see below).
 
 ## Versions
 
