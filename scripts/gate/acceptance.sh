@@ -190,6 +190,20 @@ check "F-4" "revoked refresh token" "$(code -X POST "$BASE/api/auth/refresh" -H 
 check "B-2" "unknown helpType" "$(body -X POST "$BASE/api/help-requests" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"title":"x","helpType":"GROCERIES","urgencyLevel":"HIGH"}' | json details.helpType | grep -c 'must be one of')" "1"
 check "B-2" "no request stored as OTHER" "$(sql "select count(*) from help_requests where help_type='OTHER'")" "0"
 
+# VER: approval and credential verification are two administrator actions (decision after
+# Gate 4); crisis routing needs is_verified AND the psychologist's own duty toggle (UX-2)
+PSY_UID=$(uid "$PSY")
+check "VER" "approved psychologist is off duty and unverified" "$(sql "select is_on_duty||'/'||is_verified from psychologists where user_id=$PSY_UID")" "false/false"
+check "VER" "psychologist cannot verify own credentials" "$(code -X PUT "$BASE/api/admin/psychologists/$PSY_UID/verification" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d '{"verified":true}')" "403"
+check "VER" "verifying a volunteer's credentials" "$(code -X PUT "$BASE/api/admin/psychologists/$(uid "$VOL")/verification" -H 'Content-Type: application/json' -H "Authorization: Bearer $A" -d '{"verified":true}')" "400"
+check "VER" "body without the flag" "$(code -X PUT "$BASE/api/admin/psychologists/$PSY_UID/verification" -H 'Content-Type: application/json' -H "Authorization: Bearer $A" -d '{}')" "400"
+check "VER" "admin verifies credentials" "$(body -X PUT "$BASE/api/admin/psychologists/$PSY_UID/verification" -H 'Content-Type: application/json' -H "Authorization: Bearer $A" -d '{"verified":true}' | json data.verified)" "True"
+check "VER" "verified_by is the admin, action audited once" "$(sql "select (verified_by=$(uid "$ADMIN"))||'/'||(verified_at is not null)||'/'||(select count(*) from activity_logs where action='PSYCHOLOGIST_VERIFIED' and entity_id=$PSY_UID) from psychologists where user_id=$PSY_UID")" "true/true/1"
+check "VER" "repeating the same state is a no-op" "$(body -X PUT "$BASE/api/admin/psychologists/$PSY_UID/verification" -H 'Content-Type: application/json' -H "Authorization: Bearer $A" -d '{"verified":true}' | json data.verified)/$(sql "select count(*) from activity_logs where action='PSYCHOLOGIST_VERIFIED' and entity_id=$PSY_UID")" "True/1"
+check "VER" "verified but off duty: not in the routing pool" "$(sql "select count(*) from psychologists where is_verified and is_on_duty")" "0"
+check "VER" "psychologist goes on duty (UX-2)" "$(code -X PUT "$BASE/api/psychologists/me/duty" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d '{"onDuty":true}')" "200"
+check "VER" "users list shows the two flags to the admin" "$(body "$BASE/api/admin/users" -H "Authorization: Bearer $A" | python -c "import sys,json; u=[x for x in json.load(sys.stdin)['data'] if x['id']==$PSY_UID][0]; print(str(u.get('credentialsVerified')).lower()+'/'+str(u.get('onDuty')).lower())")" "true/true"
+
 crisis() { body -X POST "$BASE/api/psychological-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" \
   -d "{\"supportType\":\"INDIVIDUAL\",\"category\":\"ANXIETY\",\"description\":\"$1\"}" | python -c "import sys,json; d=json.load(sys.stdin)['data']; print(str(d['isCrisis']).lower()+'/'+str(d['needsReview']).lower())"; }
 check "L-2" "'urgent' alone" "$(crisis 'This is urgent, please help me today')" "false/false"
@@ -197,6 +211,8 @@ check "L-2" "'kill myself'" "$(crisis 'Some nights I want to kill myself')" "tru
 check "L-2" "'self-harming' (inflected)" "$(crisis 'I have been self-harming again')" "true/false"
 check "L-2" "'hopeless' -> review" "$(crisis 'Everything feels hopeless')" "false/true"
 check "L-2" "crisis case routed to on-duty psychologist" "$(sql "select count(*) from assignments where assignment_source='AUTO_CRISIS'")" "$(sql "select count(*) from psychological_requests where is_crisis and status='ASSIGNED'")"
+# with VER above the pool is no longer empty, so this must have happened at least twice (two crisis texts)
+check "L-2" "the two crisis cases were actually auto-routed" "$(sql "select count(*) from assignments where assignment_source='AUTO_CRISIS' and psychologist_id=(select psychologist_id from psychologists where user_id=$PSY_UID)")" "2"
 
 check "D-5" "no priority_score above 100" "$(sql "select count(*) from help_requests where priority_score > 100")" "0"
 

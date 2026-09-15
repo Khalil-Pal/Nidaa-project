@@ -26,6 +26,14 @@ function formatDate(d) {
     return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
 }
 
+/** Psychologists only: whether an administrator has verified their credentials (crisis routing needs it). */
+function credentialsBadge(u) {
+    if ((u.role || '').toLowerCase() !== 'psychologist') return '';
+    return u.credentialsVerified
+        ? '<span class="cred-badge ok" title="Credentials verified">✓ verified</span>'
+        : '<span class="cred-badge" title="Credentials not yet verified; crisis routing skips this psychologist">unverified</span>';
+}
+
 function renderTable(users) {
     const tbody = document.getElementById('usersTableBody');
     document.getElementById('totalCount').textContent = users.length + ' user' + (users.length !== 1 ? 's' : '');
@@ -53,7 +61,7 @@ function renderTable(users) {
                     </div>
                 </div>
             </td>
-            <td><span class="role-pill ${pill}">${escHtml((u.role||'').toLowerCase())}</span></td>
+            <td><span class="role-pill ${pill}">${escHtml((u.role||'').toLowerCase())}</span>${credentialsBadge(u)}</td>
             <td>
                 <span class="status-dot">
                     <span class="dot ${isActive?'dot-active':'dot-inactive'}"></span>
@@ -105,12 +113,75 @@ function openModal(userId) {
     document.getElementById('modalLastLogin').textContent = u.lastLogin ? formatDate(u.lastLogin) : 'Never';
     document.getElementById('modalStatus').textContent  = isActive ? '✅ Active' : '❌ Inactive';
     document.getElementById('modalVerified').textContent = (u.isVerified===true||u.isVerified==='true') ? '✅ Verified' : '⏳ Not verified';
+    renderCredentials(u);
 
     const pillEl = document.getElementById('modalRolePill');
     pillEl.textContent  = (u.role||'').toLowerCase();
     pillEl.className    = `role-pill ${pill}`;
 
     document.getElementById('userModal').classList.add('open');
+}
+
+/** The credentials row and the verify/revoke action are shown for psychologists only. */
+function renderCredentials(u) {
+    const isPsychologist = (u.role || '').toLowerCase() === 'psychologist';
+    const row = document.getElementById('modalCredentialsRow');
+    const btn = document.getElementById('modalVerifyBtn');
+    row.hidden = !isPsychologist;
+    btn.hidden = !isPsychologist || !isActive(u);   // approve first; the profile row does not exist before
+    if (!isPsychologist) return;
+    const verified = u.credentialsVerified === true;
+    const onDuty = u.onDuty === true;
+    document.getElementById('modalCredentials').textContent = verified
+        ? ('✅ Verified' + (onDuty ? ' · on duty' : ' · off duty: no crisis routing until they go on duty'))
+        : ('⏳ Not verified' + (onDuty ? ' · on duty, but crisis routing skips them until verified' : ''));
+    btn.className = 'btn-verify' + (verified ? ' revoke' : '');
+    btn.innerHTML = verified
+        ? '<i class="fa fa-user-xmark"></i> Revoke Verification'
+        : '<i class="fa fa-user-check"></i> Verify Credentials';
+    btn.disabled = false;
+}
+
+function isActive(u) { return u.isActive === true || u.isActive === 'true'; }
+
+async function toggleCredentials() {
+    if (!currentModalUserId) return;
+    const u = allUsers.find(x => (x.id||x.userId) == currentModalUserId);
+    if (!u) return;
+    const verified = !(u.credentialsVerified === true);
+    const name = u.fullName || u.email;
+    if (!confirm(verified
+        ? 'Confirm that you have checked ' + name + '\'s professional credentials?\nCrisis cases can then be routed to them once they go on duty.'
+        : 'Revoke ' + name + '\'s credential verification?\nCrisis routing will skip them until verified again.')) return;
+
+    const btn = document.getElementById('modalVerifyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+    try {
+        const res = await apiFetch(API + '/admin/psychologists/' + currentModalUserId + '/verification', {
+            method: 'PUT', headers: { ...authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ verified })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.message || ('HTTP ' + res.status));
+        const data = body.data || {};
+        u.credentialsVerified = data.verified === true;
+        u.onDuty = data.onDuty === true;
+        renderTable(allUsers);
+        renderCredentials(u);
+        toast(body.message || 'Saved');
+    } catch (e) {
+        alert('Could not update credential verification: ' + e.message);
+        renderCredentials(u);
+    }
+}
+
+function toast(text) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#047857;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;font-size:14px;font-family:Inter,sans-serif';
+    t.textContent = '✅ ' + text;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
 }
 
 function closeModal() {
@@ -181,6 +252,7 @@ wireEvent('statusFilter', 'change', () => { filterUsers(); });
 wireEvent('userModal', 'click', function (event) { if(event.target===this)closeModal(); });
 wireEvent('closeModalBtn', 'click', () => { closeModal(); });
 wireEvent('modalDeleteBtn', 'click', () => { deleteUserAccount(); });
+wireEvent('modalVerifyBtn', 'click', () => { toggleCredentials(); });
 wireEvent('closeModalBtn2', 'click', () => { closeModal(); });
 
 // ---- Delegated actions (F-5) ----------------------------------------------

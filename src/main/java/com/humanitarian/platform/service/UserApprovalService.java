@@ -4,12 +4,15 @@ import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
 import com.humanitarian.platform.model.Organization;
 import com.humanitarian.platform.model.Psychologist;
+import com.humanitarian.platform.dto.PsychologistVerificationResponse;
 import com.humanitarian.platform.model.User;
+import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.repository.OrganizationRepository;
 import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
+import java.time.LocalDateTime;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +26,13 @@ import org.springframework.transaction.annotation.Transactional;
  * repository call and three JdbcTemplate inserts inside a controller.
  *
  * Re-approving an already approved account is a no-op for the profile row.
- * Psychologists are created on duty but not professionally verified; whether
- * admin approval should also set is_verified is an open decision recorded in
- * FUTURE_WORK.md (crisis routing requires it).
+ *
+ * Approval and professional verification are two separate administrator
+ * actions (decision after Gate 4). Approval says the person may use the
+ * platform; {@link #setPsychologistVerification} says an administrator has
+ * checked the psychologist's credentials. Crisis routing needs both flags plus
+ * the psychologist's own duty toggle (UX-2), so a newly approved psychologist
+ * is off duty and unverified until they go on duty and are verified.
  */
 @Service
 public class UserApprovalService {
@@ -67,7 +74,8 @@ public class UserApprovalService {
             }
             case PSYCHOLOGIST -> {
                 if (psychologistRepository.findByUserId(userId).isEmpty()) {
-                    psychologistRepository.save(Psychologist.builder().user(user).isOnDuty(true).build());
+                    // off duty and unverified: routing starts only after both change (class comment)
+                    psychologistRepository.save(Psychologist.builder().user(user).isOnDuty(false).build());
                 }
             }
             case ORGANIZATION -> {
@@ -80,6 +88,39 @@ public class UserApprovalService {
         }
         adminAudit.record("USER_APPROVED", "USER", userId, Map.of("role", user.getRole().name()));
         return user;
+    }
+
+    /**
+     * Records that an administrator has verified (or no longer vouches for) a
+     * psychologist's professional credentials. Sets {@code is_verified},
+     * {@code verified_at} and {@code verified_by}; does not touch the duty flag,
+     * which stays the psychologist's own. Idempotent: repeating the same state
+     * changes nothing and writes no audit row.
+     */
+    @Transactional
+    public PsychologistVerificationResponse setPsychologistVerification(Long userId, boolean verified) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getDeletedAt() != null) {
+            throw new BusinessException("This account has been deleted.");
+        }
+        if (user.getRole() != UserRole.PSYCHOLOGIST) {
+            throw new BusinessException("Only psychologists have professional credentials to verify.");
+        }
+        Psychologist profile = psychologistRepository.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException("Approve the application first; the psychologist profile does not exist yet."));
+
+        if (Boolean.TRUE.equals(profile.getIsVerified()) != verified) {
+            profile.setIsVerified(verified);
+            profile.setVerifiedAt(verified ? LocalDateTime.now() : null);
+            profile.setVerifiedBy(verified ? adminAudit.currentActorId() : null);
+            psychologistRepository.save(profile);
+            adminAudit.record(verified ? "PSYCHOLOGIST_VERIFIED" : "PSYCHOLOGIST_VERIFICATION_REVOKED",
+                    "USER", userId, Map.of("psychologistId", profile.getId()));
+        }
+        return new PsychologistVerificationResponse(userId, profile.getId(),
+                Boolean.TRUE.equals(profile.getIsVerified()), Boolean.TRUE.equals(profile.getIsOnDuty()),
+                profile.getVerifiedAt());
     }
 
     /**

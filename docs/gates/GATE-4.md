@@ -104,6 +104,9 @@ first write-up and is now recorded from the GitHub Actions runs after the push.
    volunteer/organization ids with the raw-SELECT pattern C-3 removed for psychologists.
 6. **Open decision:** whether admin approval should set `psychologists.is_verified`
    (the duty toggle now tells an unverified psychologist that routing skips them).
+   *Resolved after this gate: the owner chose a separate credential-verification
+   action (`PUT /api/admin/psychologists/{userId}/verification`, admin-users.html)
+   and approval now creates the profile off duty; see the `feat(approval)` commit.*
 7. `logs/humanitarian-platform.log`, committed in the first commit, was removed from
    the repository (DEP-6).
 

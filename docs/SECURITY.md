@@ -139,7 +139,7 @@ transition (B-4). Every body, success or error, is the one envelope
 | Control | Where |
 |---|---|
 | Every request carries a correlation id (`X-Request-Id`, generated unless the caller supplies a safe token) that appears in every log line written while it is handled, together with the authenticated user | `RequestCorrelationFilter`, `JwtAuthenticationFilter`, `logback-spring.xml` (C-4, DEP-6) |
-| Administrator actions are written to `activity_logs` in the same transaction as the action: approval, rejection, deletion, (de)activation of an account, and any status override on a request; with actor, entity, details, IP and user agent | `AdminAuditService` (C-4) |
+| Administrator actions are written to `activity_logs` in the same transaction as the action: approval, rejection, deletion, (de)activation of an account, verification (or revocation) of a psychologist's credentials, and any status override on a request; with actor, entity, details, IP and user agent | `AdminAuditService` (C-4) |
 | Authorization failures are logged at WARN with principal, method and path from both enforcement points (URL rules and ownership checks); assignment decisions and crisis detections are logged, the latter without the person's text | `SecurityConfig`, `GlobalExceptionHandler`, request and assignment services (C-4) |
 | The log file rolls daily or at 10 MB, 14 days kept, 500 MB cap; the `prod` profile logs at INFO and never prints SQL | `logback-spring.xml`, `application-prod.properties` (DEP-6) |
 

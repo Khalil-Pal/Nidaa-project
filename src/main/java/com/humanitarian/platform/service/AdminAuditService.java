@@ -40,7 +40,7 @@ public class AdminAuditService {
     }
 
     public void record(String action, String entityType, Long entityId, Map<String, Object> details) {
-        Long actorId = currentUserId();
+        Long actorId = currentActorId();
         HttpServletRequest request = currentRequest();
         ActivityLog entry = ActivityLog.builder()
                 .userId(actorId)
@@ -55,7 +55,8 @@ public class AdminAuditService {
         log.info("ADMIN {} {} {} by user {} {}", action, entityType, entityId, actorId, details);
     }
 
-    private Long currentUserId() {
+    /** The authenticated administrator's id, or null outside a request (see class comment). */
+    public Long currentActorId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth.getName() == null) {
             return null;

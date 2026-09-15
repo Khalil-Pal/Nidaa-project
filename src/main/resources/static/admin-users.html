@@ -48,6 +48,14 @@
         .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
         .dot-active{background:#047857}
         .dot-inactive{background:#b91c1c}
+        /* psychologists only: has an administrator verified their credentials? */
+        .cred-badge{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px;background:#f1f5f9;color:#475569}
+        .cred-badge.ok{background:#f0fdf4;color:#047857}
+        .btn-verify{padding:9px 18px;border-radius:8px;border:1.5px solid #bbf7d0;background:#f0fdf4;color:#047857;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;margin-right:auto}
+        .btn-verify:hover{background:#047857;color:white}
+        .btn-verify.revoke{border-color:#fde68a;background:#fffbeb;color:#92400e}
+        .btn-verify.revoke:hover{background:#92400e;color:white}
+        .btn-verify:disabled{opacity:.6;cursor:not-allowed}
         .empty-state{text-align:center;padding:60px;color:var(--muted)}
         .empty-state i{font-size:36px;margin-bottom:12px;display:block;opacity:.4}
 
@@ -186,7 +194,11 @@
                 </div>
                 <div class="info-row">
                     <div class="info-icon"><i class="fa fa-shield-halved"></i></div>
-                    <div><div class="info-label">Verified</div><div class="info-value" id="modalVerified">—</div></div>
+                    <div><div class="info-label">Email Verified</div><div class="info-value" id="modalVerified">—</div></div>
+                </div>
+                <div class="info-row" id="modalCredentialsRow" hidden>
+                    <div class="info-icon"><i class="fa fa-user-doctor"></i></div>
+                    <div><div class="info-label">Professional Credentials</div><div class="info-value" id="modalCredentials">—</div></div>
                 </div>
                 <div class="info-row">
                     <div class="info-icon"><i class="fa fa-calendar"></i></div>
@@ -199,6 +211,9 @@
             </div>
         </div>
         <div class="modal-footer">
+            <button class="btn-verify" id="modalVerifyBtn" hidden>
+                <i class="fa fa-user-check"></i> Verify Credentials
+            </button>
             <button class="btn-delete-account" id="modalDeleteBtn">
                 <i class="fa fa-trash"></i> Delete Account
             </button>

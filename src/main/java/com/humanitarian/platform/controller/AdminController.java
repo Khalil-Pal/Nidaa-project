@@ -1,11 +1,16 @@
 package com.humanitarian.platform.controller;
 
 import com.humanitarian.platform.dto.ApiResponse;
+import com.humanitarian.platform.dto.PsychologistVerificationDto;
+import com.humanitarian.platform.dto.PsychologistVerificationResponse;
+import com.humanitarian.platform.model.Psychologist;
 import com.humanitarian.platform.model.User;
+import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.service.AdminReportService;
 import com.humanitarian.platform.service.UserApprovalService;
 import com.humanitarian.platform.service.UserService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +33,7 @@ public class AdminController {
     private static final Logger log = LoggerFactory.getLogger(AdminController.class);
 
     @Autowired private UserRepository      userRepository;
+    @Autowired private PsychologistRepository psychologistRepository;
     @Autowired private UserService         userService;
     @Autowired private UserApprovalService userApprovalService;
     @Autowired private AdminReportService  adminReportService;
@@ -53,6 +59,12 @@ public class AdminController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllUsers() {
         // Return safe maps instead of raw User entities to avoid lazy-loading
         // serialization failures from @OneToMany collections (notifications etc.)
+        // Psychologist rows carry the two flags crisis routing needs, so the
+        // administrator can see who still has to be verified (one query, not one per row).
+        Map<Long, Psychologist> psychologists = new HashMap<>();
+        for (Psychologist p : psychologistRepository.findAll()) {
+            if (p.getUser() != null) psychologists.put(p.getUser().getId(), p);
+        }
         List<Map<String, Object>> users = userRepository.findAll().stream().map(u -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id",         u.getId());
@@ -65,6 +77,11 @@ public class AdminController {
             m.put("isLocked",   u.getIsLocked());
             m.put("createdAt",  u.getCreatedAt());
             m.put("lastLogin",  u.getLastLogin());
+            Psychologist p = psychologists.get(u.getId());
+            if (p != null) {
+                m.put("credentialsVerified", Boolean.TRUE.equals(p.getIsVerified()));
+                m.put("onDuty",              Boolean.TRUE.equals(p.getIsOnDuty()));
+            }
             return m;
         }).collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success("Users retrieved", users));
@@ -102,6 +119,25 @@ public class AdminController {
         );
 
         return ResponseEntity.ok(ApiResponse.success("Approved", Map.of("userId", userId)));
+    }
+
+    /**
+     * Records the administrator's check of a psychologist's professional credentials.
+     * Separate from approval; together with the psychologist's own duty toggle it
+     * decides whether crisis routing may select them.
+     */
+    @PutMapping("/psychologists/{userId}/verification")
+    public ResponseEntity<ApiResponse<PsychologistVerificationResponse>> setPsychologistVerification(
+            @PathVariable Long userId, @Valid @RequestBody PsychologistVerificationDto body) {
+        PsychologistVerificationResponse result = userApprovalService.setPsychologistVerification(userId, body.getVerified());
+        if (result.verified()) {
+            userRepository.findById(userId).ifPresent(u -> sendEmail(u.getEmail(),
+                    "[Nidaa] Your professional credentials are verified \u2705",
+                    "Dear " + u.getFullName() + ",\n\nAn administrator has verified your credentials.\n"
+                            + "Go on duty in Settings to receive crisis cases.\n\n\u2014 The Nidaa Team"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(
+                result.verified() ? "Credentials verified" : "Credential verification revoked", result));
     }
 
     @PutMapping("/reject/{userId}")

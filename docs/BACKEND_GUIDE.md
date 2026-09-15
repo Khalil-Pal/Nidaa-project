@@ -90,7 +90,14 @@ The nearest candidate is claimed atomically, the request moves from `PENDING` to
 `organization_id`. A failed request update releases the winning claim.
 
 Psychological requests use a separate lifecycle. Crisis detection can flag urgent
-language and route eligible requests toward on-duty psychologists. This path is not
+language and route eligible requests toward psychologists who are both on duty and
+professionally verified. Those are two separate decisions by two people: the
+psychologist toggles duty themselves (`PUT /api/psychologists/me/duty`), and an
+administrator records the credential check (`PUT
+/api/admin/psychologists/{userId}/verification`, body `{"verified": true|false}`,
+sets `is_verified`, `verified_at`, `verified_by` and writes an `activity_logs` row).
+Approval alone creates the profile off duty and unverified, so a newly approved
+psychologist receives no crisis case until both have happened. This path is not
 part of provider-resource matching.
 
 Assignment history records material and psychological assignment events so admin

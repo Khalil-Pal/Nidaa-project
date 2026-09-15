@@ -54,15 +54,6 @@ Phase 5.
   Belongs with Phase 5 CS-1 (consultation records), which decides what a closed
   case records. Found during B-4.
 
-## Provider approval (Phase 4, A-2 / UX-2)
-
-- **Approval does not verify psychologists.** `approveUser` inserts the psychologist
-  row with `is_on_duty = true` but leaves `is_verified` at its default `false`, and
-  crisis routing selects only verified on-duty psychologists. On a fresh database no
-  crisis case is routed until someone sets the flag by SQL. Decide whether admin
-  approval implies professional verification (set it at approval) or whether the
-  duty toggle UI (UX-2) should expose verification separately. Found at Gate 3.
-
 ## Operations
 
 - **Public `/actuator/health`.** The deny-by-default chain answers it 401, so a

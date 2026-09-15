@@ -12,6 +12,9 @@
  *        step creates the account, a beneficiary lands on the dashboard signed in
  *        and can sign in again from login.html; a volunteer is told to wait for
  *        approval and gets no token
+ *   VER  admin-users.html shows a psychologist's credential status and the
+ *        "Verify Credentials" action in the details modal sets it (audited on the
+ *        server); the badge in the table follows
  *
  * Prerequisites: the app running against the gate database (see acceptance.sh),
  * psql access to that database (REG reads the e-mailed code from
@@ -232,6 +235,50 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
             const volActive = sql(`select is_active from users where email='${volEmail}'`);
             check('REG', `volunteer account exists and is inactive (is_active=${volActive})`, volActive === 'f');
             await context.close();
+        }
+
+        // ---------------- VER: credential verification from the admin UI ----------------
+        {
+            // a freshly approved psychologist: off duty, unverified
+            const email = `browser-psy-${Date.now()}@example.test`;
+            await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ fullName: 'Browser Psychologist', email, password: 'Browser-Gate-2026!', phone: '+15550001111', role: 'psychologist' }) });
+            await api('/api/auth/register/verify', { method: 'POST', body: JSON.stringify({ email, code: sql(`select code from pending_registrations where email='${email}'`) }) });
+            const uid = sql(`select user_id from users where email='${email}'`);
+            await api(`/api/admin/approve/${uid}`, { method: 'PUT' }, admin.token);
+            check('VER', `approved psychologist starts off duty and unverified (${sql(`select is_on_duty||'/'||is_verified from psychologists where user_id=${uid}`)})`,
+                sql(`select is_on_duty||'/'||is_verified from psychologists where user_id=${uid}`) === 'false/false');
+
+            const page = await browser.newPage();
+            page.on('dialog', async (d) => { await d.accept(); });   // the confirm() before the action
+            await signIn(page, admin);
+            await page.goto(BASE + '/admin-users.html', { waitUntil: 'networkidle0' });
+            await page.waitForFunction((id) => !!document.querySelector(`tr[data-user-id="${id}"]`), { timeout: 15000 }, uid);
+            const badgeBefore = await page.$eval(`tr[data-user-id="${uid}"] .cred-badge`, (el) => el.textContent.trim());
+            check('VER', `table badge before: "${badgeBefore}"`, badgeBefore === 'unverified');
+            await page.click(`tr[data-user-id="${uid}"]`);
+            await page.waitForFunction(() => document.getElementById('userModal').classList.contains('open'), { timeout: 5000 });
+            const rowShown = await page.$eval('#modalCredentialsRow', (el) => !el.hidden);
+            const btnText = await page.$eval('#modalVerifyBtn', (el) => ({ hidden: el.hidden, text: el.textContent.trim() }));
+            check('VER', `modal shows the credentials row and "${btnText.text}"`, rowShown && !btnText.hidden && /Verify Credentials/.test(btnText.text));
+            await page.click('#modalVerifyBtn');
+            await page.waitForFunction((id) => {
+                const b = document.querySelector(`tr[data-user-id="${id}"] .cred-badge`);
+                return b && b.classList.contains('ok');
+            }, { timeout: 15000 }, uid);
+            const badgeAfter = await page.$eval(`tr[data-user-id="${uid}"] .cred-badge`, (el) => el.textContent.trim());
+            const modalAfter = await page.$eval('#modalCredentials', (el) => el.textContent);
+            const btnAfter = await page.$eval('#modalVerifyBtn', (el) => el.textContent.trim());
+            check('VER', `table badge after: "${badgeAfter}"; modal: "${modalAfter.slice(0, 60)}"`, /verified/.test(badgeAfter) && /Verified/.test(modalAfter) && /off duty/.test(modalAfter));
+            check('VER', `action flips to "${btnAfter}"`, /Revoke/.test(btnAfter));
+            const db = sql(`select is_verified||'/'||(verified_by is not null)||'/'||(select count(*) from activity_logs where action='PSYCHOLOGIST_VERIFIED' and entity_id=${uid}) from psychologists where user_id=${uid}`);
+            check('VER', `database: is_verified/verified_by set/audit rows = ${db}`, db === 'true/true/1');
+            // a non-psychologist row has no badge and no action
+            const beneRow = await page.evaluate((mail) => {
+                const cell = [...document.querySelectorAll('#usersTableBody tr')].find((tr) => tr.textContent.includes(mail));
+                return cell ? { badge: !!cell.querySelector('.cred-badge'), id: cell.dataset.userId } : null;
+            }, bene.email);
+            check('VER', 'a beneficiary row carries no credentials badge', beneRow && !beneRow.badge);
+            await page.close();
         }
 
         // ---------------- F-4: expired access token is refreshed silently ----------------

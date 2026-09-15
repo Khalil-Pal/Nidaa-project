@@ -45,6 +45,7 @@ class AdminSecurityTest extends SecuritySliceTest {
     @MockBean private PriorityScoreService priorityScoreService;
     @MockBean private com.humanitarian.platform.service.UserApprovalService userApprovalService;
     @MockBean private com.humanitarian.platform.service.AdminReportService adminReportService;
+    @MockBean private com.humanitarian.platform.repository.PsychologistRepository psychologistRepository;
 
     @Test
     @WithMockUser(roles = "VOLUNTEER")
@@ -111,6 +112,44 @@ class AdminSecurityTest extends SecuritySliceTest {
 
         mockMvc.perform(get("/api/admin/users"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "PSYCHOLOGIST")
+    void aPsychologistCannotVerifyCredentials() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/admin/psychologists/5/verification")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"verified\":true}"))
+                .andExpect(status().isForbidden());
+        verify(userApprovalService, never()).setPsychologistVerification(any(), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminCredentialVerificationGoesThroughTheServiceAndReturnsTheEnvelope() throws Exception {
+        when(userApprovalService.setPsychologistVerification(5L, true)).thenReturn(
+                new com.humanitarian.platform.dto.PsychologistVerificationResponse(5L, 9L, true, false, java.time.LocalDateTime.now()));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(user(5L, UserRole.PSYCHOLOGIST)));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/admin/psychologists/5/verification")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"verified\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.success").value(true))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.verified").value(true))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.onDuty").value(false));
+        verify(userApprovalService).setPsychologistVerification(5L, true);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void credentialVerificationWithoutTheFlagIsRejectedBeforeTheService() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/admin/psychologists/5/verification")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.success").value(false));
+        verify(userApprovalService, never()).setPsychologistVerification(any(), org.mockito.ArgumentMatchers.anyBoolean());
     }
 
     @Test
