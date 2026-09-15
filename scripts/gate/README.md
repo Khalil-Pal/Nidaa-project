@@ -9,7 +9,7 @@ boundary and record the output in `docs/gates/`.
 | `invariants.sql` | G3 | The invariant query set from the Master Plan appendix; every count must be 0 |
 | `smtp-sink.py [port]` | G2 | Accepts every email and prints sender, recipients and subject; registration is transactional with the verification email, so the smoke path needs a mail server |
 | `acceptance.sh` | G4, G5 | Re-verifies every task's acceptance criterion through the API against the fresh database: registration, approval, login, ownership, transitions, rate limiting, on-behalf filing, geolocation matching, validation, crisis scoring, soft delete, and the invariants |
-| `browser-checks.js` | G5 | What the pages actually do in a real browser: XSS payload rendered as text, geolocation granted and denied, silent token refresh |
+| `browser-checks.js` | G5 | What the pages actually do in a real browser: XSS payload rendered as text, geolocation granted and denied, silent token refresh, and sign-up completed end to end on `register.html` (code step, account created, signed in; provider told to wait for approval). Reads the e-mailed code from `pending_registrations`, so it needs the same `DB`/`PGUSER`/`PSQL` as `acceptance.sh` |
 
 ## Running Gate N
 
@@ -35,7 +35,8 @@ bash scripts/gate/acceptance.sh
 #    INSERT INTO help_requests (beneficiary_id,title,description,help_type,urgency_level,status,priority_score)
 #      VALUES (<beneficiary id>, '<img src=x onerror=alert(1)>', 'planted', 'FOOD', 'HIGH', 'PENDING', 40);
 BASE=http://127.0.0.1:8081 ADMIN_EMAIL=... ADMIN_PASSWORD=... BENE_EMAIL=... BENE_PASSWORD=... \
-VOL_EMAIL=... VOL_PASSWORD=... JWT_SECRET=... CHROME="C:/Program Files/Google/Chrome/Application/chrome.exe" \
+VOL_EMAIL=... VOL_PASSWORD=... JWT_SECRET=... DB=nidaa_gate PSQL="/c/Program Files/PostgreSQL/17/bin/psql.exe" \
+CHROME="C:/Program Files/Google/Chrome/Application/chrome.exe" \
 node scripts/gate/browser-checks.js
 
 # 5a. accessibility + CSP audit and keyboard-only checks (F-5): npm install --no-save axe-core too

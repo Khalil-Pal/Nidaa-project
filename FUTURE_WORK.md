@@ -48,17 +48,6 @@ Phase 5.
   Belongs with Phase 5 CS-1 (consultation records), which decides what a closed
   case records. Found during B-4.
 
-## Registration
-
-- **The registration page has no verification-code step.** The backend has been
-  two-step since May 2026 (`POST /api/auth/register` sends a code,
-  `POST /api/auth/register/verify` creates the account), but `register.html` stops
-  after step 1 with the "code sent" message and there is no page to enter the code.
-  A person can only complete registration through the API today; the gate smoke
-  path does exactly that. Needs a code-entry step on `register.html` (mirroring
-  `forgot-password.html`), then a browser check for register -> verify -> login.
-  Not in the master plan; found during P-2.
-
 ## Provider approval (Phase 4, A-2 / UX-2)
 
 - **Approval does not verify psychologists.** `approveUser` inserts the psychologist
