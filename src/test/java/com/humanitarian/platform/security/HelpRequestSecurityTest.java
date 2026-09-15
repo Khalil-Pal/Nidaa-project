@@ -192,6 +192,31 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
                                 org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("script-src 'self' 'unsafe-inline'")))));
     }
 
+    /** DEP-5: the four security headers are on every response, including plain HTTP behind a TLS proxy. */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void everyResponseCarriesTheFourSecurityHeaders() throws Exception {
+        actingAs(99L, UserRole.ADMIN);
+        storedRequest(1L, "PENDING", null);
+
+        mockMvc.perform(get("/api/help-requests/1"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("X-Content-Type-Options", "nosniff"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("X-Frame-Options", "DENY"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Strict-Transport-Security", "max-age=31536000 ; includeSubDomains"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .exists("Content-Security-Policy"));
+        // the anonymous 401 path is written by the entry point, not a controller: same headers
+        mockMvc.perform(get("/api/help-requests/1").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Strict-Transport-Security", "max-age=31536000 ; includeSubDomains"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("X-Frame-Options", "DENY"));
+    }
+
     // -- input validation (B-2) -----------------------------------------------
 
     @Test

@@ -20,6 +20,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -46,6 +48,9 @@ public class SecurityConfig {
 
     // External hosts are the three the pages actually load from: Google Fonts
     // (stylesheet + font files), cdnjs (Font Awesome) and jsdelivr (Chart.js).
+    /** One year, the value HSTS preload lists require; preload itself is not requested. */
+    static final long HSTS_MAX_AGE_SECONDS = 31_536_000L;
+
     static final String CONTENT_SECURITY_POLICY = String.join("; ",
             "default-src 'self'",
             // No inline scripts or on* handlers anywhere (F-5): every page's script is
@@ -104,7 +109,20 @@ public class SecurityConfig {
                 // F-5 script-src 'self' means an injected script or handler
                 // attribute does not run at all. Stored XSS is also stopped at the
                 // other two layers: escaping on render and validation on write.
-                .headers(h -> h.contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY)))
+                .headers(h -> h
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY))
+                        // DEP-5: the four headers every response must carry. nosniff and DENY
+                        // are Spring's defaults, written out so the policy is visible here.
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .frameOptions(frame -> frame.deny())
+                        // Spring writes HSTS only on requests it sees as HTTPS; behind a TLS
+                        // proxy that is a plain HTTP request unless forwarded headers are
+                        // trusted (server.forward-headers-strategy). Sending it on every
+                        // request costs nothing: browsers only act on it over HTTPS.
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)
+                                .requestMatcher(AnyRequestMatcher.INSTANCE)))
                 // No valid token (missing, malformed or expired) is 401 so the
                 // frontend can attempt a refresh. Without an entry point Spring
                 // falls back to 403, which is reserved for authenticated callers

@@ -97,8 +97,9 @@ rejected by validation or a business rule.
 |---|---|
 | Bean Validation on every DTO: lengths, `@Pattern` whitelists for help type, urgency, category, support type and format. Unknown values are refused with a field-level 400, never coerced to a default. | `dto/*` (B-2) |
 | Help-request titles may not contain `<` or `>`; descriptions and addresses are length-capped | `HelpRequestDto` (S-2) |
-| Every server- or user-supplied string rendered into `innerHTML` passes through `escHtml()`; strings placed inside inline handler attributes pass through `jsString()`; ids are coerced with `Number()` | all pages, `nidaa-common.js` (S-2) |
-| Content-Security-Policy on every response: `default-src 'self'`, `connect-src 'self'` (an injected script cannot send data to another origin), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'` | `SecurityConfig.CONTENT_SECURITY_POLICY` (S-2) |
+| Every server- or user-supplied string rendered into `innerHTML` passes through `escHtml()`; rendered controls carry `data-*` attributes read back with `Number()` rather than values interpolated into handler code (there are no inline handlers since F-5) | all pages, `nidaa-common.js` (S-2, F-5) |
+| Content-Security-Policy on every response: `default-src 'self'`, `script-src 'self' https://cdn.jsdelivr.net` (no inline script or handler runs, F-5), `connect-src 'self'` (an injected script cannot send data to another origin), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'` | `SecurityConfig.CONTENT_SECURITY_POLICY` (S-2, F-5) |
+| `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Strict-Transport-Security: max-age=31536000; includeSubDomains` on every response, including 401/403 written by the filters. HSTS is sent on plain HTTP too because a TLS-terminating proxy hands the application plain HTTP; browsers act on it only over HTTPS. Preload is not requested. | `SecurityConfig` headers block (DEP-5) |
 | Normalizers throw on unknown input instead of returning `OTHER` / `MEDIUM` / `ANXIETY` | `HelpTypeNormalizer`, request services (B-2) |
 
 ### 3.4 Information disclosure
@@ -201,7 +202,9 @@ Chosen deliberately and documented, rather than gaps:
    deliberately does not add.
 5. **Client IP is the socket address.** Behind a reverse proxy, set
    `server.forward-headers-strategy=native`; the `X-Forwarded-For` header is not
-   read directly because a client can forge it.
+   read directly because a client can forge it. The same setting lets Spring see
+   the request as HTTPS, which matters for the secure-cookie and scheme checks;
+   HSTS itself is already sent unconditionally.
 6. **On-behalf-of filing requires the beneficiary's email**, because the only way
    for that person to claim the account later is the email-based password reset.
 7. **Tokens live in `localStorage`.** An `httpOnly` cookie would be stronger against
