@@ -46,4 +46,11 @@ public interface VolunteerRepository extends JpaRepository<Volunteer, Long> {
             nativeQuery = true)
     int setManualAvailability(@Param("userId") Long userId,
                               @Param("available") boolean available);
+
+    /** Writes only the two counter columns, computed from reports by ProviderStatsService (AGG-1). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Volunteer v SET v.totalCompletedRequests = :completed, v.rating = :rating WHERE v.id = :volunteerId")
+    int updateCounters(@Param("volunteerId") Long volunteerId,
+                       @Param("completed") int completed,
+                       @Param("rating") Double rating);
 }

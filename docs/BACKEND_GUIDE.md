@@ -313,6 +313,24 @@ through feedback as well: the psychologist learns the rating, never who gave it.
 
 `chat_session_id` stays unused: there is no chat system to reference.
 
+## Provider Counters
+
+`ProviderStatsService` (AGG-1) keeps the four denormalised columns real:
+`volunteers.total_completed_requests` and `volunteers.rating` from the volunteer's
+completion reports, `psychologists.consultation_count` and `psychologists.rating`
+from the psychologist's consultation records. `AssignmentReportService` calls
+`refreshVolunteer()` after a report is recorded and after it is rated;
+`ConsultationService` calls `refreshPsychologist()` at the same two points, inside
+the same transaction as the source row.
+
+Every refresh recomputes both values in full (`COUNT`, `AVG` over the rated rows)
+rather than incrementing or averaging a new rating into the old one, so a corrected
+rating produces the new true mean. The mean is rounded to hundredths, the precision
+of the `numeric(3,2)` columns, so the persisted value equals the computed one; no
+ratings is `NULL` (D-3, V18), never 0. The count is the number of reports or
+consultation records, which is what the plan defines it as: a completed assignment
+without a report is not counted. Nothing in matching reads these columns.
+
 ## Notifications
 
 `NotificationService` (N-1) writes a row to `notifications` inside the transaction

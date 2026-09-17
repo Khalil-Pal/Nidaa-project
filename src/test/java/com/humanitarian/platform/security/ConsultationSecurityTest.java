@@ -25,6 +25,7 @@ import com.humanitarian.platform.repository.ConsultationRepository;
 import com.humanitarian.platform.repository.PsychologicalRequestRepository;
 import com.humanitarian.platform.repository.PsychologistRepository;
 import com.humanitarian.platform.service.ConsultationService;
+import com.humanitarian.platform.service.ProviderStatsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +57,7 @@ class ConsultationSecurityTest extends SecuritySliceTest {
     @MockBean private PsychologicalRequestRepository requestRepository;
     @MockBean private PsychologistRepository psychologistRepository;
     @MockBean private AssignmentRepository assignmentRepository;
+    @MockBean private ProviderStatsService providerStats;
 
     private static final String BENEFICIARY_NAME = "BENEFICIARY 1";   // what user(1L, BENEFICIARY) is called
     private static final String RECORD_BODY = "{\"format\":\"video\",\"durationMinutes\":45,"
@@ -141,6 +143,7 @@ class ConsultationSecurityTest extends SecuritySliceTest {
                 .andExpect(jsonPath("$.data.beneficiaryName").doesNotExist())
                 .andExpect(content().string(Matchers.not(Matchers.containsString(BENEFICIARY_NAME))));
         verify(notifications).notify(eq(1L), eq("Your consultation was recorded: please rate it"), anyString(), eq("PSYCHOLOGICAL_REQUEST"), eq(10L));
+        verify(providerStats).refreshPsychologist(20L);   // AGG-1: the count is recomputed in the same transaction
     }
 
     @Test
@@ -205,10 +208,12 @@ class ConsultationSecurityTest extends SecuritySliceTest {
         verify(notifications).notify(eq(2L), eq("You received a rating: 4/5"), text.capture(), eq("PSYCHOLOGICAL_REQUEST"), eq(10L));
         assertFalse(text.getValue().contains(BENEFICIARY_NAME), "the anonymous beneficiary is not named: " + text.getValue());
         assertFalse(text.getValue().contains("beneficiary1@"), "nor is their e-mail: " + text.getValue());
+        verify(providerStats).refreshPsychologist(20L);   // AGG-1: the mean is recomputed in the same transaction
 
         when(consultationRepository.findByPsychologicalRequestId(10L)).thenReturn(Optional.of(stored(4)));
         mockMvc.perform(post("/api/psychological-requests/10/consultation/feedback").contentType(MediaType.APPLICATION_JSON).content(FEEDBACK_BODY))
                 .andExpect(status().isConflict());
+        verify(providerStats).refreshPsychologist(20L);   // still once: a refused rating recomputes nothing
     }
 
     @Test

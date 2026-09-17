@@ -56,6 +56,8 @@ and updates carry the database's; no code path reads `updated_at` for a decision
 |---|---|---|
 | `help_requests.priority_score` | `PriorityScoreService.calculate(HelpRequest)` at creation; `PriorityScoreScheduler` every 30 minutes | `HelpRequestPersistenceTest.priorityScoreIsStoredAsTheApplicationComputedIt` |
 | `psychological_requests.is_crisis`, `needs_review` | `CrisisDetectorService.assess()` at creation | `CrisisDetectorServiceTest` (scoring) and `PsychologicalRequestSecurityTest` (wiring) |
+| `volunteers.total_completed_requests`, `volunteers.rating` | `ProviderStatsService.refreshVolunteer()`: `COUNT` and `AVG(beneficiary_rating)` over the volunteer's `reports`, recomputed in full on every report and rating (AGG-1); mean rounded to hundredths, NULL without ratings | `ProviderStatsPersistenceTest` (5, 4, 3 → 4.00 and 3; none → NULL; a corrected rating gives the new true mean) |
+| `psychologists.consultation_count`, `psychologists.rating` | `ProviderStatsService.refreshPsychologist()`: the same over the psychologist's `consultations` (AGG-1) | `ProviderStatsPersistenceTest` |
 
 ## Invariants
 

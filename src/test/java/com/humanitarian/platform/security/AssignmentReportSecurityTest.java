@@ -25,6 +25,7 @@ import com.humanitarian.platform.repository.OrganizationRepository;
 import com.humanitarian.platform.repository.ReportRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
 import com.humanitarian.platform.service.AssignmentReportService;
+import com.humanitarian.platform.service.ProviderStatsService;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,7 @@ class AssignmentReportSecurityTest extends SecuritySliceTest {
     @MockBean private HelpRequestRepository helpRequestRepository;
     @MockBean private VolunteerRepository volunteerRepository;
     @MockBean private OrganizationRepository organizationRepository;
+    @MockBean private ProviderStatsService providerStats;
 
     private static final String REPORT_BODY = "{\"description\":\"Food parcels for three people\"}";
     private static final String FEEDBACK_BODY = "{\"rating\":4,\"feedback\":\"Kind and on time\"}";
@@ -117,6 +119,7 @@ class AssignmentReportSecurityTest extends SecuritySliceTest {
                 .andExpect(jsonPath("$.data.description").value("Food parcels for three people"))
                 .andExpect(jsonPath("$.data.beneficiaryRating").doesNotExist());
         verify(notifications).notify(eq(1L), eq("Delivery recorded: please rate this help"), anyString(), eq("HELP_REQUEST"), eq(10L));
+        verify(providerStats).refreshVolunteer(20L);   // AGG-1: the count is recomputed in the same transaction
     }
 
     @Test
@@ -172,10 +175,12 @@ class AssignmentReportSecurityTest extends SecuritySliceTest {
                 .andExpect(jsonPath("$.data.feedbackFromBeneficiary").value("Kind and on time"))
                 .andExpect(jsonPath("$.data.volunteerName").value("VOLUNTEER 2"));
         verify(notifications).notify(eq(2L), eq("You received a rating: 4/5"), anyString(), eq("HELP_REQUEST"), eq(10L));
+        verify(providerStats).refreshVolunteer(20L);   // AGG-1: the mean is recomputed in the same transaction
 
         when(reportRepository.findByAssignmentId(100L)).thenReturn(Optional.of(storedReport(4)));
         mockMvc.perform(post("/api/assignments/100/feedback").contentType(MediaType.APPLICATION_JSON).content(FEEDBACK_BODY))
                 .andExpect(status().isConflict());
+        verify(providerStats).refreshVolunteer(20L);   // still once: a refused rating recomputes nothing
     }
 
     @Test

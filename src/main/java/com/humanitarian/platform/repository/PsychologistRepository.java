@@ -3,6 +3,7 @@ package com.humanitarian.platform.repository;
 import com.humanitarian.platform.model.Psychologist;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -24,4 +25,11 @@ public interface PsychologistRepository extends JpaRepository<Psychologist, Long
 
     @Query("SELECT p FROM Psychologist p WHERE LOWER(p.specialization) LIKE LOWER(CONCAT('%', :spec, '%')) AND p.isVerified = true")
     List<Psychologist> findBySpecialization(@Param("spec") String specialization);
+
+    /** Writes only the two counter columns, computed from consultations by ProviderStatsService (AGG-1). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Psychologist p SET p.consultationCount = :consultations, p.rating = :rating WHERE p.id = :psychologistId")
+    int updateCounters(@Param("psychologistId") Long psychologistId,
+                       @Param("consultations") int consultations,
+                       @Param("rating") Double rating);
 }

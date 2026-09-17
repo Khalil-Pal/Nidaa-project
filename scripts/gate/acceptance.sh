@@ -159,6 +159,25 @@ check "R-1" "volunteer was told about the rating" "$(sql "select count(*) from n
 check "R-1" "admin reads the report" "$(body "$BASE/api/assignments/$ASG/report" -H "Authorization: Bearer $A" | json data.beneficiaryRating)" "4"
 check "R-1" "other beneficiary reads the report" "$(code "$BASE/api/assignments/$ASG/report" -H "Authorization: Bearer $B2")" "404"
 check "R-1" "no photo upload endpoint" "$(code -X POST "$BASE/api/assignments/$ASG/report/photos" -H "Authorization: Bearer $V")" "404"
+
+# AGG-1: the volunteer counters are recomputed from the reports on every report and rating
+VOL_ROW="select total_completed_requests||'/'||coalesce(rating::text,'NULL') from volunteers where user_id=$(uid "$VOL")"
+check "AGG-1" "after one report rated 4: count 1, mean 4.00" "$(sql "$VOL_ROW")" "1/4.00"
+deliver_and_rate() { # rating -> the volunteer delivers one more FOOD request and the beneficiary rates it
+  local rid asg
+  rid=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" -d "{\"title\":\"AGG request rated $1\",\"helpType\":\"FOOD\",\"urgencyLevel\":\"MEDIUM\",\"peopleCount\":1}" | json data.id)
+  code -X PUT "$BASE/api/help-requests/$rid/assign" -H "Authorization: Bearer $V" >/dev/null
+  code -X PUT "$BASE/api/help-requests/$rid/status?status=COMPLETED" -H "Authorization: Bearer $V" >/dev/null
+  asg=$(body "$BASE/api/v1/assignments/help-requests/$rid" -H "Authorization: Bearer $V" | python -c "import sys,json; a=[x for x in json.load(sys.stdin)['data'] if x['status']=='COMPLETED']; print(a[-1]['assignmentId'])")
+  code -X POST "$BASE/api/assignments/$asg/report" -H 'Content-Type: application/json' -H "Authorization: Bearer $V" -d '{"description":"delivered"}' >/dev/null
+  code -X POST "$BASE/api/assignments/$asg/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d "{\"rating\":$1}" >/dev/null
+}
+deliver_and_rate 5
+check "AGG-1" "after ratings 4, 5: count 2, mean 4.50" "$(sql "$VOL_ROW")" "2/4.50"
+deliver_and_rate 3
+check "AGG-1" "reports rated 4, 5, 3: rating = 4.00 and total_completed_requests = 3" "$(sql "$VOL_ROW")" "3/4.00"
+check "AGG-1" "stored mean equals the mean of the reports" "$(sql "select (select rating from volunteers where user_id=$(uid "$VOL")) = (select round(avg(beneficiary_rating),2) from reports r join volunteers v on v.volunteer_id=r.volunteer_id where v.user_id=$(uid "$VOL"))")" "t"
+check "AGG-1" "a volunteer with no reports has NULL, not 0" "$(sql "select total_completed_requests||'/'||coalesce(rating::text,'NULL') from volunteers where user_id=$(uid "$VOL2")")" "0/NULL"
 R_B=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" -d '{"title":"Gate request B","helpType":"WATER","urgencyLevel":"LOW"}' | json data.id)
 check "S-5" "beneficiary cancels own B" "$(code -X PUT "$BASE/api/help-requests/$R_B/status?status=CANCELLED" -H "Authorization: Bearer $B")" "200"
 check "N-1" "cancelling an unassigned own request notifies nobody" "$(sql "select count(*) from notifications where reference_type='HELP_REQUEST' and reference_id=$R_B")" "0"
@@ -272,6 +291,8 @@ check "CS-1" "the response carries no beneficiary identity" "$(echo "$CREC" | gr
 check "CS-1" "second record" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d "$CONSULT")" "409"
 check "CS-1" "exactly one row, format stored in the enum column, topics as text[]" "$(sql "select count(*)||'/'||max(cast(format as text))||'/'||max(array_length(topics_discussed,1)) from consultations where psychological_request_id=$C_ID")" "1/VIDEO/2"
 check "CS-1" "beneficiary was asked to rate" "$(sql "select count(*) from notifications where user_id=$(uid "$BENE") and title='Your consultation was recorded: please rate it'")" "1"
+PSY_ROW="select consultation_count||'/'||coalesce(rating::text,'NULL') from psychologists where user_id=$PSY_UID"
+check "AGG-1" "after the record, before any rating: count 1, rating NULL" "$(sql "$PSY_ROW")" "1/NULL"
 BVIEW=$(body "$BASE/api/psychological-requests/$C_ID/consultation" -H "Authorization: Bearer $B")
 check "CS-1" "beneficiary reads the recommendations" "$(echo "$BVIEW" | json data.recommendations)" "Keep a sleep diary"
 check "CS-1" "notes_for_psychologist is never returned to the beneficiary (key absent)" "$(echo "$BVIEW" | grep -c 'notesForPsychologist\|PRIVATE-NOTE')" "0"
@@ -284,6 +305,7 @@ FVIEW=$(body -X POST "$BASE/api/psychological-requests/$C_ID/consultation/feedba
 check "CS-1" "beneficiary rates once" "$(echo "$FVIEW" | json data.rating)/$(echo "$FVIEW" | json data.feedbackFromBeneficiary)" "4/Felt heard"
 check "CS-1" "second rating" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":1}')" "409"
 check "CS-1" "stored rating and feedback" "$(sql "select rating||'/'||feedback_from_beneficiary from consultations where psychological_request_id=$C_ID")" "4/Felt heard"
+check "AGG-1" "after the rating: consultation_count 1, rating 4.00" "$(sql "$PSY_ROW")" "1/4.00"
 check "CS-1" "the psychologist was told the rating, not who gave it" "$(sql "select count(*) from notifications where user_id=$PSY_UID and title='You received a rating: 4/5' and content not like '%Gate beneficiary%' and content not like '%$BENE%'")" "1"
 check "CS-1" "anonymous contact is still anonymous to the psychologist" "$(body "$BASE/api/psychological-requests/$C_ID/contact" -H "Authorization: Bearer $S" | json data.anonymous)" "True"
 

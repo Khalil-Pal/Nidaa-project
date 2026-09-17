@@ -56,19 +56,22 @@ public class ConsultationService {
     private final AssignmentRepository assignmentRepository;
     private final UserService userService;
     private final NotificationService notifications;
+    private final ProviderStatsService providerStats;
 
     public ConsultationService(ConsultationRepository consultationRepository,
                                PsychologicalRequestRepository requestRepository,
                                PsychologistRepository psychologistRepository,
                                AssignmentRepository assignmentRepository,
                                UserService userService,
-                               NotificationService notifications) {
+                               NotificationService notifications,
+                               ProviderStatsService providerStats) {
         this.consultationRepository = consultationRepository;
         this.requestRepository = requestRepository;
         this.psychologistRepository = psychologistRepository;
         this.assignmentRepository = assignmentRepository;
         this.userService = userService;
         this.notifications = notifications;
+        this.providerStats = providerStats;
     }
 
     @Transactional
@@ -113,6 +116,7 @@ public class ConsultationService {
         }
         log.info("Consultation {} recorded for case {} (assignment {}) by psychologist {} (user {})",
                 saved.getId(), requestId, assignmentId, saved.getPsychologistId(), me.getId());
+        providerStats.refreshPsychologist(saved.getPsychologistId());   // AGG-1: the count moves here
         // the beneficiary's own notification: their case, their psychologist's name
         notifications.notify(ctx.request.getBeneficiaryId(), "Your consultation was recorded: please rate it",
                 me.getFullName() + " recorded your consultation. A rating helps other people choose.",
@@ -138,6 +142,7 @@ public class ConsultationService {
         Consultation saved = consultationRepository.save(consultation);
         // no user id in the line: the beneficiary may be anonymous to the psychologist
         log.info("Case {} consultation rated {}/5 by its beneficiary", requestId, body.getRating());
+        providerStats.refreshPsychologist(saved.getPsychologistId());   // AGG-1: the mean moves here
         // the psychologist learns the rating, never who gave it
         psychologistUserId(saved.getPsychologistId()).ifPresent(psychologistUser ->
                 notifications.notify(psychologistUser, "You received a rating: " + body.getRating() + "/5",

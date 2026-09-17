@@ -53,6 +53,7 @@ public class AssignmentReportService {
     private final OrganizationRepository organizationRepository;
     private final UserService userService;
     private final NotificationService notifications;
+    private final ProviderStatsService providerStats;
 
     public AssignmentReportService(ReportRepository reportRepository,
                                    AssignmentRepository assignmentRepository,
@@ -60,7 +61,8 @@ public class AssignmentReportService {
                                    VolunteerRepository volunteerRepository,
                                    OrganizationRepository organizationRepository,
                                    UserService userService,
-                                   NotificationService notifications) {
+                                   NotificationService notifications,
+                                   ProviderStatsService providerStats) {
         this.reportRepository = reportRepository;
         this.assignmentRepository = assignmentRepository;
         this.helpRequestRepository = helpRequestRepository;
@@ -68,6 +70,7 @@ public class AssignmentReportService {
         this.organizationRepository = organizationRepository;
         this.userService = userService;
         this.notifications = notifications;
+        this.providerStats = providerStats;
     }
 
     @Transactional
@@ -100,6 +103,7 @@ public class AssignmentReportService {
         }
         log.info("Report {} recorded for assignment {} by volunteer {} (user {})",
                 saved.getId(), assignmentId, saved.getVolunteerId(), me.getId());
+        providerStats.refreshVolunteer(saved.getVolunteerId());   // AGG-1: the count moves here
         for (Long recipient : new java.util.LinkedHashSet<>(java.util.Arrays.asList(
                 ctx.request.getBeneficiaryId(), ctx.request.getFiledByUserId()))) {
             notifications.notify(recipient, "Delivery recorded: please rate this help",
@@ -128,6 +132,7 @@ public class AssignmentReportService {
         report.setFeedbackFromBeneficiary(feedback == null || feedback.isEmpty() ? null : feedback);
         Report saved = reportRepository.save(report);
         log.info("Assignment {} rated {}/5 by beneficiary {}", assignmentId, body.getRating(), me.getId());
+        providerStats.refreshVolunteer(saved.getVolunteerId());   // AGG-1: the mean moves here
         volunteerUserId(saved.getVolunteerId()).ifPresent(volunteerUser ->
                 notifications.notify(volunteerUser, "You received a rating: " + body.getRating() + "/5",
                         "The beneficiary rated your help with \"" + ctx.request.getTitle() + "\".",
