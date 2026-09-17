@@ -95,8 +95,9 @@ From `ASSIGNED` the assigned provider (or an admin) may mark the request
 is a guarded UPDATE like the others, the other parties are notified on entry,
 and the assignment row stays `ASSIGNED` (capacity and availability follow the
 assignment, not the request). The shared map is `RequestTransitions`;
-psychological cases do not use `IN_PROGRESS`: crisis routing and the duty panel
-count a psychologist's open cases as `ASSIGNED`, and a case has no "on my way".
+psychological cases do not use `IN_PROGRESS`: material aid has a delivery
+journey worth reporting, psychological support does not — the span between
+assignment and completion is the support itself.
 
 Psychological requests use a separate lifecycle. Crisis detection can flag urgent
 language and route eligible requests toward psychologists who are both on duty and

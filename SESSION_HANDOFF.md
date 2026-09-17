@@ -268,8 +268,8 @@ PASS/FAIL/NOT RUN, evidence), then push.
   owner decisions — the owner may overturn any): CS-1 one consultation per case (V20 UNIQUE),
   `GET` exists, admin reads the record minus `notes_for_psychologist` (key omitted), no
   beneficiary identity in consultation responses or notifications; W-1 `IN_PROGRESS` for help
-  requests only (psychological cases keep ASSIGNED → COMPLETED because routing and the duty
-  panel count open cases as ASSIGNED); ON-2 the transient `beneficiaryName` is filled only for
+  requests only (a delivery has a journey to report; psychological support has none — the span
+  between assignment and completion is the support; kept by the owner after Gate 5); ON-2 the transient `beneficiaryName` is filled only for
   viewers entitled by `canView`; CM-1 like/unlike idempotent, (post, user) is the primary key,
   comment removal audited in `message_deletions` with `comment_id`; AGG-1 counts = number of
   reports/consultations, mean rounded to hundredths.

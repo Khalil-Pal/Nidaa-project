@@ -79,12 +79,14 @@ carried forward from Gate 4 as a Gate 7 blocker and was not attempted here.
      name; `chat_session_id` stays unused.
    - W-1: `IN_PROGRESS` for help requests only. The shared `RequestTransitions`
      allows it, but the psychologist and admin targets on psychological cases
-     deliberately leave it out: crisis routing and the duty panel count a
-     psychologist's open cases as `ASSIGNED`, and a case has no "on my way" step.
+     deliberately leave it out, for a reason in the domain rather than in the
+     code: material aid has a delivery journey worth reporting ("on the way");
+     psychological support does not — the span between assignment and
+     completion *is* the support, so there is no intermediate state to report.
      The plan's "both transition maps" are, since C-3, the one shared map and the
      two page-side copies, all three extended. The assignment row stays
      `ASSIGNED` while the request is in progress (capacity and availability
-     follow the assignment).
+     follow the assignment). Kept as built by the owner's decision after the gate.
    - ON-2: the "Filed on behalf of <name>" badge gets the name only for viewers
      who could already learn it (the beneficiary, the filer, the assigned
      provider, an admin — the `canView` rule); a provider browsing the open list
