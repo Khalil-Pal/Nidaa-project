@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * A consultation record as its parties see it (CS-1). The beneficiary's rating
- * and feedback are on the same row and appear once given.
+ * One session of a psychological case as its parties see it (CS-1). The
+ * beneficiary's rating and feedback are on the same row and appear once given.
  *
  * The response never carries the beneficiary's identity (no id, no name), so an
  * anonymous request stays anonymous through this surface as well.

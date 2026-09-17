@@ -13,9 +13,10 @@ import java.util.Optional;
 public interface ConsultationRepository extends JpaRepository<Consultation, Long> {
     List<Consultation> findByPsychologistId(Long psychologistId);
     List<Consultation> findByBeneficiaryId(Long beneficiaryId);
-    // one record per case (uq_consultations_psych_request, V20)
-    Optional<Consultation> findByPsychologicalRequestId(Long requestId);
-    boolean existsByPsychologicalRequestId(Long requestId);
+    /** The sessions of a case, oldest first (one row per session since V22). */
+    List<Consultation> findByPsychologicalRequestIdOrderByStartedAtAscIdAsc(Long requestId);
+    /** A session addressed under its case: empty when the id belongs to another case. */
+    Optional<Consultation> findByIdAndPsychologicalRequestId(Long id, Long requestId);
     List<Consultation> findByIsCrisisTrue();
     long countByPsychologistId(Long psychologistId);
 

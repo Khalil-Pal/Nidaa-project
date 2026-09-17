@@ -106,6 +106,10 @@ The first administrator is still inserted by hand (see below).
   primary key) and `message_comments` (soft-deleted like posts), and
   `message_deletions.comment_id` so a moderated comment gets the same audit row
   as a removed post (CM-1). Idempotent; safe to rerun.
+- `V22` drops V20's `UNIQUE (psychological_request_id)` on `consultations` and
+  brings the plain index on that column back: a consultation row is one
+  session, and a case holds as many as it needs (owner decision after Gate 5,
+  CS-1). Idempotent; safe to rerun.
 
 Every gate since Gate 3 has built a database from these files alone
 (`scripts/gate/fresh-db.sh`), checked that `flyway_schema_history` lists exactly

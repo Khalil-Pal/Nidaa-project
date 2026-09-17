@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * What a psychological case recorded once it was completed (CS-1): one row per
- * psychological request, written by the assigned psychologist, rated by the
- * beneficiary. {@code notesForPsychologist} is private to the psychologist and
- * never leaves the service for anyone else.
+ * One session of a psychological case (CS-1): a row per session since V22,
+ * written by the assigned psychologist, rated by the beneficiary.
+ * {@code notesForPsychologist} is private to the psychologist and never leaves
+ * the service for anyone else.
  */
 @Entity
 @Table(name = "consultations")

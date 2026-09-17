@@ -303,19 +303,24 @@ The assignment id comes from the request's history
 
 ## Consultation Records
 
-`ConsultationService` (CS-1) records what a psychological case delivered, on the
-`consultations` row of the request: format (the `consultation_format` enum),
-when it took place and for how long, the topics discussed (`text[]`, mapped as a
-list), the recommendations, and the psychologist's private note. The assigned
-psychologist may record once the case is `COMPLETED`; exactly one record per case
-(`UNIQUE (psychological_request_id)`, V20: a second submission is 409 whether the
-service or the database catches it). V20 also adds `assignment_id`, so the record
-says which assignment produced the session. The beneficiary rates once (1–5,
-optional text) after the record exists; beneficiary, assigned psychologist and
-administrators may read it, and anyone else gets 404 for any request id, the same
-rule as the case itself. Recording notifies the beneficiary to rate; rating
-notifies the psychologist. Completing a case now also stamps
-`psychological_requests.completed_at`, which the statistics read.
+`ConsultationService` (CS-1) records the sessions of a psychological case, one
+`consultations` row per session: format (the `consultation_format` enum), when
+it took place and for how long, the topics discussed (`text[]`, mapped as a
+list), the recommendations, and the psychologist's private note. A case is a
+course of support: it stays `ASSIGNED` until the psychologist completes it, and
+the assigned psychologist records a session while it is open or after it is
+completed (never on a pending or cancelled case). V20 adds `assignment_id`, so a
+session says which assignment it belongs to; V22 drops V20's one-per-case
+`UNIQUE` (owner decision after Gate 5: the row's own `started_at`, `ended_at`
+and `duration_minutes` are per-session fields, and one record per case would
+have forced a second session through a new request that re-queues and may route
+elsewhere). The beneficiary rates each session once (1–5, optional text);
+beneficiary, assigned psychologist and administrators list the sessions oldest
+first, and anyone else gets 404 for any request id, the same rule as the case
+itself. Recording notifies the beneficiary to rate; rating notifies the
+psychologist. `psychologists.consultation_count` counts sessions (AGG-1).
+Completing a case stamps `psychological_requests.completed_at`, which the
+statistics read.
 
 Two rules matter more than the rest. **`notes_for_psychologist` is private to the
 psychologist**: the response is built with it only when the caller is the assigned
@@ -326,9 +331,9 @@ through feedback as well: the psychologist learns the rating, never who gave it.
 
 | Method | Endpoint | Access | Behavior |
 |---|---|---|---|
-| `POST` | `/api/psychological-requests/{id}/consultation` | Assigned psychologist | `{"format", "startedAt"?, "durationMinutes"?, "topicsDiscussed"?, "recommendations"?, "notesForPsychologist"?}`; case must be COMPLETED; one per case |
-| `POST` | `/api/psychological-requests/{id}/consultation/feedback` | Beneficiary of the case | `{"rating": 1..5, "feedback"?}`; once; needs the record; anonymous cases may rate |
-| `GET` | `/api/psychological-requests/{id}/consultation` | Beneficiary, assigned psychologist, admin | The record with the rating once given; the private note only for the psychologist; 404 if none yet |
+| `POST` | `/api/psychological-requests/{id}/consultations` | Assigned psychologist | `{"format", "startedAt"?, "durationMinutes"?, "topicsDiscussed"?, "recommendations"?, "notesForPsychologist"?}`; case ASSIGNED or COMPLETED (400 otherwise); **201** with the session; the case's status does not change |
+| `POST` | `/api/psychological-requests/{id}/consultations/{consultationId}/feedback` | Beneficiary of the case | `{"rating": 1..5, "feedback"?}`; once per session (409 again); 404 when the session is not this case's; anonymous cases may rate |
+| `GET` | `/api/psychological-requests/{id}/consultations` | Beneficiary, assigned psychologist, admin | The sessions oldest first (`startedAt`, then id), each with its rating once given; the private note only for the psychologist; an empty list before any |
 
 `chat_session_id` stays unused: there is no chat system to reference.
 

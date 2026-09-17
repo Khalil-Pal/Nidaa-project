@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-/** Body of POST /api/psychological-requests/{id}/consultation/feedback: the beneficiary's rating (CS-1). */
+/** Body of POST /api/psychological-requests/{id}/consultations/{consultationId}/feedback: the beneficiary's rating of one session (CS-1). */
 @Data
 public class ConsultationFeedbackRequest {
     @NotNull(message = "rating is required")

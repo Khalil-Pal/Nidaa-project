@@ -27,10 +27,10 @@ import org.springframework.dao.DataIntegrityViolationException;
  * CS-1 against the real schema: {@code consultations.format} is the
  * {@code consultation_format} enum (the entity said varchar before, D-4),
  * {@code topics_discussed} is a {@code text[]} the entity now reads and writes as a
- * list, V20's {@code assignment_id} is a foreign key and
- * {@code UNIQUE (psychological_request_id)} lets the database refuse a second record
- * when two requests race past the service's check, the rating CHECK holds 1..5,
- * and completing a case stamps {@code completed_at}.
+ * list, V20's {@code assignment_id} is a foreign key, a case holds as many session
+ * rows as it needs listed oldest first (V22 dropped V20's one-per-case UNIQUE and
+ * brought the plain index back), the rating CHECK holds 1..5, and completing a
+ * case stamps {@code completed_at}.
  */
 @EnabledIf(value = PersistenceTestSupport.CONDITION, disabledReason = "nidaa_test database not reachable")
 class ConsultationPersistenceTest extends PersistenceTestSupport {
@@ -104,16 +104,32 @@ class ConsultationPersistenceTest extends PersistenceTestSupport {
         assertEquals(format, column, "stored in the enum column, not as text");
     }
 
+    /** Owner decision after Gate 5 (V22): sessions are rows of the case, in the order they took place. */
     @Test
-    void exactlyOneConsultationPerCaseIsEnforcedByTheDatabase() {
-        Closed c = completedCase("unique");
-        consultationRepository.saveAndFlush(record(c, "CHAT").build());
-        assertTrue(consultationRepository.existsByPsychologicalRequestId(c.request().getId()));
+    void aCaseHoldsOneRowPerSessionListedOldestFirst() {
+        Closed c = completedCase("sessions");
+        LocalDateTime first = LocalDateTime.of(2026, 9, 10, 10, 0);
+        Consultation second = consultationRepository.saveAndFlush(record(c, "CHAT").startedAt(first.plusDays(7)).build());
+        Consultation earliest = consultationRepository.saveAndFlush(record(c, "VIDEO").startedAt(first).rating(5).build());
+        Consultation third = consultationRepository.saveAndFlush(record(c, "AUDIO").startedAt(first.plusDays(14)).build());
+        em.clear();
 
-        DataIntegrityViolationException ex = assertThrows(DataIntegrityViolationException.class, () ->
-                consultationRepository.saveAndFlush(record(c, "CHAT").build()));
-        assertTrue(String.valueOf(ex.getMostSpecificCause().getMessage()).contains("uq_consultations_psych_request"),
-                "the V20 constraint is what refused it: " + ex.getMostSpecificCause().getMessage());
+        List<Consultation> sessions = consultationRepository
+                .findByPsychologicalRequestIdOrderByStartedAtAscIdAsc(c.request().getId());
+        assertEquals(List.of(earliest.getId(), second.getId(), third.getId()),
+                sessions.stream().map(Consultation::getId).toList(), "three rows on one case, by started_at");
+        assertEquals(List.of("VIDEO", "CHAT", "AUDIO"), sessions.stream().map(Consultation::getFormat).toList());
+        assertEquals(5, sessions.get(0).getRating(), "a rating belongs to its session");
+        assertNull(sessions.get(1).getRating());
+
+        assertTrue(consultationRepository.findByIdAndPsychologicalRequestId(second.getId(), c.request().getId()).isPresent());
+        Closed other = completedCase("sessions-other");
+        assertTrue(consultationRepository.findByIdAndPsychologicalRequestId(second.getId(), other.request().getId()).isEmpty(),
+                "a session is addressed under its own case only");
+        Long constraints = (Long) em.getEntityManager()
+                .createNativeQuery("SELECT count(*) FROM pg_constraint WHERE conname = 'uq_consultations_psych_request'")
+                .getSingleResult();
+        assertEquals(0L, constraints, "V22 dropped the one-per-case constraint");
     }
 
     @Test

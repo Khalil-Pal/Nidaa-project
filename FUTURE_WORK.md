@@ -94,11 +94,11 @@ endpoint reads or writes them, and no page mentions them.
 - **`consultations.chat_session_id`** exists and is never written: the platform
   has no chat system for a session id to reference. The column stays for the
   day one exists.
-- **One record per case.** V20 makes `psychological_request_id` unique, matching
-  the endpoints (`.../{id}/consultation` and the feedback under it). A case that
-  needs several sessions records them as one consultation today; if
-  per-session records are ever wanted, the constraint goes and the feedback
-  endpoint needs a consultation id.
+- **Per-session records** were the Gate 5 judgement call the owner overturned:
+  V22 dropped the one-per-case constraint, the endpoints became
+  `.../{id}/consultations` and `.../consultations/{consultationId}/feedback`,
+  and a case stays `ASSIGNED` until the psychologist completes it. Nothing is
+  left to do here.
 
 ## Completion reports (Phase 5, R-1)
 

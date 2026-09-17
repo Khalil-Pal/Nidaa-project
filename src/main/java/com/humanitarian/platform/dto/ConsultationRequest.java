@@ -10,9 +10,10 @@ import java.util.List;
 import lombok.Data;
 
 /**
- * Body of POST /api/psychological-requests/{id}/consultation: what the assigned
- * psychologist records once the case is completed (CS-1). {@code notesForPsychologist}
- * is the psychologist's private note and is returned to nobody else.
+ * Body of POST /api/psychological-requests/{id}/consultations: one session the
+ * assigned psychologist records on an open or completed case (CS-1).
+ * {@code notesForPsychologist} is the psychologist's private note and is returned
+ * to nobody else.
  */
 @Data
 public class ConsultationRequest {
