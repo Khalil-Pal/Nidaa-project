@@ -330,6 +330,33 @@ check "AGG-1" "after the rating: consultation_count 1, rating 4.00" "$(sql "$PSY
 check "CS-1" "the psychologist was told the rating, not who gave it" "$(sql "select count(*) from notifications where user_id=$PSY_UID and title='You received a rating: 4/5' and content not like '%Gate beneficiary%' and content not like '%$BENE%'")" "1"
 check "CS-1" "anonymous contact is still anonymous to the psychologist" "$(body "$BASE/api/psychological-requests/$C_ID/contact" -H "Authorization: Bearer $S" | json data.anonymous)" "True"
 
+# CM-1: likes and comments live on the server; same role gate as the feed, same cap, same moderation audit
+M_ID=$(body -X POST "$BASE/api/community/messages" -H 'Content-Type: application/json' -H "Authorization: Bearer $V" -d '{"content":"Gate post for likes and comments","communityCategory":"UPDATE"}' | json data.id)
+check "CM-1" "beneficiary is outside the community (like)" "$(code -X POST "$BASE/api/community/messages/$M_ID/like" -H "Authorization: Bearer $B")" "403"
+check "CM-1" "volunteer likes" "$(body -X POST "$BASE/api/community/messages/$M_ID/like" -H "Authorization: Bearer $V" | python -c "import sys,json; d=json.load(sys.stdin)['data']; print(str(d['likedByMe']).lower()+'/'+str(d['likeCount']))")" "true/1"
+check "CM-1" "liking twice leaves one like" "$(body -X POST "$BASE/api/community/messages/$M_ID/like" -H "Authorization: Bearer $V" | json data.likeCount)" "1"
+check "CM-1" "second volunteer likes" "$(body -X POST "$BASE/api/community/messages/$M_ID/like" -H "Authorization: Bearer $V2" | json data.likeCount)" "2"
+check "CM-1" "exactly one row per (post, user)" "$(sql "select count(*) from message_reactions where message_id=$M_ID")" "2"
+check "CM-1" "the feed carries the count and the viewer's own like" "$(body "$BASE/api/community/messages?page=0&size=50" -H "Authorization: Bearer $V2" | python -c "import sys,json; m=[x for x in json.load(sys.stdin)['data']['content'] if x['id']==$M_ID][0]; print(str(m['likeCount'])+'/'+str(m['likedByMe']).lower()+'/'+str(m['commentCount']))")" "2/true/0"
+check "CM-1" "the psychologist sees the same count without their own like" "$(body "$BASE/api/community/messages?page=0&size=50" -H "Authorization: Bearer $S" | python -c "import sys,json; m=[x for x in json.load(sys.stdin)['data']['content'] if x['id']==$M_ID][0]; print(str(m['likeCount'])+'/'+str(m['likedByMe']).lower())")" "2/false"
+check "CM-1" "volunteer unlikes" "$(body -X DELETE "$BASE/api/community/messages/$M_ID/like" -H "Authorization: Bearer $V" | python -c "import sys,json; d=json.load(sys.stdin)['data']; print(str(d['likedByMe']).lower()+'/'+str(d['likeCount']))")" "false/1"
+check "CM-1" "like on a post that does not exist" "$(code -X POST "$BASE/api/community/messages/999999/like" -H "Authorization: Bearer $V")" "404"
+check "CM-1" "blank comment" "$(code -X POST "$BASE/api/community/messages/$M_ID/comments" -H 'Content-Type: application/json' -H "Authorization: Bearer $V2" -d '{"content":"   "}')" "400"
+check "CM-1" "overlong comment (1001 chars)" "$(code -X POST "$BASE/api/community/messages/$M_ID/comments" -H 'Content-Type: application/json' -H "Authorization: Bearer $V2" -d "{\"content\":\"$(printf 'c%.0s' $(seq 1 1001))\"}")" "400"
+CMT=$(body -X POST "$BASE/api/community/messages/$M_ID/comments" -H 'Content-Type: application/json' -H "Authorization: Bearer $V2" -d '{"content":"Thank you for sharing this"}')
+CMT_ID=$(echo "$CMT" | json data.id)
+check "CM-1" "second volunteer comments" "$(echo "$CMT" | json data.authorName)/$(echo "$CMT" | json data.content)" "Gate volunteer/Thank you for sharing this"
+check "CM-1" "the thread lists it for the psychologist" "$(body "$BASE/api/community/messages/$M_ID/comments" -H "Authorization: Bearer $S" | python -c "import sys,json; d=json.load(sys.stdin)['data']; print(str(d['totalElements'])+'/'+d['content'][0]['authorName'])")" "1/Gate volunteer"
+check "CM-1" "the feed's comment count follows" "$(body "$BASE/api/community/messages?page=0&size=50" -H "Authorization: Bearer $V" | python -c "import sys,json; m=[x for x in json.load(sys.stdin)['data']['content'] if x['id']==$M_ID][0]; print(m['commentCount'])")" "1"
+check "CM-1" "a volunteer cannot remove a comment" "$(code -X DELETE "$BASE/api/community/messages/$M_ID/comments/$CMT_ID?reason=x" -H "Authorization: Bearer $V")" "403"
+check "CM-1" "admin removal needs a reason" "$(code -X DELETE "$BASE/api/community/messages/$M_ID/comments/$CMT_ID" -H "Authorization: Bearer $A")" "400"
+check "CM-1" "admin removes the comment with a reason" "$(body -X DELETE "$BASE/api/community/messages/$M_ID/comments/$CMT_ID?reason=Off-topic" -H "Authorization: Bearer $A" | python -c "import sys,json; d=json.load(sys.stdin)['data']; print(str(d['messageId'])+'/'+str(d['commentId'])+'/'+d['reason'])")" "$M_ID/$CMT_ID/Off-topic"
+check "CM-1" "soft-deleted, audited with the comment id" "$(sql "select (select is_deleted from message_comments where id=$CMT_ID)||'/'||(select count(*) from message_deletions where comment_id=$CMT_ID and message_id=$M_ID and original_content='Thank you for sharing this')")" "true/1"
+check "CM-1" "the author was told the reason" "$(sql "select count(*) from notifications where user_id=$(uid "$VOL2") and title='A moderator removed your comment' and content like '%Off-topic%'")" "1"
+check "CM-1" "the thread and the count no longer show it" "$(body "$BASE/api/community/messages/$M_ID/comments" -H "Authorization: Bearer $V" | json data.totalElements)/$(body "$BASE/api/community/messages?page=0&size=50" -H "Authorization: Bearer $V" | python -c "import sys,json; m=[x for x in json.load(sys.stdin)['data']['content'] if x['id']==$M_ID][0]; print(m['commentCount'])")" "0/0"
+check "CM-1" "the moderation history lists it as a comment" "$(body "$BASE/api/admin/community/deletions?page=0&size=5" -H "Authorization: Bearer $A" | python -c "import sys,json; d=[x for x in json.load(sys.stdin)['data']['content'] if x.get('commentId')==$CMT_ID]; print(len(d))")" "1"
+check "CM-1" "no localStorage engagement code remains" "$(grep -c "nidaa_community_engagement\|readEngagementStore\|saveEngagement\|removeEngagement" src/main/resources/static/js/community.js)" "0"
+
 check "D-5" "no priority_score above 100" "$(sql "select count(*) from help_requests where priority_score > 100")" "0"
 
 # D-2

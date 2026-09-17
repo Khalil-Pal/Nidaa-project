@@ -21,4 +21,9 @@ public class MessageResponse {
     private String content;
     private String communityCategory;
     private LocalDateTime sentAt;
+
+    // CM-1: server-side engagement, so every browser shows the same numbers
+    private long likeCount;
+    private long commentCount;
+    private boolean likedByMe;
 }

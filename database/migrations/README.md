@@ -102,6 +102,10 @@ The first administrator is still inserted by hand (see below).
   which is how the endpoints address it (CS-1); the plain index on that column
   is dropped as redundant and an index on `assignment_id` is added. Idempotent;
   safe to rerun.
+- `V21` adds `message_reactions` (one row per post and user, the pair is the
+  primary key) and `message_comments` (soft-deleted like posts), and
+  `message_deletions.comment_id` so a moderated comment gets the same audit row
+  as a removed post (CM-1). Idempotent; safe to rerun.
 
 Every gate since Gate 3 has built a database from these files alone
 (`scripts/gate/fresh-db.sh`), checked that `flyway_schema_history` lists exactly

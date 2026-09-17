@@ -27,6 +27,9 @@
  *   ON-2 a volunteer files a request for someone else through the form (toggle,
  *        beneficiary fields, consent copy); the card carries "Filed on behalf of
  *        <name>" and no "Start Working"; the admin queue shows the badge
+ *   CM-1 a like made in one browser session is counted in another person's
+ *        session in another browser context; a comment made there is read back
+ *        after a reload; nothing comes from localStorage
  *   CS-1 on a completed psychological case the psychologist's session offers
  *        "Record consultation" and the beneficiary's request "Rate this
  *        consultation"; the beneficiary sees the recommendations but never the
@@ -466,19 +469,19 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
             await vpage.type('#onBehalfName', 'Nadia Browser');
             await vpage.type('#onBehalfEmail', personEmail);
             await vpage.type('#onBehalfPhone', '+15550003333');
-            await vpage.type('#reqTitle', 'Browser gate: filed for Nadia');
+            await vpage.type('#reqTitle', 'Browser gate: filed for Nadia ' + stamp);   // unique: a previous run's card must not match
             await vpage.select('#reqType', 'FOOD');
             await vpage.select('#reqUrgency', 'MEDIUM');
             await vpage.type('#reqPeople', '3');
             await vpage.click('#submitBtn');
-            await vpage.waitForFunction(() => [...document.querySelectorAll('#cardsGrid .req-card')].some((c) => /filed for Nadia/.test(c.textContent)), { timeout: 15000 });
-            const card = await vpage.evaluate(() => {
-                const c = [...document.querySelectorAll('#cardsGrid .req-card')].find((x) => /filed for Nadia/.test(x.textContent));
+            await vpage.waitForFunction((s) => [...document.querySelectorAll('#cardsGrid .req-card')].some((c) => c.textContent.includes('filed for Nadia ' + s)), { timeout: 15000 }, stamp);
+            const card = await vpage.evaluate((s) => {
+                const c = [...document.querySelectorAll('#cardsGrid .req-card')].find((x) => x.textContent.includes('filed for Nadia ' + s));
                 const badge = c.querySelector('.tag-filed');
                 return { badge: badge ? badge.textContent.trim() : null, start: !!c.querySelector('button[data-action="start"]'),
                     note: c.querySelector('[data-filer-note]') ? c.querySelector('[data-filer-note]').textContent : null,
                     id: c.querySelector('.fa-hashtag').parentElement.textContent.trim() };
-            });
+            }, stamp);
             check('ON-2', `the filer's card shows the badge "${card.badge}"`, card.badge === 'Filed on behalf of Nadia Browser');
             check('ON-2', `no "Start Working" for the filer; instead: "${card.note}"`, !card.start && /another provider will deliver/.test(String(card.note)));
             await vpage.close();
@@ -500,6 +503,67 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
             }, filedId);
             check('ON-2', `admin queue badge: "${adminBadge}"`, adminBadge === 'Filed on behalf of Nadia Browser');
             await apage.close();
+        }
+
+        // ---------------- CM-1: likes and comments are the same in every browser ----------------
+        {
+            const created = await api('/api/community/messages', { method: 'POST', body: JSON.stringify({
+                content: 'Browser gate: likes and comments ' + Date.now(), communityCategory: 'UPDATE' }) }, vol.token);
+            const postId = created.body && created.body.data && created.body.data.id;
+            check('CM-1', `post created through the API (${created.status}, id ${postId})`, created.status === 201 && !!postId);
+            const cardState = (p, id) => p.evaluate((pid) => {
+                const c = document.getElementById('pc-' + pid);
+                if (!c) return null;
+                const like = c.querySelector('button[data-action="like"]');
+                return { likes: c.querySelector('[data-like-count]').textContent.trim(), liked: like.classList.contains('liked'),
+                    pressed: like.getAttribute('aria-pressed'), comments: c.querySelector('[data-comment-count]').textContent.trim() };
+            }, id);
+
+            // session A: the volunteer likes the post
+            const a = await browser.newPage();
+            await signIn(a, vol);
+            await a.goto(BASE + '/community.html', { waitUntil: 'networkidle0' });
+            await a.waitForSelector('#pc-' + postId, { timeout: 15000 });
+            const before = await cardState(a, postId);
+            check('CM-1', `session A sees "${before.likes}", not liked`, before.likes === '0 likes' && !before.liked && before.pressed === 'false');
+            await a.click(`#pc-${postId} button[data-action="like"]`);
+            await a.waitForFunction((pid) => document.querySelector(`#pc-${pid} button[data-action="like"]`).classList.contains('liked'), { timeout: 15000 }, postId);
+            const afterA = await cardState(a, postId);
+            check('CM-1', `session A after the tap: "${afterA.likes}", liked, aria-pressed ${afterA.pressed}`, afterA.likes === '1 likes' && afterA.liked && afterA.pressed === 'true');
+
+            // session B: a different browser context, a different person (the admin), sees the same number
+            const context = await browser.createBrowserContext();
+            const b = await context.newPage();
+            await signIn(b, admin);
+            await b.goto(BASE + '/community.html', { waitUntil: 'networkidle0' });
+            await b.waitForSelector('#pc-' + postId, { timeout: 15000 });
+            const seenB = await cardState(b, postId);
+            check('CM-1', `session B (another browser, another user) sees "${seenB.likes}" and is not marked as having liked`, seenB.likes === '1 likes' && !seenB.liked);
+            await b.click(`#pc-${postId} button[data-action="like"]`);
+            await b.waitForFunction((pid) => document.querySelector(`#pc-${pid} [data-like-count]`).textContent.trim() === '2 likes', { timeout: 15000 }, postId);
+            await b.click(`#pc-${postId} button[data-action="comments"]`);
+            // the thread is fetched when opened; type once it has arrived
+            await b.waitForFunction((pid) => { const cw = document.getElementById('cw-' + pid); return cw && cw.classList.contains('open') && !/Loading comments/.test(cw.textContent); }, { timeout: 15000 }, postId);
+            await b.type(`#ci-${postId}`, 'Seen from another browser');
+            await b.click(`#pc-${postId} .comment-submit[data-id="${postId}"]`);
+            await b.waitForFunction((pid) => [...document.querySelectorAll(`#cw-${pid} .comment-text`)].some((el) => /Seen from another browser/.test(el.textContent)), { timeout: 15000 }, postId);
+            const afterB = await cardState(b, postId);
+            check('CM-1', `session B after liking and commenting: "${afterB.likes}", "${afterB.comments}"`, afterB.likes === '2 likes' && afterB.comments === '1 comments');
+            await b.close();
+            await context.close();
+
+            // session A again, reloaded: the other person's like and comment are there
+            await a.reload({ waitUntil: 'networkidle0' });
+            await a.waitForSelector('#pc-' + postId, { timeout: 15000 });
+            const reloadedA = await cardState(a, postId);
+            await a.click(`#pc-${postId} button[data-action="comments"]`);
+            await a.waitForFunction((pid) => [...document.querySelectorAll(`#cw-${pid} .comment-text`)].some((el) => /Seen from another browser/.test(el.textContent)), { timeout: 15000 }, postId);
+            const commentAuthor = await a.$eval(`#cw-${postId} .comment-author`, (el) => el.textContent.trim());
+            check('CM-1', `session A reloaded: "${reloadedA.likes}", still liked, "${reloadedA.comments}", comment by "${commentAuthor.split(/\\s{2,}|[0-9]/)[0].trim()}"`,
+                reloadedA.likes === '2 likes' && reloadedA.liked && reloadedA.comments === '1 comments' && /Fixture Admin/.test(commentAuthor));
+            await a.close();
+            const db = sql(`select (select count(*) from message_reactions where message_id=${postId})||'/'||(select count(*) from message_comments where message_id=${postId} and not is_deleted) from messages where message_id=${postId}`);
+            check('CM-1', `database: reactions/comments = ${db}`, db === '2/1');
         }
 
         // ---------------- CS-1: the consultation record and its rating ----------------

@@ -250,7 +250,12 @@ migration.
 | `GET` | `/api/community/messages?page=0&size=20` | Responder roles, admin | Paginated visible community messages only |
 | `POST` | `/api/community/messages` | Responder roles, admin | Create an explicit `COMMUNITY` message |
 | `DELETE` | `/api/community/messages/{id}?reason=...` | Admin | Soft-delete and create an audit snapshot |
-| `GET` | `/api/admin/community/deletions?page=0&size=20` | Admin | Paginated moderation audit history |
+| `POST` | `/api/community/messages/{id}/like` | Responder roles, admin | Like the post; idempotent, answers `{likedByMe, likeCount}` (CM-1) |
+| `DELETE` | `/api/community/messages/{id}/like` | Responder roles, admin | Remove the caller's like; idempotent (CM-1) |
+| `GET` | `/api/community/messages/{id}/comments?page=0&size=50` | Responder roles, admin | Visible comments on the post, oldest first (CM-1) |
+| `POST` | `/api/community/messages/{id}/comments` | Responder roles, admin | `{"content"}`, the same 1000-character cap as a post; 201 (CM-1) |
+| `DELETE` | `/api/community/messages/{id}/comments/{commentId}?reason=...` | Admin | Soft-delete the comment, audit it in `message_deletions` with `comment_id`, notify its author (CM-1) |
+| `GET` | `/api/admin/community/deletions?page=0&size=20` | Admin | Paginated moderation audit history; a row with `commentId` is a removed comment |
 
 Create request example:
 
@@ -262,8 +267,13 @@ Create request example:
 ```
 
 Message responses expose the message ID, author ID/name/role, content, normalized
-category, and timestamp. They never expose `receiver_id`, direct-message content,
-or internal deletion flags.
+category, timestamp and, since CM-1, `likeCount`, `commentCount` and `likedByMe`
+(three grouped queries per page in `CommunityEngagementService.summarize()`).
+They never expose `receiver_id`, direct-message content, or internal deletion
+flags. `message_reactions` has one row per (post, user) — the pair is its primary
+key, so a second like is refused by the database as well as by the service, and
+like/unlike are idempotent. The role gate, the 1000-character cap and the
+moderator's reason live in `CommunityRules`, shared by posts and comments.
 
 ## Completion Reports
 
@@ -421,6 +431,4 @@ For a backend feature:
   (DEP-1); databases built by hand before that are baselined at V18.
 - Direct-message controllers/services are not operational yet, although the entity
   and repository path remain available and are isolated by `MessageType.DIRECT`.
-- Community likes and comments are browser-local; only the message feed and
-  moderation history are multi-user backend features.
 - Community photo uploads are not modeled in the backend.

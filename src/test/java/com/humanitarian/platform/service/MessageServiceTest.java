@@ -45,6 +45,7 @@ class MessageServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private UserService userService;
     @Mock private com.humanitarian.platform.service.NotificationService notifications;
+    @Mock private CommunityEngagementService engagement;   // CM-1: counts for the feed
 
     @InjectMocks private MessageService service;
 

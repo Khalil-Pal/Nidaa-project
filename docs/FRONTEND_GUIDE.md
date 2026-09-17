@@ -178,17 +178,20 @@ and responsible administrator.
 |---|---|---|
 | Community message content/author/category/time | PostgreSQL through `/api/community/messages` | Yes |
 | Message soft deletion and audit | PostgreSQL | Yes, admin-only audit |
-| Community likes | `nidaa_community_engagement` in `localStorage` | No |
-| Community comments | `nidaa_community_engagement` in `localStorage` | No |
+| Community likes | PostgreSQL (`message_reactions`) through `POST`/`DELETE /api/community/messages/{id}/like` (CM-1) | Yes |
+| Community comments | PostgreSQL (`message_comments`) through `GET`/`POST /api/community/messages/{id}/comments`; admin removal audited (CM-1) | Yes, admin-only removal |
 | Community photo posts | Not currently supported | No |
 | In-app notifications and their read state | PostgreSQL through `/api/notifications` | Yes, owner-only |
 | JWT and safe user summary | `localStorage` | Session convenience only |
 | Cached profile display preferences/avatar | `localStorage` on relevant pages | Browser-local |
 
-Likes and comments are deliberately described as local interactions. Adding true
-shared reactions requires dedicated database tables, endpoints, ownership rules,
-and moderation behavior; it should not be simulated by attaching them to message
-content.
+Likes and comments are server-backed since CM-1: the feed response carries
+`likeCount`, `commentCount` and `likedByMe` for every post, so the numbers are
+the same in every browser; the like button toggles with one call and re-renders
+from the response; a post's thread is fetched when it is opened and a new comment
+is appended from the server's reply. An administrator sees "Remove" on each
+comment, which asks for a reason and calls the audited delete. No engagement
+state is kept in `localStorage`, and there is no local fallback.
 
 ## Contact Reveal UI
 
@@ -323,7 +326,6 @@ node -e "const fs=require('fs');const h=fs.readFileSync('src/main/resources/stat
 
 - The frontend remains static vanilla JavaScript; page-specific scripts stay inline,
   with the common helpers in `js/nidaa-common.js`.
-- Reactions/comments are not shared between users yet.
 - Community image uploads are deferred until backend media storage exists.
 - Client-side filtering covers loaded message pages, not the entire unloaded feed.
 - Some profile presentation values remain browser-local and should migrate to

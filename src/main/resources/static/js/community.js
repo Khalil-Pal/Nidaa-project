@@ -26,7 +26,6 @@ document.getElementById('topbarRole').textContent=roleDisplay;
     }
 })();
 
-const ENGAGEMENT_KEY='nidaa_community_engagement';
 const PAGE_SIZE=20;
 const roleColors={volunteer:'#047857',psychologist:'#7c3aed',admin:'#b91c1c',beneficiary:'#1d4ed8',organization:'#c2410c'};
 const roleBg={volunteer:'#f0fdf4',psychologist:'#faf5ff',admin:'#fef2f2',organization:'#fff7ed',beneficiary:'#eff6ff'};
@@ -48,27 +47,10 @@ let nextPage=0;
 let feedLastPage=false;
 let feedLoading=false;
 
-function readEngagementStore(){
-    try{return JSON.parse(localStorage.getItem(ENGAGEMENT_KEY)||'{}');}catch{return{};}
-}
-function getEngagement(messageId){
-    const saved=readEngagementStore()[String(messageId)]||{};
-    return{
-        likes:Number(saved.likes)||0,
-        likedBy:Array.isArray(saved.likedBy)?saved.likedBy:[],
-        comments:Array.isArray(saved.comments)?saved.comments:[]
-    };
-}
-function saveEngagement(messageId,value){
-    const store=readEngagementStore();
-    store[String(messageId)]=value;
-    localStorage.setItem(ENGAGEMENT_KEY,JSON.stringify(store));
-}
-function removeEngagement(messageId){
-    const store=readEngagementStore();
-    delete store[String(messageId)];
-    localStorage.setItem(ENGAGEMENT_KEY,JSON.stringify(store));
-}
+// CM-1: likes and comments live on the server. The feed carries each post's
+// counts and whether the viewer liked it; a post's comments are fetched when
+// its thread is opened and kept on the post object for this page load only.
+const openThreads=new Set();
 
 function setCategory(cat,btn){
     currentCat=cat;
@@ -96,7 +78,23 @@ function normalizePost(raw){
         role:String(raw.authorRole||'').toLowerCase(),
         text:raw.content||'',
         category:raw.communityCategory||'UPDATE',
-        timestamp:Number.isNaN(parsedTime)?Date.now():parsedTime
+        timestamp:Number.isNaN(parsedTime)?Date.now():parsedTime,
+        likes:Number(raw.likeCount)||0,
+        commentCount:Number(raw.commentCount)||0,
+        likedByMe:raw.likedByMe===true,
+        comments:null   // loaded on demand (CM-1)
+    };
+}
+
+function normalizeComment(raw){
+    const author=raw.authorName||'Unknown user';
+    return{
+        id:Number(raw.id),
+        author,
+        initials:author.split(' ').filter(Boolean).map(n=>n[0]).join('').slice(0,2).toUpperCase()||'?',
+        role:String(raw.authorRole||'').toLowerCase(),
+        text:raw.content||'',
+        timestamp:Date.parse(raw.createdAt)||Date.now()
     };
 }
 
@@ -175,17 +173,15 @@ function renderPosts(){
         return;
     }
 
-    const myKey=String(user.id||user.email||'');
     list.innerHTML=filtered.map(p=>{
         const cat=p.category||'UPDATE';
         const cm=catMeta[cat]||catMeta['UPDATE'];
-        const engagement=getEngagement(p.id);
-        const liked=engagement.likedBy.includes(myKey);
+        const liked=p.likedByMe;
         const roleCol=roleColors[(p.role||'').toLowerCase()]||'#1d4ed8';
         const photo=localStorage.getItem('nidaa_avatar_'+(p.authorId||''));
         const avatarInner=photo?`<img src="${photo}" alt=""/>`:(p.initials||'?');
         const avatarStyle=photo?'':`background:${roleCol}`;
-        const comments=engagement.comments;
+        const threadOpen=openThreads.has(p.id);
         const roleLabel=p.role?p.role.charAt(0).toUpperCase()+p.role.slice(1):'Member';
         return`<div class="post-card" id="pc-${p.id}">
             <div class="post-meta">
@@ -199,29 +195,20 @@ function renderPosts(){
             </div>
             <div class="post-text">${escHtml(p.text)}</div>
             <div class="post-engagement">
-                <span class="eng-num"><i class="fa fa-heart" style="color:#ef4444"></i> ${engagement.likes} likes</span>
-                <span class="eng-num"><i class="fa fa-comment" style="color:var(--blue)"></i> ${comments.length} comments</span>
+                <span class="eng-num" data-like-count="${p.id}"><i class="fa fa-heart" style="color:#ef4444"></i> ${p.likes} likes</span>
+                <span class="eng-num" data-comment-count="${p.id}"><i class="fa fa-comment" style="color:var(--blue)"></i> ${p.commentCount} comments</span>
             </div>
             <div class="post-actions">
                 <button type="button" class="post-btn${liked?' liked':''}" data-action="like" data-id="${p.id}" aria-pressed="${liked?'true':'false'}">
                     <i class="fa fa-heart"></i> ${liked?'Liked':'Like'}
                 </button>
-                <button type="button" class="post-btn" data-action="comments" data-id="${p.id}" aria-controls="cw-${p.id}">
-                    <i class="fa fa-comment"></i> Comment${comments.length?` (${comments.length})`:''}
+                <button type="button" class="post-btn" data-action="comments" data-id="${p.id}" aria-controls="cw-${p.id}" aria-expanded="${threadOpen?'true':'false'}">
+                    <i class="fa fa-comment"></i> Comment${p.commentCount?` (${p.commentCount})`:''}
                 </button>
                 <a href="profile.html" class="post-btn" style="text-decoration:none"><i class="fa fa-user"></i> Profile</a>
                 ${userRole==='admin'?`<button type="button" class="post-btn danger" data-action="moderate" data-id="${p.id}"><i class="fa fa-trash"></i> Moderate</button>`:''}
             </div>
-            <div class="comments-wrap" id="cw-${p.id}">
-                ${comments.map(c=>`<div class="comment-item">
-                    <div class="comment-av" style="background:${roleColors[(c.role||'').toLowerCase()]||'#1d4ed8'}">${escHtml(c.initials||'?')}</div>
-                    <div class="comment-body"><div class="comment-author">${escHtml(c.author)}</div><div class="comment-text">${escHtml(c.text)}</div></div>
-                </div>`).join('')}
-                <div class="comment-input-row">
-                    <input class="comment-input" id="ci-${p.id}" type="text" maxlength="500" placeholder="Write a comment..." aria-label="Write a comment" data-comment-for="${p.id}"/>
-                    <button type="button" class="comment-submit" data-action="comment" data-id="${p.id}">Send</button>
-                </div>
-            </div>
+            <div class="comments-wrap${threadOpen?' open':''}" id="cw-${p.id}">${threadMarkup(p)}</div>
             ${userRole==='admin'?`<div class="moderation-box" id="moderation-${p.id}">
                 <label class="moderation-label" for="moderation-reason-${p.id}">Deletion justification</label>
                 <textarea class="moderation-reason" id="moderation-reason-${p.id}" maxlength="1000" placeholder="Explain why this message must be removed" data-moderation-for="${p.id}"></textarea>
@@ -236,31 +223,134 @@ function renderPosts(){
     renderTrending(posts);
 }
 
-function toggleLike(messageId){
-    const engagement=getEngagement(messageId);
-    const key=String(user.id||user.email||'');
-    const index=engagement.likedBy.indexOf(key);
-    if(index===-1){engagement.likedBy.push(key);engagement.likes+=1;}
-    else{engagement.likedBy.splice(index,1);engagement.likes=Math.max(0,engagement.likes-1);}
-    saveEngagement(messageId,engagement);
-    renderPosts();
+// The thread panel of one post: its comments (or the loading / empty note) and the input row.
+function threadMarkup(p){
+    const comments=p.comments||[];
+    return`${p.comments===null?'<div class="comments-note">Loading comments...</div>':(comments.length?'':'<div class="comments-note">No comments yet.</div>')}
+        ${comments.map(c=>`<div class="comment-item" id="cm-${c.id}">
+            <div class="comment-av" style="background:${roleColors[(c.role||'').toLowerCase()]||'#1d4ed8'}">${escHtml(c.initials||'?')}</div>
+            <div class="comment-body">
+                <div class="comment-author">${escHtml(c.author)}<span class="comment-meta">${timeAgo(c.timestamp)}</span></div>
+                <div class="comment-text">${escHtml(c.text)}</div>
+                ${userRole==='admin'?`<div class="comment-actions"><button type="button" class="comment-remove" data-action="comment-moderate" data-id="${p.id}" data-comment="${c.id}" aria-controls="cmod-${c.id}">Remove</button></div>
+                <div class="comment-moderation" id="cmod-${c.id}">
+                    <input type="text" id="cmod-reason-${c.id}" maxlength="1000" placeholder="Reason for removing this comment" aria-label="Reason for removing this comment" data-comment-reason="${c.id}"/>
+                    <button type="button" class="btn-moderation-delete" data-action="comment-delete" data-id="${p.id}" data-comment="${c.id}">Delete</button>
+                </div>`:''}
+            </div>
+        </div>`).join('')}
+        <div class="comment-input-row">
+            <input class="comment-input" id="ci-${p.id}" type="text" maxlength="500" placeholder="Write a comment..." aria-label="Write a comment" data-comment-for="${p.id}"/>
+            <button type="button" class="comment-submit" data-action="comment" data-id="${p.id}">Send</button>
+        </div>`;
 }
 
-function toggleComments(messageId){
-    const el=document.getElementById('cw-'+messageId);
-    if(el)el.classList.toggle('open');
+// Updates one post's thread, counts and buttons in place. A full renderPosts()
+// would wipe what someone is typing when comments arrive from the server.
+function renderThread(p){
+    const wrap=document.getElementById('cw-'+p.id);
+    if(!wrap)return;
+    const draft=document.getElementById('ci-'+p.id);
+    const typed=draft?draft.value:'';
+    wrap.innerHTML=threadMarkup(p);
+    wrap.classList.toggle('open',openThreads.has(p.id));
+    const input=document.getElementById('ci-'+p.id);
+    if(input&&typed)input.value=typed;
+    const btn=document.querySelector(`.post-btn[data-action="comments"][data-id="${p.id}"]`);
+    if(btn){btn.setAttribute('aria-expanded',openThreads.has(p.id)?'true':'false');btn.innerHTML=`<i class="fa fa-comment"></i> Comment${p.commentCount?` (${p.commentCount})`:''}`;}
+    const count=document.querySelector(`[data-comment-count="${p.id}"]`);
+    if(count)count.innerHTML=`<i class="fa fa-comment" style="color:var(--blue)"></i> ${p.commentCount} comments`;
+    renderTrending(posts);
 }
 
-function submitComment(messageId){
+function renderLike(p){
+    const btn=document.querySelector(`.post-btn[data-action="like"][data-id="${p.id}"]`);
+    if(btn){btn.classList.toggle('liked',p.likedByMe);btn.setAttribute('aria-pressed',p.likedByMe?'true':'false');btn.innerHTML=`<i class="fa fa-heart"></i> ${p.likedByMe?'Liked':'Like'}`;btn.disabled=false;}
+    const count=document.querySelector(`[data-like-count="${p.id}"]`);
+    if(count)count.innerHTML=`<i class="fa fa-heart" style="color:#ef4444"></i> ${p.likes} likes`;
+    renderTrending(posts);
+}
+
+async function toggleLike(messageId){
+    const post=posts.find(p=>p.id===messageId);
+    if(!post)return;
+    const btn=document.querySelector(`.post-btn[data-action="like"][data-id="${messageId}"]`);
+    if(btn)btn.disabled=true;
+    try{
+        const state=await fetchJson(`${API}/community/messages/${messageId}/like`,{method:post.likedByMe?'DELETE':'POST'});
+        post.likedByMe=state.likedByMe===true;
+        post.likes=Number(state.likeCount)||0;
+        renderLike(post);
+    }catch(error){
+        showToast(error.message,'#fef2f2','#b91c1c');
+        if(btn)btn.disabled=false;
+    }
+}
+
+async function toggleComments(messageId){
+    const post=posts.find(p=>p.id===messageId);
+    if(!post)return;
+    if(openThreads.has(messageId)){openThreads.delete(messageId);renderThread(post);return;}
+    openThreads.add(messageId);
+    renderThread(post);
+    if(post.comments===null)await loadComments(post);
+}
+
+async function loadComments(post){
+    try{
+        const page=await fetchJson(`${API}/community/messages/${post.id}/comments?page=0&size=100`);
+        post.comments=(page.content||[]).map(normalizeComment);
+        post.commentCount=Number(page.totalElements)||post.comments.length;
+    }catch(error){
+        post.comments=[];
+        showToast(error.message,'#fef2f2','#b91c1c');
+    }
+    renderThread(post);
+}
+
+async function submitComment(messageId){
+    const post=posts.find(p=>p.id===messageId);
     const inp=document.getElementById('ci-'+messageId);
-    const text=(inp.value||'').trim();if(!text)return;
-    const engagement=getEngagement(messageId);
-    engagement.comments.push({author:fullName,initials,role:userRole,text,timestamp:Date.now()});
-    saveEngagement(messageId,engagement);
-    inp.value='';
-    renderPosts();
-    const cw=document.getElementById('cw-'+messageId);
-    if(cw)cw.classList.add('open');
+    const text=(inp&&inp.value||'').trim();
+    if(!post||!text)return;
+    const btn=document.querySelector(`.comment-submit[data-id="${messageId}"]`);
+    if(btn)btn.disabled=true;
+    try{
+        const created=await fetchJson(`${API}/community/messages/${messageId}/comments`,{method:'POST',body:JSON.stringify({content:text})});
+        if(post.comments===null)post.comments=[];
+        post.comments.push(normalizeComment(created));
+        post.commentCount=post.comments.length;
+        openThreads.add(messageId);
+        if(inp)inp.value='';
+        renderThread(post);
+        const next=document.getElementById('ci-'+messageId);
+        if(next)next.focus();
+    }catch(error){
+        showToast(error.message,'#fef2f2','#b91c1c');
+        if(btn)btn.disabled=false;
+    }
+}
+
+function openCommentModeration(commentId){
+    const box=document.getElementById('cmod-'+commentId);
+    if(!box)return;
+    box.classList.toggle('open');
+    if(box.classList.contains('open'))document.getElementById('cmod-reason-'+commentId)?.focus();
+}
+
+async function confirmCommentDelete(messageId,commentId){
+    const post=posts.find(p=>p.id===messageId);
+    const reasonInput=document.getElementById('cmod-reason-'+commentId);
+    const reason=(reasonInput?.value||'').trim();
+    if(!reason){showToast('Enter a reason before removing this comment.','#fefce8','#a16207');reasonInput?.focus();return;}
+    try{
+        await fetchJson(`${API}/community/messages/${messageId}/comments/${commentId}?reason=${encodeURIComponent(reason)}`,{method:'DELETE'});
+        if(post&&post.comments){post.comments=post.comments.filter(c=>c.id!==commentId);post.commentCount=post.comments.length;renderThread(post);}
+        showToast('Comment removed and recorded in the moderation audit.');
+        loadModerationAudit();
+    }catch(error){
+        showToast(error.message,'#fef2f2','#b91c1c');
+    }
 }
 
 function openModeration(messageId){
@@ -298,7 +388,7 @@ async function confirmModerationDelete(messageId){
     try{
         await fetchJson(`${API}/community/messages/${messageId}?reason=${encodeURIComponent(reason)}`,{method:'DELETE'});
         posts=posts.filter(post=>post.id!==messageId);
-        removeEngagement(messageId);
+        openThreads.delete(messageId);
         renderPosts();
         updateFeedActions();
         showToast('Message deleted and recorded in the moderation audit.');
@@ -333,22 +423,18 @@ async function submitPost(){
 }
 
 function renderTrending(posts){
-    const trending=[...posts].sort((a,b)=>{
-        const aEngagement=getEngagement(a.id),bEngagement=getEngagement(b.id);
-        return(bEngagement.likes+bEngagement.comments.length)-(aEngagement.likes+aEngagement.comments.length);
-    }).slice(0,5);
+    const trending=[...posts].sort((a,b)=>(b.likes+b.commentCount)-(a.likes+a.commentCount)).slice(0,5);
     const el=document.getElementById('trendingList');
     if(!trending.length){el.innerHTML='<div style="padding:14px 18px;font-size:13px;color:var(--muted)">No posts yet.</div>';return;}
     el.innerHTML=trending.map(p=>{
         const cat=p.category||'UPDATE';
         const cm=catMeta[cat]||catMeta['UPDATE'];
-        const engagement=getEngagement(p.id);
         return`<div class="trending-item" role="button" tabindex="0" data-action="scroll-to" data-id="${p.id}">
             <div class="trending-title">${escHtml(p.text).slice(0,70)}${p.text.length>70?'…':''}</div>
             <div class="trending-meta">
                 <span style="color:${cm.color}">${cm.label}</span>
-                <span><i class="fa fa-heart" style="color:#ef4444"></i> ${engagement.likes}</span>
-                <span><i class="fa fa-comment" style="color:var(--blue)"></i> ${engagement.comments.length}</span>
+                <span><i class="fa fa-heart" style="color:#ef4444"></i> ${p.likes}</span>
+                <span><i class="fa fa-comment" style="color:var(--blue)"></i> ${p.commentCount}</span>
             </div>
         </div>`;
     }).join('');
@@ -382,7 +468,7 @@ async function loadModerationAudit(){
             const deletedAt=item.deletedAt?new Date(item.deletedAt).toLocaleString():'Unknown time';
             const snapshot=String(item.originalContent||'');
             return`<div class="audit-item">
-                <div class="audit-meta">${escHtml(item.originalAuthorName)} · ${escHtml(deletedAt)}</div>
+                <div class="audit-meta">${escHtml(item.originalAuthorName)} · ${escHtml(deletedAt)}${item.commentId!=null?' · comment':''}</div>
                 <div class="audit-reason">${escHtml(item.reason)}</div>
                 <div class="audit-snapshot">${escHtml(snapshot.slice(0,100))}${snapshot.length>100?'…':''}</div>
                 <div class="audit-meta" style="margin-top:5px">Removed by ${escHtml(item.deletedByAdminName)}</div>
@@ -496,10 +582,17 @@ wireEvent('postsList', 'click', (event) => {
         case 'comment':           submitComment(id); break;
         case 'moderation-cancel': closeModeration(id); break;
         case 'moderation-delete': confirmModerationDelete(id); break;
+        case 'comment-moderate':  openCommentModeration(Number(btn.dataset.comment)); break;
+        case 'comment-delete':    confirmCommentDelete(id, Number(btn.dataset.comment)); break;
     }
 });
 wireEvent('postsList', 'keydown', (event) => {
     if (event.key === 'Enter' && event.target.matches('input[data-comment-for]')) submitComment(Number(event.target.dataset.commentFor));
+    if (event.key === 'Enter' && event.target.matches('input[data-comment-reason]')) {
+        const box = event.target.closest('.comment-moderation');
+        const del = box && box.querySelector('[data-action="comment-delete"]');
+        if (del) confirmCommentDelete(Number(del.dataset.id), Number(del.dataset.comment));
+    }
 });
 wireEvent('postsList', 'input', (event) => {
     if (event.target.matches('textarea[data-moderation-for]')) clearModerationError(Number(event.target.dataset.moderationFor));

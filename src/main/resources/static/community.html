@@ -65,7 +65,7 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 .post-actions{display:flex;gap:6px;flex-wrap:wrap}
 .post-btn{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 13px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:5px}
 .post-btn:hover{border-color:var(--blue);color:var(--blue);background:#eff6ff}
-.post-btn.liked{color:#ef4444;border-color:#fca5a5;background:#fef2f2}
+.post-btn.liked{color:#b91c1c;border-color:#fca5a5;background:#fef2f2}   /* CM-1: #ef4444 on this background was 3.2:1; a liked state is now really rendered */
 .post-btn.danger:hover{border-color:#fca5a5;color:#ef4444;background:#fef2f2}
 .moderation-box{display:none;margin-top:12px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px}
 .moderation-box.open{display:block}
@@ -95,6 +95,17 @@ body{font-family:'Inter',sans-serif;color:var(--dark);background:var(--bg);displ
 .comment-input{flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
 .comment-input:focus{border-color:var(--blue)}
 .comment-submit{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+/* CM-1: comments come from the server; a moderator may remove one with a reason */
+.comment-meta{font-size:11px;color:var(--muted);margin-left:6px;font-weight:400}
+.comment-actions{margin-top:4px}
+.comment-remove{background:none;border:none;padding:0;font:600 11px 'Inter',sans-serif;color:#b91c1c;cursor:pointer}
+.comment-remove:hover{text-decoration:underline}
+.comment-moderation{display:none;gap:6px;margin-top:6px}
+.comment-moderation.open{display:flex}
+.comment-moderation input{flex:1;padding:6px 10px;border:1.5px solid #fed7aa;border-radius:7px;font-size:12px;font-family:inherit;outline:none}
+.comment-moderation input:focus{border-color:#b91c1c}
+.comment-moderation .btn-moderation-delete{padding:6px 10px}
+.comments-note{font-size:12px;color:var(--muted);padding:4px 0 8px}
 
 /* Empty */
 .empty-feed{text-align:center;padding:48px 20px;color:var(--muted)}

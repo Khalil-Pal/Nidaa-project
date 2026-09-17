@@ -15,6 +15,8 @@ public class MessageDeletionResponse {
 
     private Long id;
     private Long messageId;
+    // set when the removed item was a comment on that message (CM-1); null for a post
+    private Long commentId;
     private Long originalAuthorId;
     private String originalAuthorName;
     private Long deletedByAdminId;

@@ -29,6 +29,10 @@ public class MessageDeletion {
     @Column(name = "message_id", nullable = false)
     private Long messageId;
 
+    // Set when the moderated item is a comment on that message (CM-1, V21); NULL for a removed post.
+    @Column(name = "comment_id")
+    private Long commentId;
+
     @Column(name = "deleted_by_admin_id", nullable = false)
     private Long deletedByAdminId;
 

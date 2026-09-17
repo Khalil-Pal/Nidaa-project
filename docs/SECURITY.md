@@ -86,6 +86,7 @@ Authorization is layered so that forgetting one layer fails closed rather than o
 | Contact reveal | Beneficiary and filer see the assigned provider; the provider sees the beneficiary; an anonymous psychological request never reveals identity to anyone. | `ContactInfoService` |
 | Consultation records | `notes_for_psychologist` is returned only to the assigned psychologist; every other response, the administrator's included, is built without it and the key is absent from the JSON. No consultation response or notification carries the beneficiary's id or name, so an anonymous case stays anonymous when the beneficiary rates it. Non-parties get **404**. | `ConsultationService` (CS-1) |
 | Conflict of interest | A provider cannot accept a request they filed on someone's behalf, manually or through automatic matching. | `HelpRequestService.assignToMe()`, `AutomaticAssignmentService` (ON-1) |
+| Community engagement | Likes and comments use the feed's role gate (`CommunityRules`); a like is one row per (post, user) by primary key; removing a comment is admin-only, needs a reason, keeps the row soft-deleted, writes the same `message_deletions` audit row as a removed post (`comment_id` set) and tells the author the reason, not the moderator's name. | `CommunityEngagementService` (CM-1) |
 | Self-registration whitelist | `ADMIN` cannot be self-registered; the first administrator is inserted directly in the database. | `AuthService.register()` (S-1), `database/migrations/README.md` |
 
 Status-code contract: **401** means no valid token (missing, malformed, expired,

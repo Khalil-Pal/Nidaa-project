@@ -3,18 +3,16 @@ package com.humanitarian.platform.service;
 import com.humanitarian.platform.dto.MessageDeletionResponse;
 import com.humanitarian.platform.dto.MessageDto;
 import com.humanitarian.platform.dto.MessageResponse;
-import com.humanitarian.platform.exception.BusinessException;
 import com.humanitarian.platform.exception.ResourceNotFoundException;
-import com.humanitarian.platform.exception.UnauthorizedException;
 import com.humanitarian.platform.model.Message;
 import com.humanitarian.platform.model.MessageDeletion;
 import com.humanitarian.platform.model.MessageType;
 import com.humanitarian.platform.model.User;
-import com.humanitarian.platform.model.UserRole;
 import com.humanitarian.platform.repository.MessageDeletionRepository;
 import com.humanitarian.platform.repository.MessageRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.util.CommunityCategoryNormalizer;
+import com.humanitarian.platform.util.CommunityRules;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -30,29 +28,25 @@ import java.util.stream.Collectors;
 @Service
 public class MessageService {
 
-    private static final Set<UserRole> COMMUNITY_ROLES = Set.of(
-            UserRole.VOLUNTEER,
-            UserRole.PSYCHOLOGIST,
-            UserRole.ORGANIZATION,
-            UserRole.ADMIN
-    );
-
     private final MessageRepository messageRepository;
     private final MessageDeletionRepository messageDeletionRepository;
     private final UserRepository userRepository;
     private final UserService userService;
     private final NotificationService notifications;
+    private final CommunityEngagementService engagement;
 
     public MessageService(MessageRepository messageRepository,
                           MessageDeletionRepository messageDeletionRepository,
                           UserRepository userRepository,
                           UserService userService,
-                          NotificationService notifications) {
+                          NotificationService notifications,
+                          CommunityEngagementService engagement) {
         this.messageRepository = messageRepository;
         this.messageDeletionRepository = messageDeletionRepository;
         this.userRepository = userRepository;
         this.userService = userService;
         this.notifications = notifications;
+        this.engagement = engagement;
     }
 
     @Transactional
@@ -73,21 +67,26 @@ public class MessageService {
                 .isDeleted(false)
                 .build();
 
-        return toMessageResponse(messageRepository.save(message), author);
+        // a new post has no likes or comments yet
+        return toMessageResponse(messageRepository.save(message), author, CommunityEngagementService.Engagement.NONE);
     }
 
     @Transactional(readOnly = true)
     public Page<MessageResponse> listMessages(int page, int size) {
-        requireCommunityUser();
+        User viewer = requireCommunityUser();
         PageRequest pageable = pageRequest(page, size);
         Page<Message> result = messageRepository.findVisibleCommunityMessages(pageable);
         Map<Long, User> authors = usersById(result.getContent().stream()
                 .map(Message::getSenderId)
                 .collect(Collectors.toSet()));
+        // CM-1: likes, comments and the viewer's own like for the whole page in three queries
+        Map<Long, CommunityEngagementService.Engagement> counts = engagement.summarize(
+                result.getContent().stream().map(Message::getId).toList(), viewer.getId());
 
         List<MessageResponse> visibleMessages = result.getContent().stream()
                 .filter(this::isVisibleCommunityMessage)
-                .map(message -> toMessageResponse(message, authors.get(message.getSenderId())))
+                .map(message -> toMessageResponse(message, authors.get(message.getSenderId()),
+                        counts.getOrDefault(message.getId(), CommunityEngagementService.Engagement.NONE)))
                 .toList();
 
         long excludedCount = result.getNumberOfElements() - visibleMessages.size();
@@ -141,49 +140,25 @@ public class MessageService {
                 users.get(deletion.getDeletedByAdminId())));
     }
 
+    // The rules are shared with comments and likes (CommunityRules, CM-1)
     private User requireCommunityUser() {
-        User currentUser = userService.getCurrentUser();
-        if (currentUser.getRole() == null || !COMMUNITY_ROLES.contains(currentUser.getRole())) {
-            throw new UnauthorizedException(
-                    "Only volunteers, psychologists, organizations, and administrators " +
-                            "can access the community feed.");
-        }
-        return currentUser;
+        return CommunityRules.requireCommunityRole(userService.getCurrentUser());
     }
 
     private User requireAdmin() {
-        User currentUser = userService.getCurrentUser();
-        if (currentUser.getRole() != UserRole.ADMIN) {
-            throw new UnauthorizedException("Only administrators can moderate community messages.");
-        }
-        return currentUser;
+        return CommunityRules.requireAdmin(userService.getCurrentUser());
     }
 
     private String requireContent(String content) {
-        if (content == null || content.isBlank()) {
-            throw new BusinessException("Message content is required.");
-        }
-        String normalized = content.trim();
-        if (normalized.length() > 1000) {
-            throw new BusinessException("Message content must not exceed 1000 characters.");
-        }
-        return normalized;
+        return CommunityRules.requireContent(content, "Message");
     }
 
     private String requireDeletionReason(String reason) {
-        if (reason == null || reason.isBlank()) {
-            throw new BusinessException("A deletion reason is required.");
-        }
-        return reason.trim();
+        return CommunityRules.requireDeletionReason(reason);
     }
 
     private PageRequest pageRequest(int page, int size) {
-        if (page < 0) {
-            throw new BusinessException("Page number must be zero or greater.");
-        }
-        if (size < 1 || size > 100) {
-            throw new BusinessException("Page size must be between 1 and 100.");
-        }
+        CommunityRules.requirePage(page, size);
         return PageRequest.of(page, size);
     }
 
@@ -197,7 +172,8 @@ public class MessageService {
                 .collect(Collectors.toMap(User::getId, Function.identity()));
     }
 
-    private MessageResponse toMessageResponse(Message message, User author) {
+    private MessageResponse toMessageResponse(Message message, User author,
+                                              CommunityEngagementService.Engagement counts) {
         return MessageResponse.builder()
                 .id(message.getId())
                 .authorId(message.getSenderId())
@@ -206,6 +182,9 @@ public class MessageService {
                 .content(message.getContent())
                 .communityCategory(message.getCommunityCategory())
                 .sentAt(message.getSentAt())
+                .likeCount(counts.likes())
+                .commentCount(counts.comments())
+                .likedByMe(counts.likedByMe())
                 .build();
     }
 
@@ -215,6 +194,7 @@ public class MessageService {
         return MessageDeletionResponse.builder()
                 .id(deletion.getId())
                 .messageId(deletion.getMessageId())
+                .commentId(deletion.getCommentId())
                 .originalAuthorId(deletion.getOriginalAuthorId())
                 .originalAuthorName(
                         originalAuthor == null ? "Unknown user" : originalAuthor.getFullName())
