@@ -24,7 +24,7 @@ carried forward from Gate 4 as a Gate 7 blocker and was not attempted here.
 |---|---|---|
 | Every migration applies to an empty database in order | PASS | `fresh-db.sh nidaa_gate`: `flyway:migrate` applied V1…V21 (20 files); `flyway_schema_history` lists exactly `1 2 3 4 5 6 7 8 9 10 11 13 14 15 16 17 18 19 20 21`, no failed rows. V20 and V21 are the migrations of this phase (CS-1, CM-1) |
 | Re-running is a no-op by exit code | PASS | second `flyway:migrate`: exit 0; `flyway:info` shows every version `Success`, nothing pending |
-| Migrations also work on a baselined database | PASS | `nidaa_test` (`18:BASELINE, 19, 20, 21`) received V20 and V21 through the persistence tests' Flyway; `Web_DB`, the owner's dev database, shows `18:BASELINE, 19:SQL, 20:SQL, 21:SQL` (the app was started against it during the phase, not by the gate). Each new file was also re-applied by hand with `psql -f` on a database that already had it: exit 0, NOTICE lines only |
+| Migrations also work on a baselined database | PASS | `nidaa_test` (`18:BASELINE, 19, 20, 21`) received V20 and V21 through the persistence tests' Flyway; `Web_DB`, the owner's dev database, shows `18:BASELINE, 19:SQL, 20:SQL, 21:SQL` (the app was started against it during the phase, not by the gate). *Owner's note after the gate: `Web_DB` migrating to V21 on application start-up is Flyway working as intended — the migrations are meant to run at start-up — and it proved V20 and V21 against a database with real accumulated data, a stronger test than a fresh one.* Each new file was also re-applied by hand with `psql -f` on a database that already had it: exit 0, NOTICE lines only |
 | App starts against the fresh database | PASS | `Started PlatformApplication in 11.0 seconds` with `DB_URL=…/nidaa_gate`, `Schema "public" is up to date` |
 | Smoke path register → verify → login → submit → accept → complete | PASS | `acceptance.sh` G2 block: beneficiary registered, code read from `pending_registrations`, verified; volunteer pending until admin approval, then logged in; request A submitted, accepted, completed with `completed_at`; psychologist approved and logged in |
 | App fails loudly without required variables | PASS | `.env` moved out of the repository, `JWT_SECRET` unset, `SERVER_PORT=8090`: exit code 1, 0 `Started` lines, `Could not resolve placeholder 'JWT_SECRET'`; `.env` restored, same three keys |
@@ -76,7 +76,8 @@ carried forward from Gate 4 as a Gate 7 blocker and was not attempted here.
      V20) because the endpoints are addressed by request id; a `GET` exists; the
      administrator reads the record minus the private note (key omitted, never
      null); no consultation response or notification carries a beneficiary id or
-     name; `chat_session_id` stays unused.
+     name; `chat_session_id` stays unused. *Overturned by the owner after the
+     gate (see the decisions below): one record per session, V22.*
    - W-1: `IN_PROGRESS` for help requests only. The shared `RequestTransitions`
      allows it, but the psychologist and admin targets on psychological cases
      deliberately leave it out, for a reason in the domain rather than in the
@@ -91,7 +92,9 @@ carried forward from Gate 4 as a Gate 7 blocker and was not attempted here.
      who could already learn it (the beneficiary, the filer, the assigned
      provider, an admin — the `canView` rule); a provider browsing the open list
      sees that a request was filed for someone, not for whom. The filer's own card
-     offers the responder's contact and none of the deliverer's controls.
+     offers the responder's contact and none of the deliverer's controls. *Kept
+     by the owner after the gate; now one application of the identity rule in
+     `SECURITY.md` 3.2.*
    - CM-1: like and unlike are idempotent and answer with the post's state; the
      (post, user) pair is the primary key (the UNIQUE the plan asks for); a
      removed comment gets a `message_deletions` row with `comment_id`; the shared
@@ -121,6 +124,40 @@ carried forward from Gate 4 as a Gate 7 blocker and was not attempted here.
    been run on any machine — Gate 7 blocker per the owner's decision after Gate 4.
    DM-1 not started (on hold).
 
+**Owner's decisions after this gate** (17 September 2026), each applied in its own
+commit:
+
+1. **CS-1 — overturned.** The one-per-case constraint is dropped (V22). One session
+   per case broke continuity of care: a second session meant a new request, which
+   re-queues and may route to a different psychologist, and the table already
+   carries per-session fields (`started_at`, `ended_at`, `duration_minutes`), so the
+   constraint contradicted its own schema. `GET` returns a list; the case stays
+   `ASSIGNED` until the psychologist completes it; every privacy rule stays as built
+   (`notes_for_psychologist` private, no beneficiary identity in any response or
+   notification). Commit `4e257d0`.
+2. **W-1 — kept as built, justification rewritten** (item 1 above, the code comment,
+   the backend guide, the handoff). The reason is in the domain, not the
+   implementation: material aid has a delivery journey worth reporting; the span
+   between assignment and completion of psychological support *is* the support.
+   Commit `bc875d0`.
+3. **ON-2 — kept as built.** `SECURITY.md` now states one principle, "Identity is
+   revealed on assignment, everywhere", which covers contact reveal, the on-behalf
+   badge and anonymous psychological requests and replaces the three separately
+   stated rules. Commit `fcd33bf`.
+4. **`locations` — neither seeded nor dropped.** EV-1 generates its own data and
+   `DataSeeder` already produces geographic clusters; regional fairness comes from
+   those. Written up in `FUTURE_WORK.md` as the third unwired pipeline, noting that
+   `population_estimate` would enable per-capita fairness if EV-2 ever happens.
+   Commit `c5e95b3`.
+5. **DM-1 — cancelled**, moved to `FUTURE_WORK.md` permanently: the only task that
+   opens a new surface rather than completing one, it carries moderation
+   obligations, and it adds nothing to a thesis about distribution algorithms.
+   Same commit.
+6. **Phase 6 approved**: EV-1 first, UT-1 in parallel; EV-1 is mandatory, being the
+   comparative-analysis chapter the thesis title promises (seeded repetitions,
+   means with standard deviations, an honest trade-off, threats to validity named);
+   EV-2 still only after asking.
+
 **Security-relevant changes:** all in `docs/SECURITY.md` — §3.2 rows for notifications
 (N-1), consultation records (CS-1), status transitions with `IN_PROGRESS` (W-1),
 community engagement (CM-1); §3.4 row for the on-behalf name scoping (ON-2).
@@ -141,4 +178,5 @@ every browser and a moderator can remove a comment with an audited reason. The
 schema grew by one link, one uniqueness rule, two tables and one audit column, and no
 trigger. 365 tests, 211 API checks, 71 browser checks, 18 pages at 0 accessibility
 violations, 15 invariants at zero on both databases. Outstanding at sign-off: the
-Docker run (Gate 7), DM-1 (on hold), and the owner's call on `locations`.
+Docker run (Gate 7), DM-1 (on hold), and the owner's call on `locations`. *After
+the gate: DM-1 cancelled and `locations` decided (above); the Docker run remains.*
