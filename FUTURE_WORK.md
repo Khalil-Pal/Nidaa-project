@@ -2,9 +2,40 @@
 
 Ideas and follow-ups that surfaced during the audit remediation but were not part of
 the agreed scope. Each entry says what it would do and why it was deferred, so that
-"not done" reads as "planned". The two unwired pipelines named in the roadmap
-(group sessions, self-help materials and request media) are added here after
-Phase 5.
+"not done" reads as "planned".
+
+## The two unwired pipelines (deliberate future scope)
+
+After Phase 5 every other table drives a feature: notifications (N-1), reports
+(R-1), consultations (CS-1), the provider counters (AGG-1), the `IN_PROGRESS`
+state (W-1), on-behalf filing in the UI (ON-2) and server-backed likes and
+comments (CM-1). Exactly two pipelines remain unwired. Their tables, enums,
+entities and repositories exist from V1 and are left in place on purpose; no
+endpoint reads or writes them, and no page mentions them.
+
+- **Group sessions** — `group_sessions` and `group_participants` (entities
+  `GroupSession`, `GroupParticipant`, `GroupSessionRepository`). A verified
+  psychologist would schedule a session on a category (`psychological_category`,
+  a `consultation_format`, `max_participants`, `scheduled_at`, an optional
+  recurrence), beneficiaries would join until it is full, attendance would be
+  recorded and each participant could leave a rating, feeding
+  `psychologists.consultation_count` the way CS-1 does for one-to-one cases. It
+  is deferred because it needs a scheduling and a joining flow, capacity
+  handling for seats (the pattern exists in `assignments`), and a decision on
+  how anonymous beneficiaries appear to each other in a group.
+- **Self-help materials and request media** — `self_help_materials`
+  (`SelfHelpMaterial`, `SelfHelpMaterialRepository`; `material_type` ARTICLE,
+  VIDEO, AUDIO, INSTRUCTION; `content_url`, `thumbnail_url`, `tags`, view and
+  helpful counts, `is_published`) and `request_media` (`RequestMedia`,
+  `RequestMediaRepository`; a file attached to a help request). Materials would
+  be a library a psychologist publishes and a beneficiary browses by category,
+  with a "this helped" counter; request media would let a beneficiary attach a
+  photo of what they need and a volunteer attach one of what was delivered
+  (`reports.photos` waits on the same thing). Both are deferred for one reason:
+  file storage and serving is its own security surface — upload limits, MIME
+  and content sniffing, virus scanning, private storage, signed URLs — and the
+  platform has no such component; hosting only URLs to material stored elsewhere
+  would be a smaller first step for the library.
 
 ## Security
 
@@ -40,6 +71,17 @@ Phase 5.
   is mapped as `TEXT`. Only NULL round-trips today (V16 made the column nullable,
   approval leaves it NULL). Any screen that lets a psychologist record
   specialisations needs the entity changed to a list of the enum first. Found during A-2.
+
+- **`locations` is an unused gazetteer table.** It has a primary key and a city
+  index and nothing else: no foreign key points at it, no entity or service
+  reads it (`LocationRepository` has no caller), and requests carry their own
+  coordinates and address. It is not a pipeline — no feature flow sits behind
+  it — but it is a table nothing drives. `RequestRegionResolver` derives a
+  region from a one-degree coordinate band or the last part of the address;
+  seeding `locations` with regions and resolving against it would make the
+  fairness metric (EV-1) use real administrative regions. Otherwise a later
+  migration can drop it. Owner's call; found while writing up the unwired
+  pipelines after Phase 5.
 
 - **A lifecycle CHECK on `assignments`.** ADR 005 fixes that only CANCELLED
   restores capacity. The database does not enforce it: a constraint
