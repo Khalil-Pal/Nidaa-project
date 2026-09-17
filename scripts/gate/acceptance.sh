@@ -301,11 +301,13 @@ ALT_IP=$(echo "$BASE_ALT" | sed -E 's#https?://([^:/]+).*#\1#')
 # 80 calls: the bucket holds 50 and refills greedily at 50/minute, so a burst
 # that takes a few seconds earns a handful back before it is exhausted.
 echo "  ..    S-9    80 rapid auth calls from source $ALT_IP (limit set to 50 for this run)"
-last=""; first429=""; for i in $(seq 1 80); do last=$(code --interface "$ALT_IP" -X POST "$BASE_ALT/api/auth/login" -H 'Content-Type: application/json' -d '{"email":"burst@example.test","password":"x"}'); [ -z "$first429" ] && [ "$last" = "429" ] && first429=$i; done
+# Retry-After is read off the burst's own first 429: a separate probe after the burst can land on a
+# token the bucket earned back in the meantime and answer 400/401 with no header (seen once).
+last=""; first429=""; retry_after=""; for i in $(seq 1 80); do h=$(curl -s --interface "$ALT_IP" -D - -o /dev/null -X POST "$BASE_ALT/api/auth/login" -H 'Content-Type: application/json' -d '{"email":"burst@example.test","password":"x"}'); last=$(echo "$h" | head -1 | awk '{print $2}'); [ -z "$first429" ] && [ "$last" = "429" ] && { first429=$i; retry_after=$(echo "$h" | grep -ci 'retry-after'); }; done
 # a token bucket keeps refilling during the burst, so later calls may pass again;
 # the criterion is that the limiter engaged once the 50-token budget was spent
 check "S-9" "limiter engaged during the burst (first 429 at call #${first429:-none}, last=$last)" "$([ -n "$first429" ] && echo engaged)" "engaged"
-check "S-9" "Retry-After present" "$(curl -s --interface "$ALT_IP" -D - -o /dev/null -X POST "$BASE_ALT/api/auth/login" -H 'Content-Type: application/json' -d '{"email":"burst@example.test","password":"x"}' | grep -ci 'retry-after')" "1"
+check "S-9" "Retry-After present on the first 429" "${retry_after:-0}" "1"
 check "S-9" "primary address still served" "$(code "$BASE/api/dashboard/public-stats")" "200"
 
 echo "== T-2 =="
