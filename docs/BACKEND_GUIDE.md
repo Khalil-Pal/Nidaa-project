@@ -114,6 +114,20 @@ Assignment history records material and psychological assignment events so admin
 analytics can measure waiting time, utilization, regional fairness, and strategy
 outcomes.
 
+The four matching strategies (`service.matching`: FIFO, weighted scoring,
+geo-nearest, multi-objective) are compared two ways. `MatchingEvaluationService`
+ranks the current pending queue and reports what each strategy would do with it
+now (`GET /api/v1/admin/evaluation`). The study in
+[`docs/evaluation/EV-1-matching-study.md`](evaluation/EV-1-matching-study.md)
+(EV-1) runs the same classes in a discrete-event simulation over 72 hours of
+arrivals and deliveries, across load and provider density, and reports means and
+standard deviations over seeded repetitions. The simulation code is
+`com.humanitarian.platform.evaluation`; it needs no database, and
+`SyntheticDataGenerator` is the same generator that produces the dev profile's
+sample requests (`DataSeeder`). `PriorityScoreService` takes a `Clock` so the
+priority model ages requests in simulated time; the application uses the system
+clock.
+
 V7 enforces the assignment shape directly in PostgreSQL:
 
 - `HELP_REQUEST` has exactly one of `volunteer_id` or `organization_id`, and no

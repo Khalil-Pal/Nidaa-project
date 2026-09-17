@@ -1,5 +1,7 @@
 package com.humanitarian.platform.config;
 
+import com.humanitarian.platform.evaluation.DatasetSpec;
+import com.humanitarian.platform.evaluation.SyntheticDataGenerator;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.UserRole;
@@ -13,26 +15,25 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
+/**
+ * Dev-profile sample data: 500 pending requests over the last week, spread over
+ * three cities with the plan's urgency weighting, from a fixed seed. The
+ * generation itself lives in {@link SyntheticDataGenerator}, which the matching
+ * study (EV-1) parameterises for its own datasets; {@link DatasetSpec#demo} is
+ * this seeder's preset.
+ */
 @Component
 @Profile("dev")
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
-    private static final String[] TYPES = {"MEDICAL", "FOOD", "SHELTER", "WATER", "CLOTHING"};
-    private static final double[][] CLUSTERS = {
-            {55.75, 37.62},
-            {59.93, 30.32},
-            {56.85, 60.61}
-    };
-
     private final HelpRequestRepository helpRequestRepository;
     private final UserRepository userRepository;
     private final PriorityScoreService priorityScoreService;
+    private final SyntheticDataGenerator generator = new SyntheticDataGenerator();
 
     public DataSeeder(HelpRequestRepository helpRequestRepository,
                       UserRepository userRepository,
@@ -59,48 +60,10 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        Random random = new Random(42);
-        List<HelpRequest> requests = new ArrayList<>();
-
-        for (int i = 0; i < 500; i++) {
-            double[] cluster = CLUSTERS[random.nextInt(CLUSTERS.length)];
-            String urgency = weightedUrgency(random);
-
-            HelpRequest request = HelpRequest.builder()
-                    .beneficiaryId(beneficiaryId)
-                    .title("Seeded " + urgency.toLowerCase() + " request #" + i)
-                    .helpType(TYPES[random.nextInt(TYPES.length)])
-                    .urgencyLevel(urgency)
-                    .description("Seeded request #" + i)
-                    .peopleCount(random.nextInt(10) + 1)
-                    .hasChildren(random.nextFloat() < 0.30f)
-                    .hasElderly(random.nextFloat() < 0.20f)
-                    .hasDisabled(random.nextFloat() < 0.15f)
-                    .latitude(cluster[0] + (random.nextDouble() - 0.5) * 0.5)
-                    .longitude(cluster[1] + (random.nextDouble() - 0.5) * 0.5)
-                    .status("PENDING")
-                    .createdAt(LocalDateTime.now().minusHours(random.nextInt(168)))
-                    .build();
-
-            request.setPriorityScore(priorityScoreService.calculate(request));
-            requests.add(request);
-        }
+        List<HelpRequest> requests = generator.requests(DatasetSpec.demo(42, LocalDateTime.now()), beneficiaryId);
+        requests.forEach(request -> request.setPriorityScore(priorityScoreService.calculate(request)));
 
         helpRequestRepository.saveAll(requests);
         log.info("Inserted {} sample help requests.", requests.size());
-    }
-
-    private String weightedUrgency(Random random) {
-        int value = random.nextInt(100);
-        if (value < 10) {
-            return "CRITICAL";
-        }
-        if (value < 35) {
-            return "HIGH";
-        }
-        if (value < 75) {
-            return "MEDIUM";
-        }
-        return "LOW";
     }
 }

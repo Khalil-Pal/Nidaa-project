@@ -6,6 +6,7 @@ import com.humanitarian.platform.model.Profile;
 import com.humanitarian.platform.model.User;
 import com.humanitarian.platform.model.Volunteer;
 import com.humanitarian.platform.service.matching.FifoMatchingStrategy;
+import com.humanitarian.platform.service.matching.GeoNearestStrategy;
 import com.humanitarian.platform.service.matching.OptimizedMatchingStrategy;
 import com.humanitarian.platform.service.matching.WeightedScoringStrategy;
 import org.junit.jupiter.api.Test;
@@ -24,10 +25,11 @@ class MatchingEvaluationServiceTest {
     private final RequestRegionResolver regionResolver = new RequestRegionResolver();
     private final MatchingEvaluationService service = new MatchingEvaluationService(
             List.of(
-                    new FifoMatchingStrategy(),
-                    new WeightedScoringStrategy(priorityScoreService),
                     new OptimizedMatchingStrategy(
-                            priorityScoreService, geoMatchingService, regionResolver)),
+                            priorityScoreService, geoMatchingService, regionResolver),
+                    new GeoNearestStrategy(geoMatchingService),
+                    new FifoMatchingStrategy(),
+                    new WeightedScoringStrategy(priorityScoreService)),
             regionResolver,
             geoMatchingService);
 
@@ -60,8 +62,8 @@ class MatchingEvaluationServiceTest {
 
         Map<String, Object> comparison =
                 (Map<String, Object>) result.get("strategyComparison");
-        assertEquals(List.of("FIFO", "WEIGHTED_SCORING", "MULTI_OBJECTIVE_OPTIMIZATION"),
-                comparison.keySet().stream().toList());
+        assertEquals(List.of("FIFO", "WEIGHTED_SCORING", "GEO_NEAREST", "MULTI_OBJECTIVE_OPTIMIZATION"),
+                comparison.keySet().stream().toList(), "a fixed order whatever the bean order");
 
         Map<String, Object> fifo = (Map<String, Object>) comparison.get("FIFO");
         Map<String, Object> weighted =

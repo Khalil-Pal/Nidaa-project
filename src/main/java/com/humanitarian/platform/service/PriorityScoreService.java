@@ -4,6 +4,7 @@ import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -15,12 +16,27 @@ import java.time.temporal.ChronoUnit;
  * The result is always within priority_score_range CHECK (0..100). Aging is
  * capped so a long-waiting LOW request rises in the queue without ever
  * outranking a fresh CRITICAL one on waiting time alone.
+ *
+ * Aging reads "now" from a {@link Clock}. The application uses the system
+ * clock (the constructor Spring picks); the matching study (EV-1) builds its
+ * own instance on a simulated clock so the same model ages requests in
+ * simulated time.
  */
 @Service
 public class PriorityScoreService {
 
     public static final int MAX_SCORE = 100;
     public static final int MAX_AGING_BONUS = 20;
+
+    private final Clock clock;
+
+    public PriorityScoreService() {
+        this(Clock.systemDefaultZone());
+    }
+
+    public PriorityScoreService(Clock clock) {
+        this.clock = clock;
+    }
 
     public int calculate(HelpRequest request) {
         int score = urgencyScore(request.getUrgencyLevel());
@@ -69,7 +85,7 @@ public class PriorityScoreService {
             return 0;
         }
 
-        long hours = ChronoUnit.HOURS.between(createdAt, LocalDateTime.now());
+        long hours = ChronoUnit.HOURS.between(createdAt, LocalDateTime.now(clock));
         return (int) Math.min(Math.max(hours, 0) * 0.5, MAX_AGING_BONUS);
     }
 

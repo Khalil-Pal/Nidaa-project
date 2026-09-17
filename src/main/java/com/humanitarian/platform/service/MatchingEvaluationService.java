@@ -283,7 +283,8 @@ public class MatchingEvaluationService {
         return switch (strategy.getName()) {
             case "FIFO" -> 0;
             case "WEIGHTED_SCORING" -> 1;
-            default -> 2;
+            case "GEO_NEAREST" -> 2;
+            default -> 3;
         };
     }
 

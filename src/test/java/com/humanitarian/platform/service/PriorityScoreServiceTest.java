@@ -1,5 +1,6 @@
 package com.humanitarian.platform.service;
 
+import com.humanitarian.platform.evaluation.SimulationClock;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.model.PsychologicalRequest;
 import org.junit.jupiter.api.Test;
@@ -141,5 +142,23 @@ class PriorityScoreServiceTest {
 
         assertEquals(PriorityScoreService.MAX_SCORE, service.calculate(worstCase));   // 115 before clamping
         assertTrue(service.calculate(worstPsych) <= PriorityScoreService.MAX_SCORE);
+    }
+
+    /** EV-1: the aging term reads the injected clock, so a simulation can age requests in its own time. */
+    @Test
+    void agingFollowsTheInjectedClock() {
+        LocalDateTime created = LocalDateTime.of(2026, 1, 1, 0, 0);
+        HelpRequest low = HelpRequest.builder().urgencyLevel("LOW").peopleCount(1).createdAt(created).build();
+        SimulationClock clock = new SimulationClock(created);
+
+        PriorityScoreService simulated = new PriorityScoreService(clock);
+        assertEquals(12, simulated.calculate(low), "no aging at the moment of creation");
+        clock.set(created.plusHours(10));
+        assertEquals(12 + 5, simulated.calculate(low), "half a point per simulated hour");
+        clock.set(created.plusHours(100));
+        assertEquals(12 + PriorityScoreService.MAX_AGING_BONUS, simulated.calculate(low), "capped");
+
+        // the no-arg service ages by the wall clock: the same request is fully aged by now
+        assertEquals(12 + PriorityScoreService.MAX_AGING_BONUS, service.calculate(low));
     }
 }

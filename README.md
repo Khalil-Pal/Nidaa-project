@@ -132,15 +132,18 @@ Crisis psychological requests are routed separately. The system considers verifi
 
 ## Matching Strategy Evaluation
 
-The administrator evaluation endpoint simulates three approaches over current pending requests and available volunteers:
+The administrator evaluation endpoint simulates four approaches over current pending requests and available volunteers:
 
 | Strategy | Behavior |
 |---|---|
 | `FIFO` | Processes requests in creation order. |
 | `WEIGHTED_SCORING` | Processes requests using the weighted priority score. |
+| `GEO_NEAREST` | Processes the request closest to an available provider first. |
 | `MULTI_OBJECTIVE_OPTIMIZATION` | Combines priority, urgency, geographic distance, and regional distribution. |
 
 The simulation does not modify assignments. It returns comparative metrics so administrators can evaluate likely operational outcomes before changing production behavior.
+
+The endpoint is a snapshot of the current queue. The comparative study of the same four strategies over time — a discrete-event simulation of arrivals and deliveries across load and provider density, with seeded repetitions, means and standard deviations — is [docs/evaluation/EV-1-matching-study.md](docs/evaluation/EV-1-matching-study.md) (EV-1); its data and figures are in [docs/evaluation/ev-1/](docs/evaluation/ev-1/) and reproduce from a seed.
 
 ## Technology Stack
 
