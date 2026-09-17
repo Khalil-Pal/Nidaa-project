@@ -195,7 +195,7 @@ async function loadRecentRequests() {
           <div class="req-id">#${escHtml(r.id || r.requestId || '—')} &nbsp;&#128205; ${escHtml(r.address || 'Not specified')}</div>
         </td>
         <td><span class="tag ${typeClass(r.helpType)}">${escHtml(r.helpType || r.category || 'OTHER')}</span></td>
-        <td><span class="tag ${statusClass(r.status)}">${escHtml(r.status || 'PENDING')}</span></td>
+        <td><span class="tag ${statusClass(r.status)}">${escHtml(String(r.status || 'PENDING').replace('_', ' '))}</span></td>
       </tr>`).join('');
   } catch (e) {
     document.getElementById('requestsTable').innerHTML =

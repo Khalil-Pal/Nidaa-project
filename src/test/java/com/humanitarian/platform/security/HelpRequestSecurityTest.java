@@ -353,6 +353,63 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
         verify(adminAudit, never()).record(anyString(), anyString(), anyLong(), any());
     }
 
+    // -- W-1: "on my way" ------------------------------------------------------
+
+    /** Gate 5, W-1: ASSIGNED -> IN_PROGRESS -> COMPLETED by the assigned volunteer, the beneficiary told at each step. */
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void assignedVolunteerMovesToInProgressThenCompletesAndTheBeneficiaryIsTold() throws Exception {
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        volunteerProfile(VOLUNTEER_USER_ID, VOLUNTEER_PROFILE_ID);
+        HelpRequest request = storedRequest(1L, "ASSIGNED", VOLUNTEER_PROFILE_ID);
+        when(helpRequestRepository.updateStatusNative(1L, "IN_PROGRESS", "ASSIGNED")).thenReturn(1);
+
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "IN_PROGRESS"))
+                .andExpect(status().isOk());
+        verify(helpRequestRepository).updateStatusNative(1L, "IN_PROGRESS", "ASSIGNED");
+        verify(notifications).notify(eq(OWNER_ID), eq("Request in progress"), anyString(), eq("HELP_REQUEST"), eq(1L));
+        verify(helpRequestRepository, never()).updateStatusCompleted(anyLong(), anyString(), any(), anyString());
+
+        request.setStatus("IN_PROGRESS");
+        when(helpRequestRepository.updateStatusCompleted(eq(1L), eq("COMPLETED"), any(), eq("IN_PROGRESS"))).thenReturn(1);
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "COMPLETED"))
+                .andExpect(status().isOk());
+        verify(helpRequestRepository).updateStatusCompleted(eq(1L), eq("COMPLETED"), any(), eq("IN_PROGRESS"));
+        verify(notifications).notify(eq(OWNER_ID), eq("Request completed"), anyString(), eq("HELP_REQUEST"), eq(1L));
+    }
+
+    /** Gate 5, W-1: a beneficiary attempting IN_PROGRESS gets 403; so does a volunteer who is not the assignee. */
+    @Test
+    @WithMockUser(roles = "BENEFICIARY")
+    void beneficiaryAndUnassignedVolunteerCannotMarkInProgress() throws Exception {
+        actingAs(OWNER_ID, UserRole.BENEFICIARY);
+        storedRequest(1L, "ASSIGNED", VOLUNTEER_PROFILE_ID);
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "IN_PROGRESS"))
+                .andExpect(status().isForbidden());
+
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        volunteerProfile(VOLUNTEER_USER_ID, VOLUNTEER_PROFILE_ID);
+        storedRequest(1L, "ASSIGNED", OTHER_VOLUNTEER_PROFILE_ID);
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "IN_PROGRESS"))
+                .andExpect(status().isForbidden());
+        verify(helpRequestRepository, never()).updateStatusNative(anyLong(), anyString(), anyString());
+    }
+
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void inProgressIsNotReachableFromPendingOrFromAClosedState() throws Exception {
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);
+        volunteerProfile(VOLUNTEER_USER_ID, VOLUNTEER_PROFILE_ID);
+        HelpRequest request = storedRequest(1L, "COMPLETED", VOLUNTEER_PROFILE_ID);
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "IN_PROGRESS"))
+                .andExpect(status().isBadRequest());
+
+        request.setStatus("IN_PROGRESS");
+        mockMvc.perform(put("/api/help-requests/1/status").param("status", "IN_PROGRESS"))
+                .andExpect(status().isConflict());   // already there: someone else made the same move (B-4)
+        verify(helpRequestRepository, never()).updateStatusNative(anyLong(), anyString(), anyString());
+    }
+
     @Test
     @WithMockUser(roles = "BENEFICIARY")
     void beneficiaryCannotCompleteOwnRequest() throws Exception {

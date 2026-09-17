@@ -42,7 +42,8 @@ async function loadStats() {
 
         // Status detail
         document.getElementById('sPending').textContent   = byStatus['PENDING']   ?? 0;
-        document.getElementById('sAssigned').textContent  = byStatus['ASSIGNED']  ?? 0;
+        // W-1: a request on its way is still in the provider's hands
+        document.getElementById('sAssigned').textContent  = (byStatus['ASSIGNED'] ?? 0) + (byStatus['IN_PROGRESS'] ?? 0);
         document.getElementById('sCompleted').textContent = byStatus['COMPLETED'] ?? 0;
         document.getElementById('sCancelled').textContent = byStatus['CANCELLED'] ?? 0;
 

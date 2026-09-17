@@ -53,7 +53,7 @@ Repository: [github.com/Khalil-Pal/Nidaa-project](https://github.com/Khalil-Pal/
 - Rank pending requests by priority.
 - Automatically assign the nearest available volunteer or organization that lists the requested resource when coordinates exist.
 - Allow volunteers and organizations to accept pending requests manually.
-- Enforce request lifecycle transitions from `PENDING` to `ASSIGNED`, then `COMPLETED` or `CANCELLED`.
+- Enforce request lifecycle transitions from `PENDING` to `ASSIGNED`, optionally `IN_PROGRESS` (the provider is on the way), then `COMPLETED` or `CANCELLED`.
 
 ### Psychological support
 

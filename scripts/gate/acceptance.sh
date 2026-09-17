@@ -178,6 +178,21 @@ deliver_and_rate 3
 check "AGG-1" "reports rated 4, 5, 3: rating = 4.00 and total_completed_requests = 3" "$(sql "$VOL_ROW")" "3/4.00"
 check "AGG-1" "stored mean equals the mean of the reports" "$(sql "select (select rating from volunteers where user_id=$(uid "$VOL")) = (select round(avg(beneficiary_rating),2) from reports r join volunteers v on v.volunteer_id=r.volunteer_id where v.user_id=$(uid "$VOL"))")" "t"
 check "AGG-1" "a volunteer with no reports has NULL, not 0" "$(sql "select total_completed_requests||'/'||coalesce(rating::text,'NULL') from volunteers where user_id=$(uid "$VOL2")")" "0/NULL"
+
+# W-1: PENDING -> ASSIGNED -> IN_PROGRESS -> COMPLETED end to end; only the assigned provider or an admin may
+# mark a request in progress; the beneficiary hears about it
+W_ID=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" -d '{"title":"Gate request W","helpType":"FOOD","urgencyLevel":"MEDIUM","peopleCount":1}' | json data.id)
+check "W-1" "IN_PROGRESS straight from PENDING (admin)" "$(code -X PUT "$BASE/api/help-requests/$W_ID/status?status=IN_PROGRESS" -H "Authorization: Bearer $A")" "400"
+check "W-1" "volunteer accepts W" "$(code -X PUT "$BASE/api/help-requests/$W_ID/assign" -H "Authorization: Bearer $V")" "200"
+check "W-1" "beneficiary attempting IN_PROGRESS" "$(code -X PUT "$BASE/api/help-requests/$W_ID/status?status=IN_PROGRESS" -H "Authorization: Bearer $B")" "403"
+check "W-1" "unassigned volunteer attempting IN_PROGRESS" "$(code -X PUT "$BASE/api/help-requests/$W_ID/status?status=IN_PROGRESS" -H "Authorization: Bearer $V2")" "403"
+check "W-1" "assigned volunteer: on my way" "$(body -X PUT "$BASE/api/help-requests/$W_ID/status?status=IN_PROGRESS" -H "Authorization: Bearer $V" | json data.status)" "IN_PROGRESS"
+check "W-1" "stored status; the assignment stays the provider's" "$(sql "select h.status||'/'||a.status from help_requests h join assignments a on a.request_id=h.request_id where h.request_id=$W_ID")" "IN_PROGRESS/ASSIGNED"
+check "W-1" "the beneficiary was told" "$(sql "select count(*) from notifications where user_id=$(uid "$BENE") and reference_id=$W_ID and title='Request in progress'")" "1"
+check "W-1" "repeating IN_PROGRESS" "$(code -X PUT "$BASE/api/help-requests/$W_ID/status?status=IN_PROGRESS" -H "Authorization: Bearer $V")" "409"
+check "W-1" "beneficiary completes from IN_PROGRESS" "$(code -X PUT "$BASE/api/help-requests/$W_ID/status?status=COMPLETED" -H "Authorization: Bearer $B")" "403"
+check "W-1" "assigned volunteer completes from IN_PROGRESS" "$(code -X PUT "$BASE/api/help-requests/$W_ID/status?status=COMPLETED" -H "Authorization: Bearer $V")" "200"
+check "W-1" "COMPLETED with timestamp, assignment closed" "$(sql "select h.status||'/'||(h.completed_at is not null)||'/'||a.status from help_requests h join assignments a on a.request_id=h.request_id where h.request_id=$W_ID")" "COMPLETED/true/COMPLETED"
 R_B=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" -d '{"title":"Gate request B","helpType":"WATER","urgencyLevel":"LOW"}' | json data.id)
 check "S-5" "beneficiary cancels own B" "$(code -X PUT "$BASE/api/help-requests/$R_B/status?status=CANCELLED" -H "Authorization: Bearer $B")" "200"
 check "N-1" "cancelling an unassigned own request notifies nobody" "$(sql "select count(*) from notifications where reference_type='HELP_REQUEST' and reference_id=$R_B")" "0"

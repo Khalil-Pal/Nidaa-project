@@ -377,12 +377,13 @@ public class HelpRequestService {
                 .orElse(false);
     }
 
-    // Targets each party may move a request to. Completion is reserved for the
-    // assigned provider (or an admin) because it is the delivery record; the
-    // beneficiary and the filer may only withdraw.
+    // Targets each party may move a request to. "On my way" (IN_PROGRESS, W-1)
+    // and completion are reserved for the assigned provider (or an admin)
+    // because they are the delivery record; the beneficiary and the filer may
+    // only withdraw.
     private static final Set<String> OWNER_TARGETS    = Set.of("CANCELLED");
-    private static final Set<String> PROVIDER_TARGETS = Set.of("COMPLETED", "CANCELLED");
-    private static final Set<String> ADMIN_TARGETS    = Set.of("ASSIGNED", "COMPLETED", "CANCELLED");
+    private static final Set<String> PROVIDER_TARGETS = Set.of("IN_PROGRESS", "COMPLETED", "CANCELLED");
+    private static final Set<String> ADMIN_TARGETS    = Set.of("ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED");
 
     @Transactional
     public HelpRequest updateStatus(Long id, String status) {

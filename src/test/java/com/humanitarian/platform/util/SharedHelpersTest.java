@@ -42,4 +42,18 @@ class SharedHelpersTest {
         assertFalse(RequestTransitions.allows("CANCELLED", "ASSIGNED"));
         assertFalse(RequestTransitions.allows("BOGUS", "ASSIGNED"));
     }
+
+    /** W-1: IN_PROGRESS sits between ASSIGNED and the closed states; ASSIGNED -> COMPLETED still works directly. */
+    @Test
+    void inProgressIsReachableOnlyFromAssignedAndOnlyClosesForward() {
+        assertTrue(RequestTransitions.allows("ASSIGNED", "IN_PROGRESS"));
+        assertTrue(RequestTransitions.allows("IN_PROGRESS", "COMPLETED"));
+        assertTrue(RequestTransitions.allows("IN_PROGRESS", "CANCELLED"));
+        assertTrue(RequestTransitions.allows("ASSIGNED", "COMPLETED"), "a short delivery need not step through IN_PROGRESS");
+        assertFalse(RequestTransitions.allows("PENDING", "IN_PROGRESS"));
+        assertFalse(RequestTransitions.allows("IN_PROGRESS", "ASSIGNED"));
+        assertFalse(RequestTransitions.allows("IN_PROGRESS", "PENDING"));
+        assertFalse(RequestTransitions.allows("COMPLETED", "IN_PROGRESS"));
+        assertFalse(RequestTransitions.allows("CANCELLED", "IN_PROGRESS"));
+    }
 }

@@ -41,9 +41,13 @@
         CRITICAL:'urgency-critical', HIGH:'urgency-high', MEDIUM:'urgency-medium', LOW:'urgency-low'
     };
     const statusTag = {
-        PENDING:'status-pending', ASSIGNED:'status-assigned',
+        PENDING:'status-pending', ASSIGNED:'status-assigned', IN_PROGRESS:'status-inprogress',
         COMPLETED:'status-completed', CANCELLED:'status-cancelled'
     };
+    // What a status is called on screen; the enum label with its underscore is not a phrase (W-1)
+    function statusLabel(status) {
+        return String(status || 'PENDING').toUpperCase().replace('_', ' ');
+    }
 
     function formatDate(d) {
         if (!d) return '';
@@ -73,7 +77,7 @@
             // Action button changes based on role
             let actionBtn = '';
             if (userRole === 'beneficiary') {
-                if (status === 'ASSIGNED' || status === 'COMPLETED') {
+                if (status === 'ASSIGNED' || status === 'IN_PROGRESS' || status === 'COMPLETED') {
                     actionBtn = `<button class="btn-action btn-view" data-action="contact" data-id="${id}"><i class="fa fa-address-card" style="font-size:11px;margin-right:4px"></i>Contact Responder</button>`;
                 }
                 // R-1: once the help was delivered the beneficiary is asked to rate it
@@ -83,8 +87,12 @@
             } else if (userRole === 'volunteer' || userRole === 'organization') {
                 if (status === 'PENDING') {
                     actionBtn = `<button class="btn-action btn-accept" style="background:var(--green)" data-action="start" data-id="${id}"><i class="fa fa-play" style="font-size:11px;margin-right:4px"></i>Start Working</button>`;
-                } else if (status === 'ASSIGNED' || status === 'COMPLETED') {
+                } else if (status === 'ASSIGNED' || status === 'IN_PROGRESS' || status === 'COMPLETED') {
                     actionBtn = `<button class="btn-action btn-view" data-action="contact" data-id="${id}"><i class="fa fa-address-card" style="font-size:11px;margin-right:4px"></i>Contact & Status</button>`;
+                }
+                // W-1: one tap tells the waiting person the provider is on the way
+                if (status === 'ASSIGNED') {
+                    actionBtn += ` <button class="btn-action btn-accept" style="background:#c2410c" data-action="onmyway" data-id="${id}"><i class="fa fa-truck-fast" style="font-size:11px;margin-right:4px"></i>On my way</button>`;
                 }
                 // R-1: the volunteer records what was delivered (reports are volunteer-only in the data model)
                 if (status === 'COMPLETED' && userRole === 'volunteer') {
@@ -96,7 +104,7 @@
                 <div class="card-badges">
                     <span class="tag ${typeTag[type]   || 'tag-other'}">${escHtml(type)}</span>
                     <span class="tag ${urgencyTag[urg] || ''}">${escHtml(urg)}</span>
-                    <span class="tag ${statusTag[status] || 'status-pending'}">${escHtml(status)}</span>
+                    <span class="tag ${statusTag[status] || 'status-pending'}">${escHtml(statusLabel(status))}</span>
                 </div>
                 <div class="card-title">${escHtml(title)}</div>
                 ${desc ? `<div class="card-desc">${escHtml(desc.substring(0,120))}${desc.length>120?'...':''}</div>` : ''}
@@ -220,17 +228,20 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
 
     // Build dropdown options based on current status and valid transitions
     function buildStatusOptions(currentStatus) {
+        // Mirrors RequestTransitions on the server (W-1 added IN_PROGRESS); the server decides.
         const VALID_TRANSITIONS = {
-            'PENDING':   ['ASSIGNED', 'CANCELLED'],
-            'ASSIGNED':  ['COMPLETED', 'CANCELLED'],
-            'COMPLETED': [],
-            'CANCELLED': []
+            'PENDING':     ['ASSIGNED', 'CANCELLED'],
+            'ASSIGNED':    ['IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+            'IN_PROGRESS': ['COMPLETED', 'CANCELLED'],
+            'COMPLETED':   [],
+            'CANCELLED':   []
         };
         const LABELS = {
-            'ASSIGNED':  'Assigned (In Progress)',
-            'COMPLETED': 'Completed',
-            'CANCELLED': 'Cancelled',
-            'PENDING':   'Pending'
+            'ASSIGNED':    'Assigned',
+            'IN_PROGRESS': 'In progress (on my way)',
+            'COMPLETED':   'Completed',
+            'CANCELLED':   'Cancelled',
+            'PENDING':     'Pending'
         };
         const sel = document.getElementById('contactStatusSelect');
         const transitions = VALID_TRANSITIONS[currentStatus.toUpperCase()] || [];
@@ -269,13 +280,34 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
             // Toast
             const t = document.createElement('div');
             t.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#047857;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;font-size:14px;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.1)';
-            t.textContent = '✅ Status updated to ' + status.charAt(0) + status.slice(1).toLowerCase();
+            t.textContent = '✅ Status updated to ' + statusLabel(status).toLowerCase();
             document.body.appendChild(t);
             setTimeout(() => t.remove(), 3000);
         } catch (e) {
             alert('Could not update status: ' + e.message);
         }
         if (updateBtn) { updateBtn.disabled = false; updateBtn.textContent = 'Update Status'; }
+    }
+
+    // ── W-1: "On my way" — the assigned provider marks the request IN_PROGRESS ──
+    async function markOnMyWay(id, btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending...';
+        try {
+            const res = await apiFetch(API + '/help-requests/' + id + '/status?status=IN_PROGRESS', {
+                method: 'PUT', headers: authHeader()
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+            const req = allRequests.find(r => (r.requestId || r.id) == id);
+            if (req) req.status = 'IN_PROGRESS';
+            filterCards();
+            reportToast('The requester has been told you are on your way.');
+        } catch (e) {
+            alert('Could not update the status: ' + e.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-truck-fast" style="font-size:11px;margin-right:4px"></i>On my way';
+        }
     }
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeContactModal(); closeReportModal(); } });
@@ -600,4 +632,5 @@ wireEvent('cardsGrid', 'click', (event) => {
     if (btn.dataset.action === 'start') startWork(id, btn);
     else if (btn.dataset.action === 'contact') openContactModal(id);
     else if (btn.dataset.action === 'report') openReportModal(id);
+    else if (btn.dataset.action === 'onmyway') markOnMyWay(id, btn);
 });

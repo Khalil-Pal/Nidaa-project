@@ -21,6 +21,9 @@
  *   R-1  on a completed request the volunteer's card offers "Record what you
  *        delivered" and the beneficiary's "Rate this help"; both prompts work and
  *        the second view shows what the first recorded
+ *   W-1  the assigned volunteer's card offers "On my way"; one tap moves the
+ *        request to IN_PROGRESS, the chip changes on both sides and the
+ *        beneficiary is notified
  *   CS-1 on a completed psychological case the psychologist's session offers
  *        "Record consultation" and the beneficiary's request "Rate this
  *        consultation"; the beneficiary sees the recommendations but never the
@@ -344,7 +347,48 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
             const foreign = await api(`/api/notifications/${nid}/read`, { method: 'PUT' }, vol.token);
             check('N-1', `another user marking it read -> ${foreign.status}`, foreign.status === 404);
             await page.close();
-            // leave the request in a terminal state so the volunteer is free for the next run
+
+            // ---------------- W-1: "On my way" on the assigned request ----------------
+            {
+                const cardOf = (p, id) => p.evaluateHandle((rid) => [...document.querySelectorAll('#cardsGrid .req-card')]
+                    .find((c) => c.querySelector('.fa-hashtag') && c.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(rid)), id);
+                const vpage = await browser.newPage();
+                await signIn(vpage, vol);
+                await vpage.goto(BASE + '/help-requests.html', { waitUntil: 'networkidle0' });
+                await vpage.waitForFunction(() => document.querySelectorAll('#cardsGrid .req-card').length > 0, { timeout: 15000 });
+                let card = await cardOf(vpage, reqId);
+                const onMyWay = await card.evaluate((c) => { const b = c.querySelector('button[data-action="onmyway"]'); return b ? b.textContent.trim() : null; });
+                check('W-1', `volunteer's assigned card offers "${onMyWay}"`, onMyWay === 'On my way');
+                await card.evaluate((c) => c.querySelector('button[data-action="onmyway"]').click());
+                await vpage.waitForFunction((rid) => {
+                    const c = [...document.querySelectorAll('#cardsGrid .req-card')].find((x) => x.querySelector('.fa-hashtag') && x.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(rid));
+                    return c && /IN PROGRESS/.test(c.querySelector('.card-badges').textContent);
+                }, { timeout: 15000 }, reqId);
+                card = await cardOf(vpage, reqId);
+                const after = await card.evaluate((c) => ({
+                    chip: [...c.querySelectorAll('.card-badges .tag')].map((t) => t.textContent.trim()).pop(),
+                    chipClass: [...c.querySelectorAll('.card-badges .tag')].pop().className,
+                    button: !!c.querySelector('button[data-action="onmyway"]'),
+                    contact: !!c.querySelector('button[data-action="contact"]') }));
+                check('W-1', `after the tap the chip reads "${after.chip}" (${after.chipClass}), the button is gone, contact stays`,
+                    after.chip === 'IN PROGRESS' && /status-inprogress/.test(after.chipClass) && !after.button && after.contact);
+                await vpage.close();
+
+                const bpage = await browser.newPage();
+                await signIn(bpage, bene);
+                await bpage.goto(BASE + '/help-requests.html', { waitUntil: 'networkidle0' });
+                await bpage.waitForFunction(() => document.querySelectorAll('#cardsGrid .req-card').length > 0, { timeout: 15000 });
+                const bcard = await cardOf(bpage, reqId);
+                const seen = await bcard.evaluate((c) => ({
+                    chip: [...c.querySelectorAll('.card-badges .tag')].map((t) => t.textContent.trim()).pop(),
+                    contact: !!c.querySelector('button[data-action="contact"]') }));
+                check('W-1', `the beneficiary's card shows "${seen.chip}" and still offers the contact`, seen.chip === 'IN PROGRESS' && seen.contact);
+                await bpage.close();
+                const db = sql(`select h.status||'/'||(select count(*) from notifications n where n.reference_id=h.request_id and n.title='Request in progress') from help_requests h where h.request_id=${reqId}`);
+                check('W-1', `database: status/notifications = ${db}`, db === 'IN_PROGRESS/1');
+            }
+
+            // leave the request in a terminal state so the volunteer is free for the next run (IN_PROGRESS -> COMPLETED)
             await api(`/api/help-requests/${reqId}/status?status=COMPLETED`, { method: 'PUT' }, vol.token);
 
             // ---------------- R-1: the prompts on the completed request ----------------

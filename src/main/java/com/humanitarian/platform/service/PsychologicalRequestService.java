@@ -128,7 +128,10 @@ public class PsychologicalRequestService {
 
     // Only the assigned psychologist (or an admin) may close a case; the
     // beneficiary may withdraw it. Volunteers and organizations have no role
-    // in psychological cases at all.
+    // in psychological cases at all. IN_PROGRESS exists in the shared map for
+    // deliveries (W-1) and is deliberately absent here: crisis routing and the
+    // duty panel count a psychologist's open cases as ASSIGNED, and a case has
+    // no "on my way" step.
     private static final Set<String> OWNER_TARGETS        = Set.of("CANCELLED");
     private static final Set<String> PSYCHOLOGIST_TARGETS = Set.of("COMPLETED", "CANCELLED");
     private static final Set<String> ADMIN_TARGETS        = Set.of("ASSIGNED", "COMPLETED", "CANCELLED");

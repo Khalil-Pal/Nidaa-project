@@ -8,7 +8,7 @@ if ((user.role || '').toLowerCase() !== 'admin') window.location.href = 'dashboa
 document.getElementById('topbarName').textContent = (user.fullName || user.name || 'Admin').split(' ')[0];
 
 const typeTagClass = {MEDICAL:'tag-medical',FOOD:'tag-food',SHELTER:'tag-shelter',WATER:'tag-water',CLOTHING:'tag-clothing',PSYCHOLOGICAL:'tag-other',OTHER:'tag-other'};
-const statusClass  = {PENDING:'status-pending',ASSIGNED:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
+const statusClass  = {PENDING:'status-pending',ASSIGNED:'status-assigned',IN_PROGRESS:'status-assigned',COMPLETED:'status-completed',CANCELLED:'status-cancelled'};
 
 let allRequests = [];
 
@@ -65,7 +65,7 @@ function renderTable(list) {
             <td>${r.isCrisis ? '<i class="fa fa-triangle-exclamation crisis-icon" title="Crisis case"></i>' : r.needsReview ? '<i class="fa fa-flag review-icon" title="Flagged for review: the description contains wording worth a closer look"></i>' : ''}</td>
             <td><span class="tag ${typeTagClass[type]||'tag-other'}">${escHtml(type)}</span></td>
             <td><span class="${priorityClass}">${priority !== null ? priority : '—'}</span></td>
-            <td><span class="tag ${statusClass[status]||'status-pending'}">${escHtml(status)}</span></td>
+            <td><span class="tag ${statusClass[status]||'status-pending'}">${escHtml(String(status).replace('_', ' '))}</span></td>
             <td>
                 <div class="user-cell">
                     <span class="u-name">${escHtml(r.requesterName||'—')}</span>

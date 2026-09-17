@@ -89,6 +89,15 @@ The nearest candidate is claimed atomically, the request moves from `PENDING` to
 `ASSIGNED`, and an `AUTO_GEO` assignment stores exactly one of `volunteer_id` or
 `organization_id`. A failed request update releases the winning claim.
 
+From `ASSIGNED` the assigned provider (or an admin) may mark the request
+`IN_PROGRESS` — "on my way", one button on the card (W-1) — before `COMPLETED`;
+`ASSIGNED → COMPLETED` still works directly for short deliveries. The transition
+is a guarded UPDATE like the others, the other parties are notified on entry,
+and the assignment row stays `ASSIGNED` (capacity and availability follow the
+assignment, not the request). The shared map is `RequestTransitions`;
+psychological cases do not use `IN_PROGRESS`: crisis routing and the duty panel
+count a psychologist's open cases as `ASSIGNED`, and a case has no "on my way".
+
 Psychological requests use a separate lifecycle. Crisis detection can flag urgent
 language and route eligible requests toward psychologists who are both on duty and
 professionally verified. Those are two separate decisions by two people: the
