@@ -2,10 +2,16 @@ package com.humanitarian.platform.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
+/**
+ * What a psychological case recorded once it was completed (CS-1): one row per
+ * psychological request, written by the assigned psychologist, rated by the
+ * beneficiary. {@code notesForPsychologist} is private to the psychologist and
+ * never leaves the service for anyone else.
+ */
 @Entity
 @Table(name = "consultations")
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -19,16 +25,21 @@ public class Consultation {
     @Column(name = "psychological_request_id", nullable = false)
     private Long psychologicalRequestId;
 
+    // The assignment that produced the session (V20); nullable because rows may
+    // predate the link.
+    @Column(name = "assignment_id")
+    private Long assignmentId;
+
     @Column(name = "psychologist_id", nullable = false)
     private Long psychologistId;
 
     @Column(name = "beneficiary_id", nullable = false)
     private Long beneficiaryId;
 
-    @Column(name = "format", columnDefinition = "varchar(50)")
+    @Column(name = "format", nullable = false, columnDefinition = "consultation_format")
     private String format;
 
-    @Column(name = "started_at")
+    @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
     @Column(name = "ended_at")
@@ -37,9 +48,9 @@ public class Consultation {
     @Column(name = "duration_minutes")
     private Integer durationMinutes;
 
-    // PostgreSQL _text (ARRAY) type — store as plain TEXT
-    @Column(name = "topics_discussed", columnDefinition = "_text")
-    private String topicsDiscussed;
+    // PostgreSQL text[]; Hibernate 6 binds a List<String> as a typed array
+    @Column(name = "topics_discussed", columnDefinition = "text[]")
+    private List<String> topicsDiscussed;
 
     @Column(name = "recommendations", columnDefinition = "TEXT")
     private String recommendations;

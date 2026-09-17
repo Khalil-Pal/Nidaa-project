@@ -251,6 +251,42 @@ check "L-2" "crisis case routed to on-duty psychologist" "$(sql "select count(*)
 check "N-1" "each routed crisis case notified the psychologist and the person" "$(sql "select count(*) filter (where user_id=$PSY_UID and title='Crisis case routed to you')||'/'||count(*) filter (where user_id=$(uid "$BENE") and title='A psychologist has been assigned to you') from notifications where reference_type='PSYCHOLOGICAL_REQUEST'")" "2/2"
 check "L-2" "the two crisis cases were actually auto-routed" "$(sql "select count(*) from assignments where assignment_source='AUTO_CRISIS' and psychologist_id=(select psychologist_id from psychologists where user_id=$PSY_UID)")" "2"
 
+# CS-1: one consultation record per completed case, by the assigned psychologist; one rating, by the
+# beneficiary; the psychologist's private note reaches nobody else; an anonymous case stays anonymous
+C_ID=$(body -X POST "$BASE/api/psychological-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" \
+  -d '{"supportType":"INDIVIDUAL","category":"GRIEF","preferredFormat":"VIDEO","description":"gate consultation","isAnonymous":true}' | json data.id)
+check "CS-1" "psychologist accepts the anonymous case" "$(code -X PUT "$BASE/api/psychological-requests/$C_ID/accept" -H "Authorization: Bearer $S")" "200"
+CONSULT='{"format":"video","durationMinutes":45,"topicsDiscussed":["sleep","grief"],"recommendations":"Keep a sleep diary","notesForPsychologist":"PRIVATE-NOTE consider referral"}'
+check "CS-1" "record before completion" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d "$CONSULT")" "400"
+check "CS-1" "assigned psychologist completes the case" "$(code -X PUT "$BASE/api/psychological-requests/$C_ID/status?status=COMPLETED" -H "Authorization: Bearer $S")" "200"
+check "CS-1" "completed_at is written on completion" "$(sql "select status||'/'||(completed_at is not null) from psychological_requests where request_id=$C_ID")" "COMPLETED/true"
+check "CS-1" "no consultation yet" "$(code "$BASE/api/psychological-requests/$C_ID/consultation" -H "Authorization: Bearer $B")" "404"
+check "CS-1" "beneficiary records the psychologist's consultation" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d "$CONSULT")" "403"
+check "CS-1" "beneficiary rates before the record exists" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":5}')" "400"
+check "CS-1" "unknown format" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d '{"format":"PHONE"}')" "400"
+CREC=$(body -X POST "$BASE/api/psychological-requests/$C_ID/consultation" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d "$CONSULT")
+check "CS-1" "assigned psychologist records the consultation" "$(echo "$CREC" | json data.format)/$(echo "$CREC" | json data.durationMinutes)/$(echo "$CREC" | json data.topicsDiscussed.1)" "VIDEO/45/grief"
+check "CS-1" "the record links the assignment that closed the case" "$(echo "$CREC" | json data.assignmentId)" "$(sql "select assignment_id from assignments where psychological_request_id=$C_ID and status='COMPLETED'")"
+check "CS-1" "the psychologist sees their own private note" "$(echo "$CREC" | json data.notesForPsychologist)" "PRIVATE-NOTE consider referral"
+check "CS-1" "the response carries no beneficiary identity" "$(echo "$CREC" | grep -c "beneficiaryId\|beneficiaryName\|Gate beneficiary\|$BENE")" "0"
+check "CS-1" "second record" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d "$CONSULT")" "409"
+check "CS-1" "exactly one row, format stored in the enum column, topics as text[]" "$(sql "select count(*)||'/'||max(cast(format as text))||'/'||max(array_length(topics_discussed,1)) from consultations where psychological_request_id=$C_ID")" "1/VIDEO/2"
+check "CS-1" "beneficiary was asked to rate" "$(sql "select count(*) from notifications where user_id=$(uid "$BENE") and title='Your consultation was recorded: please rate it'")" "1"
+BVIEW=$(body "$BASE/api/psychological-requests/$C_ID/consultation" -H "Authorization: Bearer $B")
+check "CS-1" "beneficiary reads the recommendations" "$(echo "$BVIEW" | json data.recommendations)" "Keep a sleep diary"
+check "CS-1" "notes_for_psychologist is never returned to the beneficiary (key absent)" "$(echo "$BVIEW" | grep -c 'notesForPsychologist\|PRIVATE-NOTE')" "0"
+check "CS-1" "nor to the administrator" "$(body "$BASE/api/psychological-requests/$C_ID/consultation" -H "Authorization: Bearer $A" | grep -c 'notesForPsychologist\|PRIVATE-NOTE')" "0"
+check "CS-1" "other beneficiary reads the consultation" "$(code "$BASE/api/psychological-requests/$C_ID/consultation" -H "Authorization: Bearer $B2")" "404"
+check "CS-1" "volunteer on the consultation" "$(code "$BASE/api/psychological-requests/$C_ID/consultation" -H "Authorization: Bearer $V")" "403"
+check "CS-1" "psychologist rates own consultation" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $S" -d '{"rating":5}')" "403"
+check "CS-1" "rating out of range" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":0}')" "400"
+FVIEW=$(body -X POST "$BASE/api/psychological-requests/$C_ID/consultation/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":4,"feedback":"Felt heard"}')
+check "CS-1" "beneficiary rates once" "$(echo "$FVIEW" | json data.rating)/$(echo "$FVIEW" | json data.feedbackFromBeneficiary)" "4/Felt heard"
+check "CS-1" "second rating" "$(code -X POST "$BASE/api/psychological-requests/$C_ID/consultation/feedback" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"rating":1}')" "409"
+check "CS-1" "stored rating and feedback" "$(sql "select rating||'/'||feedback_from_beneficiary from consultations where psychological_request_id=$C_ID")" "4/Felt heard"
+check "CS-1" "the psychologist was told the rating, not who gave it" "$(sql "select count(*) from notifications where user_id=$PSY_UID and title='You received a rating: 4/5' and content not like '%Gate beneficiary%' and content not like '%$BENE%'")" "1"
+check "CS-1" "anonymous contact is still anonymous to the psychologist" "$(body "$BASE/api/psychological-requests/$C_ID/contact" -H "Authorization: Bearer $S" | json data.anonymous)" "True"
+
 check "D-5" "no priority_score above 100" "$(sql "select count(*) from help_requests where priority_score > 100")" "0"
 
 # D-2

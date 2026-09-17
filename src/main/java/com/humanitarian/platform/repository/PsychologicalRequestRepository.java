@@ -56,4 +56,14 @@ public interface PsychologicalRequestRepository extends JpaRepository<Psychologi
     int updateStatusNative(@Param("id") Long id,
                            @Param("newStatus") String newStatus,
                            @Param("expectedStatus") String expectedStatus);
+
+    // Completion also stamps completed_at, which the statistics read (CS-1)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE psychological_requests SET status = :newStatus, completed_at = :completedAt "
+                 + "WHERE request_id = :id AND status = :expectedStatus",
+            nativeQuery = true)
+    int updateStatusCompleted(@Param("id") Long id,
+                              @Param("newStatus") String newStatus,
+                              @Param("completedAt") LocalDateTime completedAt,
+                              @Param("expectedStatus") String expectedStatus);
 }

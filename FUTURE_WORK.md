@@ -47,12 +47,16 @@ Phase 5.
   on `assignments` today are about row shape, not lifecycle, so this is a schema
   decision for Phase 5's assignment work rather than a follow-up to the gate query.
 
-- **`psychological_requests.completed_at` is never written.** Completing a
-  psychological case updates `status` only, so the statistics panel's
-  "completed this week" never counts psychological cases and the column stays
-  NULL. Help requests set `completed_at`/`cancelled_at` on the same transition.
-  Belongs with Phase 5 CS-1 (consultation records), which decides what a closed
-  case records. Found during B-4.
+## Consultation records (Phase 5, CS-1)
+
+- **`consultations.chat_session_id`** exists and is never written: the platform
+  has no chat system for a session id to reference. The column stays for the
+  day one exists.
+- **One record per case.** V20 makes `psychological_request_id` unique, matching
+  the endpoints (`.../{id}/consultation` and the feedback under it). A case that
+  needs several sessions records them as one consultation today; if
+  per-session records are ever wanted, the constraint goes and the feedback
+  endpoint needs a consultation id.
 
 ## Completion reports (Phase 5, R-1)
 

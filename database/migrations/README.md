@@ -96,6 +96,12 @@ The first administrator is still inserted by hand (see below).
 - `V19` adds `UNIQUE (assignment_id)` on `reports` so there is exactly one
   completion report per assignment even when two submissions race (R-1), and
   drops the plain index the unique one makes redundant. Idempotent; safe to rerun.
+- `V20` adds `consultations.assignment_id` (nullable, FK to `assignments`) so a
+  consultation record says which assignment produced the session, and
+  `UNIQUE (psychological_request_id)` so there is exactly one record per case,
+  which is how the endpoints address it (CS-1); the plain index on that column
+  is dropped as redundant and an index on `assignment_id` is added. Idempotent;
+  safe to rerun.
 
 Every gate since Gate 3 has built a database from these files alone
 (`scripts/gate/fresh-db.sh`), checked that `flyway_schema_history` lists exactly

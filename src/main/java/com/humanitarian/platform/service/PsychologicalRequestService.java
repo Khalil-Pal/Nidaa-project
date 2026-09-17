@@ -157,12 +157,17 @@ public class PsychologicalRequestService {
             throw new BusinessException("Invalid status transition: cannot move from " + current + " to " + next);
         }
 
-        // Guarded by the status validated above; a lost race is 409, not a silent overwrite (B-4)
-        if (repo.updateStatusNative(id, next, current) == 0) {
+        // Guarded by the status validated above; a lost race is 409, not a silent overwrite (B-4).
+        // Completion stamps completed_at, which the statistics read; it was never written before (CS-1).
+        LocalDateTime statusChangedAt = LocalDateTime.now();
+        int updated = "COMPLETED".equals(next)
+                ? repo.updateStatusCompleted(id, next, statusChangedAt, current)
+                : repo.updateStatusNative(id, next, current);
+        if (updated == 0) {
             throw new ConflictException("This request was updated by someone else. Reload and try again.");
         }
         if ("COMPLETED".equals(next) || "CANCELLED".equals(next)) {
-            updateAssignmentStatus(id, next, LocalDateTime.now());
+            updateAssignmentStatus(id, next, statusChangedAt);
         }
         logger.info("Case {} {} -> {} by user {} ({})", id, current, next, currentUser.getId(), currentUser.getRole());
         if (currentUser.getRole() == UserRole.ADMIN) {
@@ -306,7 +311,8 @@ public class PsychologicalRequestService {
                     "Unknown urgency level '" + v + "'. Accepted values: LOW, MEDIUM, HIGH, CRITICAL");
         };
     }
-    private String toFormat(String v) {
+    // Shared with ConsultationService: a consultation's format is the same enum (CS-1).
+    static String toFormat(String v) {
         if (v == null || v.isBlank()) return "CHAT";     // column default
         return switch (v.toUpperCase().trim()) {
             case "CHAT"                  -> "CHAT";

@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @EnabledIf(value = PersistenceTestSupport.CONDITION, disabledReason = "nidaa_test database not reachable")
 class SchemaAgreementPersistenceTest extends PersistenceTestSupport {
 
-    private static final Set<String> STANDARD = Set.of("text", "numeric", "jsonb", "inet", "_text", "boolean", "integer", "bigint", "timestamp");
+    private static final Set<String> STANDARD = Set.of("text", "text[]", "numeric", "jsonb", "inet", "_text", "boolean", "integer", "bigint", "timestamp");
 
     @Test
     void everyColumnDefinitionNamesAnExistingType() throws ClassNotFoundException {

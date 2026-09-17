@@ -41,7 +41,7 @@ function togglePill(el) {
 function openModal()  { document.getElementById('overlay').classList.add('open'); }
 function closeModal() { document.getElementById('overlay').classList.remove('open'); }
 function handleOverlayClick(e) { if (e.target === document.getElementById('overlay')) closeModal(); }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeConsultationModal(); } });
 
 function showToast(msg, ok) {
   const el = document.getElementById('successAlert');
@@ -80,6 +80,9 @@ async function loadMyRequests() {
           <span class="tag ${sc[r.status]||'status-pending'}">${escHtml(r.status||'PENDING')}</span>
           ${['ASSIGNED','COMPLETED'].includes((r.status||'').toUpperCase())
             ? `<button class="btn-accept" data-action="contact" data-id="${Number(r.id)}" data-title="Psychologist Contact" data-status="${escHtml(r.status||'ASSIGNED')}">Contact Psychologist</button>`
+            : ''}
+          ${(r.status||'').toUpperCase() === 'COMPLETED'
+            ? `<button class="btn-accept" data-action="consultation" data-id="${Number(r.id)}" data-title="${escHtml(r.category||'Consultation')}">Rate this consultation</button>`
             : ''}
         </div>
       </div>`).join('');
@@ -248,6 +251,9 @@ async function loadActiveSessions() {
         <div class="req-actions">
           <span class="tag ${sc[r.status]||'status-assigned'}">${escHtml(r.status||'ASSIGNED')}</span>
           <button class="btn-accept" style="font-size:12px;padding:6px 12px" data-action="contact" data-id="${Number(r.id)}" data-title="${escHtml(r.category||'Session')}" data-status="${escHtml(r.status||'ASSIGNED')}">Contact & Status</button>
+          ${(r.status||'').toUpperCase() === 'COMPLETED'
+            ? `<button class="btn-accept" style="font-size:12px;padding:6px 12px" data-action="consultation" data-id="${Number(r.id)}" data-title="${escHtml(r.category||'Session')}" data-format="${escHtml(r.preferredFormat||'CHAT')}">Record consultation</button>`
+            : ''}
         </div>
       </div>`).join('');
   } catch {
@@ -316,6 +322,146 @@ async function submitPsychStatus() {
   if (btn) { btn.disabled = false; btn.textContent = 'Update Status'; }
 }
 
+// ── CS-1: consultation record and beneficiary rating ─────────────────────────
+// The psychologist records the consultation once the case is COMPLETED; the
+// beneficiary rates it once. The server decides what each role may see: the
+// psychologist's private notes come back only to the psychologist, and the
+// response never names the beneficiary.
+let consultationRequestId = null;
+let consultationMeta = {};
+
+function closeConsultationModal() {
+  document.getElementById('consultationOverlay').classList.remove('open');
+  consultationRequestId = null;
+}
+
+function formatLabel(f) {
+  return { CHAT: 'Text chat', AUDIO: 'Audio call', VIDEO: 'Video session' }[(f || '').toUpperCase()] || (f || '');
+}
+
+async function openConsultationModal(id, meta) {
+  consultationRequestId = id;
+  consultationMeta = meta || {};
+  document.getElementById('consultationTitle').textContent =
+    userRole === 'psychologist' ? 'Consultation record' : 'Rate this consultation';
+  document.getElementById('consultationSubtitle').textContent = consultationMeta.title || 'Support session';
+  const body = document.getElementById('consultationBody');
+  body.innerHTML = '<p class="report-note">Loading…</p>';
+  document.getElementById('consultationOverlay').classList.add('open');
+  const res = await apiFetch(API + '/psychological-requests/' + id + '/consultation', { headers: authHeader() });
+  if (res.status === 404) { renderConsultation(null); return; }
+  if (!res.ok) {
+    body.innerHTML = '<p class="report-note">Could not load the consultation (HTTP ' + res.status + ').</p>';
+    return;
+  }
+  renderConsultation((await res.json()).data || null);
+}
+
+function renderConsultation(record) {
+  const body = document.getElementById('consultationBody');
+  let html = '';
+  if (record) {
+    document.getElementById('consultationSubtitle').textContent =
+      (consultationMeta.title || 'Support session') + (record.psychologistName ? ' — ' + record.psychologistName : '');
+    const when = record.startedAt ? fmtDate(record.startedAt) : '';
+    const duration = record.durationMinutes != null ? record.durationMinutes + ' min' : '';
+    html += '<div class="report-block"><h4>Session</h4><p>' + escHtml(formatLabel(record.format)) +
+      (duration ? ' · ' + escHtml(duration) : '') + (when ? ' · ' + escHtml(when) : '') + '</p>' +
+      (record.topicsDiscussed && record.topicsDiscussed.length
+        ? '<div class="report-meta" style="margin-top:10px">Topics discussed</div><div>' +
+          record.topicsDiscussed.map(t => '<span class="topic-chip">' + escHtml(t) + '</span>').join('') + '</div>'
+        : '') + '</div>';
+    if (record.recommendations) {
+      html += '<div class="report-block"><h4>Recommendations</h4><p>' + escHtml(record.recommendations) + '</p></div>';
+    }
+    // present only in the assigned psychologist's own response
+    if (record.notesForPsychologist) {
+      html += '<div class="report-block private"><h4>Private notes (only you see these)</h4><p>' + escHtml(record.notesForPsychologist) + '</p></div>';
+    }
+    if (record.rating) {
+      html += '<div class="report-block"><h4>Rating</h4>' +
+        '<div class="rating-given" aria-label="' + Number(record.rating) + ' out of 5">' +
+        '★'.repeat(Number(record.rating)) + '☆'.repeat(5 - Number(record.rating)) + '</div>' +
+        (record.feedbackFromBeneficiary ? '<p>' + escHtml(record.feedbackFromBeneficiary) + '</p>' : '') + '</div>';
+    } else if (userRole === 'beneficiary') {
+      html += '<form id="consultFeedbackForm"><fieldset style="border:none;padding:0;margin:0">' +
+        '<legend style="font-size:14px;font-weight:600;margin-bottom:4px">How was this consultation?</legend>' +
+        '<div class="stars">' + [1, 2, 3, 4, 5].map(n =>
+          '<input type="radio" name="consultRating" id="consultRating' + n + '" value="' + n + '" required/>' +
+          '<label for="consultRating' + n + '" title="' + n + ' of 5">' + n + '</label>').join('') + '</div></fieldset>' +
+        '<div class="form-group"><label for="consultFeedbackText">Anything to add? <span style="font-weight:400;color:var(--muted)">(optional)</span></label>' +
+        '<textarea id="consultFeedbackText" maxlength="2000" placeholder="Your feedback goes to the psychologist without your name"></textarea></div>' +
+        '<button type="submit" class="btn-psych-update" id="consultFeedbackSubmitBtn">Send rating</button></form>';
+    } else {
+      html += '<p class="report-note">The person you supported has not rated this consultation yet.</p>';
+    }
+  } else if (userRole === 'psychologist') {
+    const fmt = (consultationMeta.format || 'CHAT').toUpperCase();
+    html += '<p class="report-note">Record the consultation that closed this case. The person you supported sees the session details and your recommendations and is asked to rate the consultation; your private notes stay with you.</p>' +
+      '<form id="consultationForm">' +
+      '<div class="form-group"><label for="consultFormat">Session format</label><select id="consultFormat">' +
+      ['CHAT', 'AUDIO', 'VIDEO'].map(f => '<option value="' + f + '"' + (f === fmt ? ' selected' : '') + '>' + formatLabel(f) + '</option>').join('') +
+      '</select></div>' +
+      '<div class="form-group"><label for="consultDuration">Duration (minutes)</label><input type="number" id="consultDuration" min="0" max="1440" step="1" placeholder="e.g. 45"/></div>' +
+      '<div class="form-group"><label for="consultTopics">Topics discussed</label><input type="text" id="consultTopics" maxlength="500" placeholder="sleep, grief, coping"/><div class="field-hint">Separate topics with commas.</div></div>' +
+      '<div class="form-group"><label for="consultRecommendations">Recommendations for the person</label><textarea id="consultRecommendations" maxlength="4000" placeholder="What you suggested they do next"></textarea></div>' +
+      '<div class="form-group"><label for="consultNotes">Private notes <span style="font-weight:400;color:var(--muted)">(only you can see these)</span></label><textarea id="consultNotes" maxlength="4000" placeholder="Never shown to the person or to administrators"></textarea></div>' +
+      '<button type="submit" class="btn-psych-update" id="consultationSubmitBtn">Record consultation</button></form>';
+  } else {
+    html += '<p class="report-note">The psychologist has not recorded the consultation yet. You can rate it once they have.</p>';
+  }
+  body.innerHTML = html;
+  const form = document.getElementById('consultationForm');
+  if (form) form.addEventListener('submit', (e) => { e.preventDefault(); submitConsultation(); });
+  const feedbackForm = document.getElementById('consultFeedbackForm');
+  if (feedbackForm) feedbackForm.addEventListener('submit', (e) => { e.preventDefault(); submitConsultationFeedback(); });
+}
+
+async function submitConsultation() {
+  const btn = document.getElementById('consultationSubmitBtn');
+  const durationRaw = document.getElementById('consultDuration').value.trim();
+  const payload = {
+    format: document.getElementById('consultFormat').value,
+    durationMinutes: durationRaw === '' ? null : Number(durationRaw),
+    topicsDiscussed: document.getElementById('consultTopics').value.split(',').map(t => t.trim()).filter(Boolean),
+    recommendations: document.getElementById('consultRecommendations').value.trim() || null,
+    notesForPsychologist: document.getElementById('consultNotes').value.trim() || null
+  };
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const res = await apiFetch(API + '/psychological-requests/' + consultationRequestId + '/consultation', {
+      method: 'POST', headers: authHeader(), body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+    renderConsultation(data.data);
+    showToast('✅ Consultation recorded.', true);
+  } catch (e) {
+    alert('Could not record the consultation: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Record consultation';
+  }
+}
+
+async function submitConsultationFeedback() {
+  const picked = document.querySelector('#consultFeedbackForm input[name="consultRating"]:checked');
+  if (!picked) { alert('Please choose a rating from 1 to 5.'); return; }
+  const btn = document.getElementById('consultFeedbackSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const res = await apiFetch(API + '/psychological-requests/' + consultationRequestId + '/consultation/feedback', {
+      method: 'POST', headers: authHeader(),
+      body: JSON.stringify({ rating: Number(picked.value), feedback: document.getElementById('consultFeedbackText').value.trim() || null })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+    renderConsultation(data.data);
+    showToast('✅ Thank you for rating this consultation.', true);
+  } catch (e) {
+    alert('Could not send the rating: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Send rating';
+  }
+}
+
 loadMyRequests();
 if (userRole === 'psychologist') {
   loadPendingRequests();
@@ -345,6 +491,8 @@ wireEvent('overlay', 'click', (event) => { handleOverlayClick(event); });
 wireEvent('closeModalBtn', 'click', () => { closeModal(); });
 wireEvent('submitPsychStatusBtn', 'click', () => { submitPsychStatus(); });
 wireEvent('closePsychContactBtn', 'click', () => { closePsychContact(); });
+wireEvent('closeConsultationBtn', 'click', () => { closeConsultationModal(); });
+wireEvent('consultationOverlay', 'click', function (event) { if (event.target === this) closeConsultationModal(); });
 
 // ---- Delegated actions (F-5) ----------------------------------------------
 // Rendered markup carries data-action / data-id instead of inline handlers;
@@ -357,6 +505,7 @@ function dispatchCaseAction(event) {
     case 'start':   startPsychWork(id, btn); break;
     case 'dismiss': { const row = document.getElementById('pr-' + id); if (row) row.remove(); break; }
     case 'contact': openPsychContact(id, btn.dataset.title, btn.dataset.status); break;
+    case 'consultation': openConsultationModal(id, { title: btn.dataset.title, format: btn.dataset.format }); break;
   }
 }
 ['myRequestsList', 'pendingRequestsList', 'activeSessionsList'].forEach((id) => wireEvent(id, 'click', dispatchCaseAction));

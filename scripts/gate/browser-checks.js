@@ -21,6 +21,10 @@
  *   R-1  on a completed request the volunteer's card offers "Record what you
  *        delivered" and the beneficiary's "Rate this help"; both prompts work and
  *        the second view shows what the first recorded
+ *   CS-1 on a completed psychological case the psychologist's session offers
+ *        "Record consultation" and the beneficiary's request "Rate this
+ *        consultation"; the beneficiary sees the recommendations but never the
+ *        psychologist's private note; the rating lands in the database
  *
  * Prerequisites: the app running against the gate database (see acceptance.sh),
  * psql access to that database (REG reads the e-mailed code from
@@ -244,10 +248,13 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
         }
 
         // ---------------- VER: credential verification from the admin UI ----------------
+        // the psychologist created here is also the one CS-1 records a consultation as
+        const psyEmail = `browser-psy-${Date.now()}@example.test`;
+        const psyPassword = 'Browser-Gate-2026!';
         {
             // a freshly approved psychologist: off duty, unverified
-            const email = `browser-psy-${Date.now()}@example.test`;
-            await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ fullName: 'Browser Psychologist', email, password: 'Browser-Gate-2026!', phone: '+15550001111', role: 'psychologist' }) });
+            const email = psyEmail;
+            await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ fullName: 'Browser Psychologist', email, password: psyPassword, phone: '+15550001111', role: 'psychologist' }) });
             await api('/api/auth/register/verify', { method: 'POST', body: JSON.stringify({ email, code: sql(`select code from pending_registrations where email='${email}'`) }) });
             const uid = sql(`select user_id from users where email='${email}'`);
             await api(`/api/admin/approve/${uid}`, { method: 'PUT' }, admin.token);
@@ -382,6 +389,63 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
                 check('R-1', `database row: ${row}`, row === '5/Fast and friendly');
                 await bpage.close();
             }
+        }
+
+        // ---------------- CS-1: the consultation record and its rating ----------------
+        {
+            // an anonymous case, accepted and completed through the API by the VER psychologist
+            const psy = await login(psyEmail, psyPassword);
+            const created = await api('/api/psychological-requests', { method: 'POST', body: JSON.stringify({
+                supportType: 'INDIVIDUAL', category: 'GRIEF', preferredFormat: 'VIDEO', isAnonymous: true,
+                description: 'Browser gate: consultation record' }) }, bene.token);
+            const caseId = created.body && created.body.data && created.body.data.id;
+            const accepted = await api(`/api/psychological-requests/${caseId}/accept`, { method: 'PUT' }, psy.token);
+            const completed = await api(`/api/psychological-requests/${caseId}/status?status=COMPLETED`, { method: 'PUT' }, psy.token);
+            check('CS-1', `case ${caseId} accepted (${accepted.status}) and completed (${completed.status}) by the psychologist`, accepted.status === 200 && completed.status === 200);
+
+            const ppage = await browser.newPage();
+            ppage.on('dialog', async (d) => { await d.dismiss(); });
+            await signIn(ppage, psy);
+            await ppage.goto(BASE + '/psychological.html', { waitUntil: 'networkidle0' });
+            await ppage.waitForFunction((id) => !!document.querySelector(`#as-${id} button[data-action="consultation"]`), { timeout: 15000 }, caseId);
+            const prompt = await ppage.$eval(`#as-${caseId} button[data-action="consultation"]`, (b) => b.textContent.trim());
+            check('CS-1', `psychologist's completed session offers "${prompt}"`, prompt === 'Record consultation');
+            await ppage.click(`#as-${caseId} button[data-action="consultation"]`);
+            await ppage.waitForSelector('#consultationForm', { timeout: 15000 });
+            const preselected = await ppage.$eval('#consultFormat', (el) => el.value);
+            check('CS-1', `the form preselects the case's preferred format (${preselected})`, preselected === 'VIDEO');
+            await ppage.type('#consultDuration', '45');
+            await ppage.type('#consultTopics', 'sleep, grief');
+            await ppage.type('#consultRecommendations', 'Keep a sleep diary');
+            await ppage.type('#consultNotes', 'PRIVATE-NOTE consider referral');
+            await ppage.click('#consultationSubmitBtn');
+            await ppage.waitForFunction(() => !document.getElementById('consultationForm') && document.querySelector('#consultationBody .report-block'), { timeout: 15000 });
+            const recorded = await ppage.$eval('#consultationBody', (el) => el.textContent);
+            check('CS-1', 'after submitting, the psychologist sees the session, the recommendations, their private note and "not rated yet"',
+                /Video session · 45 min/.test(recorded) && /Keep a sleep diary/.test(recorded) && /PRIVATE-NOTE/.test(recorded) && /not rated/.test(recorded));
+            const chips = await ppage.$$eval('#consultationBody .topic-chip', (els) => els.map((e) => e.textContent.trim()));
+            check('CS-1', `topics rendered as chips: ${chips.join('|')}`, chips.join('|') === 'sleep|grief');
+            await ppage.close();
+
+            const bpage = await browser.newPage();
+            await signIn(bpage, bene);
+            await bpage.goto(BASE + '/psychological.html', { waitUntil: 'networkidle0' });
+            await bpage.waitForFunction((id) => !!document.querySelector(`#myRequestsList button[data-action="consultation"][data-id="${id}"]`), { timeout: 15000 }, caseId);
+            const bprompt = await bpage.$eval(`#myRequestsList button[data-action="consultation"][data-id="${caseId}"]`, (b) => b.textContent.trim());
+            check('CS-1', `beneficiary's completed request offers "${bprompt}"`, bprompt === 'Rate this consultation');
+            await bpage.click(`#myRequestsList button[data-action="consultation"][data-id="${caseId}"]`);
+            await bpage.waitForSelector('#consultFeedbackForm', { timeout: 15000 });
+            const seen = await bpage.$eval('#consultationBody', (el) => el.textContent);
+            check('CS-1', 'the beneficiary sees the recommendations and never the private note', /Keep a sleep diary/.test(seen) && !/PRIVATE-NOTE/.test(seen) && !/Private notes/.test(seen));
+            await bpage.click('label[for="consultRating5"]');
+            await bpage.type('#consultFeedbackText', 'Felt heard');
+            await bpage.click('#consultFeedbackSubmitBtn');
+            await bpage.waitForFunction(() => !document.getElementById('consultFeedbackForm') && document.querySelector('.rating-given'), { timeout: 15000 });
+            const stars = await bpage.$eval('.rating-given', (el) => el.getAttribute('aria-label'));
+            check('CS-1', `rating shown as "${stars}"`, stars === '5 out of 5');
+            const row = sql(`select rating||'/'||feedback_from_beneficiary||'/'||cast(format as text)||'/'||(assignment_id is not null) from consultations where psychological_request_id=${caseId}`);
+            check('CS-1', `database row: ${row}`, row === '5/Felt heard/VIDEO/true');
+            await bpage.close();
         }
 
         // ---------------- F-4: expired access token is refreshed silently ----------------
