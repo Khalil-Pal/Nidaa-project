@@ -24,6 +24,14 @@ public class HelpRequest {
     @Column(name = "filed_by_user_id")
     private Long filedByUserId;
 
+    // Not a column. Set by HelpRequestService only on a request filed on
+    // someone's behalf and only for a viewer already entitled to the name
+    // (the beneficiary, the filer, the assigned provider, an admin), so the
+    // "Filed on behalf of <name>" badge can be shown (ON-2); absent otherwise.
+    @Transient
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private String beneficiaryName;
+
     @Column(name = "title")
     private String title;
 

@@ -70,6 +70,7 @@ function renderTable(list) {
                 <div class="user-cell">
                     <span class="u-name">${escHtml(r.requesterName||'—')}</span>
                     <span class="u-email">${escHtml(r.requesterEmail||'')}</span>
+                    ${r.filedByUserId != null ? `<span class="tag tag-filed" data-filed-by="${Number(r.filedByUserId)}">Filed on behalf of ${escHtml(r.requesterName||'this person')}</span>` : ''}
                 </div>
             </td>
             <td>
@@ -117,7 +118,7 @@ function openModal(idx) {
     document.getElementById('mAddress').textContent        = r.address     || 'Not specified';
     document.getElementById('mDesc').textContent           = r.description || '—';
     document.getElementById('mDate').textContent           = fmtDate(r.createdAt);
-    document.getElementById('mRequesterName').textContent  = r.requesterName  || '—';
+    document.getElementById('mRequesterName').textContent  = (r.requesterName  || '—') + (r.filedByUserId != null ? ' (filed on their behalf by user #' + r.filedByUserId + ')' : '');
     document.getElementById('mRequesterEmail').textContent = r.requesterEmail || '—';
     document.getElementById('mRequesterPhone').textContent = r.requesterPhone || '—';
     document.getElementById('mWorkerName').textContent = r.workerName || 'Not assigned yet';
@@ -151,9 +152,10 @@ function normalizeRankedDashboard(payload) {
             createdAt: request.createdAt,
             description: request.description,
             peopleCount: request.peopleCount,
-            requesterName: request.beneficiaryId ? 'Beneficiary #' + request.beneficiaryId : 'Beneficiary',
+            requesterName: request.beneficiaryName || (request.beneficiaryId ? 'Beneficiary #' + request.beneficiaryId : 'Beneficiary'),
             requesterEmail: '',
             requesterPhone: '',
+            filedByUserId: request.filedByUserId,   // ON-2: badge "Filed on behalf of"
             workerName,
             workerRole: '',
             suggestedVolunteerName: item.suggestedVolunteerName || 'N/A',

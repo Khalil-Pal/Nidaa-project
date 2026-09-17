@@ -116,6 +116,27 @@ class HelpRequestOnBehalfTest {
         assertEquals(VOLUNTEER_USER_ID, captor.getValue().getFiledByUserId());
     }
 
+    /** ON-2: the filer's response carries the name for the badge; a self-filed one carries none. */
+    @Test
+    void filedRequestReturnsTheBeneficiaryNameToTheFilerAndSelfFiledDoesNot() {
+        when(userService.getCurrentUser()).thenReturn(volunteer());
+        User existing = User.builder().id(51L).fullName("Nadia Haddad").role(UserRole.BENEFICIARY).build();
+        when(userRepository.findByEmail("nadia@example.com")).thenReturn(Optional.of(existing));
+        saveAssignsId(103L);
+        when(helpRequestRepository.findById(103L)).thenReturn(Optional.empty());
+
+        HelpRequest filed = service.createRequest(dtoFor(null, "nadia@example.com", null));
+        assertEquals("Nadia Haddad", filed.getBeneficiaryName());
+        assertEquals(VOLUNTEER_USER_ID, filed.getFiledByUserId());
+
+        User beneficiary = User.builder().id(2L).fullName("Own Name").role(UserRole.BENEFICIARY).build();
+        when(userService.getCurrentUser()).thenReturn(beneficiary);
+        saveAssignsId(104L);
+        when(helpRequestRepository.findById(104L)).thenReturn(Optional.empty());
+        HelpRequest own = service.createRequest(dtoFor(null, null, null));
+        assertNull(own.getBeneficiaryName(), "no badge on a request the person filed themselves");
+    }
+
     @Test
     void selfFiledRequestHasNoFiler() {
         User beneficiary = User.builder().id(2L).role(UserRole.BENEFICIARY).build();

@@ -24,6 +24,9 @@
  *   W-1  the assigned volunteer's card offers "On my way"; one tap moves the
  *        request to IN_PROGRESS, the chip changes on both sides and the
  *        beneficiary is notified
+ *   ON-2 a volunteer files a request for someone else through the form (toggle,
+ *        beneficiary fields, consent copy); the card carries "Filed on behalf of
+ *        <name>" and no "Start Working"; the admin queue shows the badge
  *   CS-1 on a completed psychological case the psychologist's session offers
  *        "Record consultation" and the beneficiary's request "Rate this
  *        consultation"; the beneficiary sees the recommendations but never the
@@ -433,6 +436,70 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
                 check('R-1', `database row: ${row}`, row === '5/Fast and friendly');
                 await bpage.close();
             }
+        }
+
+        // ---------------- ON-2: filing for someone else through the UI ----------------
+        {
+            const stamp = Date.now();
+            const personEmail = `browser-filed-${stamp}@example.test`;
+            const vpage = await browser.newPage();
+            vpage.on('dialog', async (d) => { await d.dismiss(); });
+            await signIn(vpage, vol);
+            await vpage.goto(BASE + '/help-requests.html', { waitUntil: 'networkidle0' });
+            const fabShown = await vpage.$eval('#fabBtn', (el) => getComputedStyle(el).display !== 'none' && el.getAttribute('aria-label'));
+            check('ON-2', `the volunteer gets the "+" button (${fabShown})`, /someone/.test(String(fabShown)));
+            await vpage.click('#fabBtn');
+            await vpage.waitForFunction(() => document.getElementById('overlay').classList.contains('open'), { timeout: 5000 });
+            const form = await vpage.evaluate(() => ({
+                toggleShown: !document.getElementById('onBehalfGroup').hidden,
+                toggleOn: document.getElementById('onBehalfToggle').checked,
+                fieldsShown: !document.getElementById('onBehalfFields').hidden,
+                consent: document.querySelector('#onBehalfFields .consent-copy').textContent }));
+            check('ON-2', 'the form shows the "filing for someone else" toggle, on, with the fields and the consent copy',
+                form.toggleShown && form.toggleOn && form.fieldsShown && /agreed/.test(form.consent) && /not be able to accept/.test(form.consent));
+            // off hides the fields, on brings them back
+            await vpage.click('#onBehalfToggle');
+            const hiddenWhenOff = await vpage.$eval('#onBehalfFields', (el) => el.hidden);
+            await vpage.click('#onBehalfToggle');
+            const shownWhenOn = await vpage.$eval('#onBehalfFields', (el) => !el.hidden);
+            check('ON-2', 'the toggle hides and reveals the beneficiary fields', hiddenWhenOff && shownWhenOn);
+            await vpage.type('#onBehalfName', 'Nadia Browser');
+            await vpage.type('#onBehalfEmail', personEmail);
+            await vpage.type('#onBehalfPhone', '+15550003333');
+            await vpage.type('#reqTitle', 'Browser gate: filed for Nadia');
+            await vpage.select('#reqType', 'FOOD');
+            await vpage.select('#reqUrgency', 'MEDIUM');
+            await vpage.type('#reqPeople', '3');
+            await vpage.click('#submitBtn');
+            await vpage.waitForFunction(() => [...document.querySelectorAll('#cardsGrid .req-card')].some((c) => /filed for Nadia/.test(c.textContent)), { timeout: 15000 });
+            const card = await vpage.evaluate(() => {
+                const c = [...document.querySelectorAll('#cardsGrid .req-card')].find((x) => /filed for Nadia/.test(x.textContent));
+                const badge = c.querySelector('.tag-filed');
+                return { badge: badge ? badge.textContent.trim() : null, start: !!c.querySelector('button[data-action="start"]'),
+                    note: c.querySelector('[data-filer-note]') ? c.querySelector('[data-filer-note]').textContent : null,
+                    id: c.querySelector('.fa-hashtag').parentElement.textContent.trim() };
+            });
+            check('ON-2', `the filer's card shows the badge "${card.badge}"`, card.badge === 'Filed on behalf of Nadia Browser');
+            check('ON-2', `no "Start Working" for the filer; instead: "${card.note}"`, !card.start && /another provider will deliver/.test(String(card.note)));
+            await vpage.close();
+            const filedId = Number(card.id);
+            const dbRow = sql(`select (h.filed_by_user_id = ${vol.userId})||'/'||u.full_name||'/'||u.email||'/'||u.role||'/'||u.is_verified from help_requests h join users u on u.user_id=h.beneficiary_id where h.request_id=${filedId}`);
+            check('ON-2', `database: filed by the volunteer for a new unverified beneficiary (${dbRow})`, dbRow === `true/Nadia Browser/${personEmail}/BENEFICIARY/false`);
+            const selfAccept = await api(`/api/help-requests/${filedId}/assign`, { method: 'PUT' }, vol.token);
+            check('ON-2', `the filer cannot accept their own filed request (${selfAccept.status})`, selfAccept.status === 400);
+
+            // the admin queue shows the badge with the name
+            const apage = await browser.newPage();
+            await signIn(apage, admin);
+            await apage.goto(BASE + '/admin-requests.html', { waitUntil: 'networkidle0' });
+            await apage.waitForFunction((id) => !!document.querySelector(`#requestsBody tr`) && [...document.querySelectorAll('#requestsBody tr')].some((tr) => tr.textContent.includes('#' + id)), { timeout: 15000, polling: 500 }, filedId).catch(() => {});
+            const adminBadge = await apage.evaluate((id) => {
+                const tr = [...document.querySelectorAll('#requestsBody tr')].find((t) => t.textContent.includes('#' + id));
+                const b = tr && tr.querySelector('.tag-filed');
+                return b ? b.textContent.trim() : (tr ? 'row without badge' : 'row not found');
+            }, filedId);
+            check('ON-2', `admin queue badge: "${adminBadge}"`, adminBadge === 'Filed on behalf of Nadia Browser');
+            await apage.close();
         }
 
         // ---------------- CS-1: the consultation record and its rating ----------------

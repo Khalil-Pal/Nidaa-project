@@ -123,7 +123,11 @@ public class HelpRequestService {
         request.setPriorityScore(priorityScoreService.calculate(request));
         HelpRequest saved = helpRequestRepository.save(request);
         automaticAssignmentService.assignNearestProvider(saved);
-        return helpRequestRepository.findById(saved.getId()).orElse(saved);
+        HelpRequest created = helpRequestRepository.findById(saved.getId()).orElse(saved);
+        if (filedByUserId != null) {
+            created.setBeneficiaryName(beneficiary.getFullName());   // the filer supplied it (ON-2 badge)
+        }
+        return created;
     }
 
     /**
@@ -307,13 +311,15 @@ public class HelpRequestService {
     }
 
     public List<HelpRequest> getAllRequests() {
-        return helpRequestRepository.findAll(
-                PageRequest.of(0, 100, Sort.by("createdAt").descending())).getContent();
+        return withBeneficiaryNames(helpRequestRepository.findAll(
+                PageRequest.of(0, 100, Sort.by("createdAt").descending())).getContent());
     }
 
     public Page<HelpRequest> getAllRequests(int page, int size) {
-        return helpRequestRepository.findAll(
+        Page<HelpRequest> page1 = helpRequestRepository.findAll(
                 PageRequest.of(page, size, Sort.by("createdAt").descending()));
+        withBeneficiaryNames(page1.getContent());
+        return page1;
     }
 
     public List<HelpRequest> getRequestsByStatus(String status) {
@@ -322,9 +328,33 @@ public class HelpRequestService {
 
     public List<HelpRequest> getMyRequests() {
         User currentUser = userService.getCurrentUser();
-        return helpRequestRepository.findMine(
+        return withBeneficiaryNames(helpRequestRepository.findMine(
                 currentUser.getId(),
-                PageRequest.of(0, 50, Sort.by("createdAt").descending())).getContent();
+                PageRequest.of(0, 50, Sort.by("createdAt").descending())).getContent());
+    }
+
+    /**
+     * Fills the transient {@code beneficiaryName} on requests filed on someone's
+     * behalf, for the "Filed on behalf of" badge (ON-2), and only where the caller
+     * could already learn the name: the beneficiary, the filer, the assigned
+     * provider or an admin (the {@link #canView} rule). A provider browsing the
+     * open list sees that a request was filed for someone, not for whom; the
+     * name reaches them with the contact details once they accept it. One
+     * lookup for the whole list.
+     */
+    private List<HelpRequest> withBeneficiaryNames(List<HelpRequest> requests) {
+        User me = userService.getCurrentUser();
+        List<HelpRequest> entitled = requests.stream()
+                .filter(r -> r.getFiledByUserId() != null && canView(me, r))
+                .toList();
+        if (entitled.isEmpty()) {
+            return requests;
+        }
+        Map<Long, String> names = new HashMap<>();
+        userRepository.findAllById(entitled.stream().map(HelpRequest::getBeneficiaryId).distinct().toList())
+                .forEach(u -> names.put(u.getId(), u.getFullName()));
+        entitled.forEach(r -> r.setBeneficiaryName(names.get(r.getBeneficiaryId())));
+        return requests;
     }
 
     /**
@@ -340,7 +370,7 @@ public class HelpRequestService {
         if (!canView(me, request)) {
             throw new ResourceNotFoundException("Help request not found: " + id);
         }
-        return request;
+        return withBeneficiaryNames(List.of(request)).get(0);
     }
 
     /** Unguarded lookup for flows that apply their own rule (accept, status change, delete). */
@@ -502,7 +532,9 @@ public class HelpRequestService {
             Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
 
     public Page<HelpRequest> getPendingByPriority(int page, int size) {
-        return helpRequestRepository.findByStatus("PENDING", PageRequest.of(page, size, PENDING_ORDER));
+        Page<HelpRequest> pending = helpRequestRepository.findByStatus("PENDING", PageRequest.of(page, size, PENDING_ORDER));
+        withBeneficiaryNames(pending.getContent());
+        return pending;
     }
 
     @Transactional(readOnly = true)

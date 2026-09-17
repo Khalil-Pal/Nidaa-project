@@ -25,7 +25,15 @@
         document.getElementById('fabBtn').style.display  = 'flex';
     } else if (userRole === 'volunteer' || userRole === 'organization') {
         document.getElementById('pageTitle').textContent = 'Available Help Requests';
-        document.getElementById('pageDesc').textContent  = 'Browse requests and offer your help.';
+        document.getElementById('pageDesc').textContent  = 'Browse requests and offer your help, or file a request for someone who cannot.';
+        // ON-2: providers file on someone else's behalf; the toggle starts on because that is what they are here for
+        const fab = document.getElementById('fabBtn');
+        fab.style.display = 'flex';
+        fab.title = 'File a request for someone';
+        fab.setAttribute('aria-label', 'File a request for someone');
+        document.getElementById('onBehalfGroup').hidden = false;
+        document.getElementById('onBehalfToggle').checked = true;
+        document.getElementById('onBehalfFields').hidden = false;
     } else if (userRole === 'admin') {
         document.getElementById('pageTitle').textContent = 'All Help Requests';
         document.getElementById('pageDesc').textContent  = 'Manage all platform requests.';
@@ -74,6 +82,17 @@
             const date   = formatDate(r.createdAt || r.date);
             const people = r.peopleCount || r.people || '';
 
+            // ON-2: a request filed on someone's behalf says so; the name appears only where the
+            // server put it (the beneficiary, the filer, the assigned provider, an admin)
+            const filedByMe = r.filedByUserId != null && Number(r.filedByUserId) === Number(user.id);
+            let filedBadge = '';
+            if (r.filedByUserId != null) {
+                const text = userRole === 'beneficiary' ? 'Filed on your behalf'
+                    : r.beneficiaryName ? 'Filed on behalf of ' + r.beneficiaryName
+                    : "Filed on someone's behalf";
+                filedBadge = `<span class="tag tag-filed" data-filed-by="${Number(r.filedByUserId)}"><i class="fa fa-hand-holding-heart" style="font-size:11px;margin-right:4px"></i>${escHtml(text)}</span>`;
+            }
+
             // Action button changes based on role
             let actionBtn = '';
             if (userRole === 'beneficiary') {
@@ -83,6 +102,14 @@
                 // R-1: once the help was delivered the beneficiary is asked to rate it
                 if (status === 'COMPLETED') {
                     actionBtn += ` <button class="btn-action btn-view" data-action="report" data-id="${id}"><i class="fa fa-star" style="font-size:11px;margin-right:4px"></i>Rate this help</button>`;
+                }
+            } else if (filedByMe) {
+                // ON-2: the filer is a party like the beneficiary, not the deliverer: they may not accept
+                // what they filed (ON-1, the server refuses it too) and get the responder's contact instead
+                if (status === 'PENDING') {
+                    actionBtn = `<span class="card-date" data-filer-note="${id}">You filed this; another provider will deliver it</span>`;
+                } else if (status === 'ASSIGNED' || status === 'IN_PROGRESS' || status === 'COMPLETED') {
+                    actionBtn = `<button class="btn-action btn-view" data-action="contact" data-id="${id}"><i class="fa fa-address-card" style="font-size:11px;margin-right:4px"></i>Contact Responder</button>`;
                 }
             } else if (userRole === 'volunteer' || userRole === 'organization') {
                 if (status === 'PENDING') {
@@ -105,6 +132,7 @@
                     <span class="tag ${typeTag[type]   || 'tag-other'}">${escHtml(type)}</span>
                     <span class="tag ${urgencyTag[urg] || ''}">${escHtml(urg)}</span>
                     <span class="tag ${statusTag[status] || 'status-pending'}">${escHtml(statusLabel(status))}</span>
+                    ${filedBadge}
                 </div>
                 <div class="card-title">${escHtml(title)}</div>
                 ${desc ? `<div class="card-desc">${escHtml(desc.substring(0,120))}${desc.length>120?'...':''}</div>` : ''}
@@ -191,11 +219,13 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
         document.getElementById('contactEmail').textContent = '...';
         document.getElementById('contactPhone').textContent = '...';
         document.getElementById('contactPartyLabel').textContent = 'Contact';
-        document.getElementById('contactStatusSection').style.display =
-            userRole === 'beneficiary' ? 'none' : 'block';
+        // the status controls belong to the deliverer; the beneficiary and the filer (ON-2) only look
+        const deliverer = userRole !== 'beneficiary'
+            && !(req && req.filedByUserId != null && Number(req.filedByUserId) === Number(user.id));
+        document.getElementById('contactStatusSection').style.display = deliverer ? 'block' : 'none';
         document.getElementById('contactOverlay').classList.add('open');
         // Set current status in dropdown
-        if (req && userRole !== 'beneficiary') {
+        if (req && deliverer) {
             buildStatusOptions(req.status || 'ASSIGNED');
         }
         try {
@@ -533,6 +563,17 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
         if (!helpType)      { alert('Please select the type of help.'); return; }
         if (!urgencyLevel)  { alert('Please select the urgency level.'); return; }
 
+        // ON-2: filing for someone else sends their details; the server records the caller as the filer
+        const onBehalf = document.getElementById('onBehalfToggle').checked
+            && !document.getElementById('onBehalfGroup').hidden;
+        const beneficiary = onBehalf ? {
+            beneficiaryName:  document.getElementById('onBehalfName').value.trim(),
+            beneficiaryEmail: document.getElementById('onBehalfEmail').value.trim(),
+            beneficiaryPhone: document.getElementById('onBehalfPhone').value.trim() || null
+        } : {};
+        if (onBehalf && !beneficiary.beneficiaryName)  { alert("Please enter the person's full name."); return; }
+        if (onBehalf && !beneficiary.beneficiaryEmail) { alert("Please enter the person's e-mail address."); return; }
+
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
         btn.textContent = 'Submitting...';
@@ -541,7 +582,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
             const res = await apiFetch(API + '/help-requests', {
                 method: 'POST',
                 headers: authHeader(),
-                body: JSON.stringify({
+                body: JSON.stringify(Object.assign({
                     title:        title,
                     helpType:     helpType,
                     urgencyLevel: urgencyLevel,
@@ -550,7 +591,7 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
                     address:       document.getElementById('reqAddress').value.trim() || null,
                     latitude:      requestCoords ? requestCoords.latitude  : null,
                     longitude:     requestCoords ? requestCoords.longitude : null
-                })
+                }, beneficiary))
             });
 
             if (!res.ok) {
@@ -567,16 +608,20 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
             closeModal();
             const sentCoords = requestCoords;
             this.reset();
+            syncOnBehalfFields();   // reset() unticks the toggle; providers get it back on
             if (sentCoords && sentCoords.source === 'saved') { renderRequestLocation(); } else { clearRequestLocation(); }
 
             // Success toast: say what matching did with the request
             const toast = document.createElement('div');
             toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#f0fdf4;border:1px solid #bbf7d0;color:#047857;padding:14px 22px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.1);font-family:Inter,sans-serif;font-size:14px;max-width:360px';
-            toast.textContent = newReq.status === 'ASSIGNED'
-                ? '\u2705 Request saved and matched to the nearest available provider.'
-                : sentCoords
-                    ? '\u2705 Request saved. No provider is available nearby right now; it stays in the queue and will be matched as soon as one is.'
-                    : '\u2705 Request saved. It will be matched manually by the Nidaa team.';
+            toast.textContent = (newReq.filedByUserId != null && newReq.beneficiaryName
+                    ? '\u2705 Request filed on behalf of ' + newReq.beneficiaryName + '. '
+                    : '\u2705 Request saved. ')
+                + (newReq.status === 'ASSIGNED'
+                    ? 'It was matched to the nearest available provider.'
+                    : sentCoords
+                        ? 'No provider is available nearby right now; it stays in the queue and will be matched as soon as one is.'
+                        : 'It will be matched manually by the Nidaa team.');
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 6000);
 
@@ -613,6 +658,16 @@ wireEvent('filterType', 'change', () => { filterCards(); });
 wireEvent('filterRegion', 'input', () => { filterCards(); });
 wireEvent('filterSearch', 'input', () => { filterCards(); });
 wireEvent('fabBtn', 'click', () => { openModal(); });
+// ON-2: the toggle reveals the beneficiary fields; providers start with it on (see the role setup)
+function syncOnBehalfFields() {
+    const group = document.getElementById('onBehalfGroup');
+    const toggle = document.getElementById('onBehalfToggle');
+    if (!group.hidden && (userRole === 'volunteer' || userRole === 'organization') && !toggle.checked && !toggle.dataset.touched) {
+        toggle.checked = true;
+    }
+    document.getElementById('onBehalfFields').hidden = !toggle.checked;
+}
+wireEvent('onBehalfToggle', 'change', function () { this.dataset.touched = '1'; syncOnBehalfFields(); });
 wireEvent('overlay', 'click', function (event) { if(event.target===this)closeModal(); });
 wireEvent('closeModalBtn', 'click', () => { closeModal(); });
 wireEvent('useMyLocationBtn', 'click', () => { useMyLocation(); });

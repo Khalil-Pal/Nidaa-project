@@ -229,6 +229,12 @@ check "ON-1" "filer cannot accept own filing" "$(code -X PUT "$BASE/api/help-req
 check "ON-1" "filer can read it" "$(code "$BASE/api/help-requests/$ON_ID" -H "Authorization: Bearer $V")" "200"
 check "ON-1" "filer cannot complete it" "$(code -X PUT "$BASE/api/help-requests/$ON_ID/status?status=COMPLETED" -H "Authorization: Bearer $V")" "403"
 check "ON-1" "beneficiary supplying beneficiaryEmail" "$(code -X POST "$BASE/api/help-requests" -H 'Content-Type: application/json' -H "Authorization: Bearer $B" -d '{"title":"x","helpType":"FOOD","urgencyLevel":"LOW","beneficiaryEmail":"a@b.co"}')" "400"
+# ON-2: the "Filed on behalf of <name>" badge gets the name only where the viewer could already learn it
+check "ON-2" "the filer's response carries the beneficiary's name" "$(echo "$ON" | json data.beneficiaryName)" "Nadia Gate"
+check "ON-2" "the filer sees the name in the list" "$(body "$BASE/api/help-requests?page=0&size=100" -H "Authorization: Bearer $V" | python -c "import sys,json; r=[x for x in json.load(sys.stdin)['data']['content'] if x['id']==$ON_ID][0]; print(str(r['filedByUserId'])+'/'+str(r.get('beneficiaryName')))")" "$ON_FILER/Nadia Gate"
+check "ON-2" "another provider sees that it was filed, not for whom" "$(body "$BASE/api/help-requests?page=0&size=100" -H "Authorization: Bearer $V2" | python -c "import sys,json; r=[x for x in json.load(sys.stdin)['data']['content'] if x['id']==$ON_ID][0]; print(str(r['filedByUserId'])+'/'+str('beneficiaryName' in r))")" "$ON_FILER/False"
+check "ON-2" "the admin sees the name" "$(body "$BASE/api/help-requests/$ON_ID" -H "Authorization: Bearer $A" | json data.beneficiaryName)" "Nadia Gate"
+check "ON-2" "a self-filed request carries no name field" "$(body "$BASE/api/help-requests/$R_ID" -H "Authorization: Bearer $B" | grep -c beneficiaryName)" "0"
 
 echo "== Phase 3 =="
 # L-1: volunteer 2 sets a location and has a FOOD resource; a request with coordinates nearby is auto-assigned

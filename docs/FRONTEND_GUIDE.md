@@ -200,6 +200,26 @@ beneficiary phone/email.
 Frontend role checks are presentation only. Never reveal cached contact data when
 an API call fails or returns an anonymous payload.
 
+## Filing For Someone Else (ON-2)
+
+On `help-requests.html` a volunteer or organization gets the "+" button and the
+request form shows an "I am filing this request for someone else" toggle, on by
+default for them and never shown to a beneficiary. On, it reveals the person's
+name, e-mail and phone with the consent copy (they asked for the request, agreed
+to be recorded and contacted, get an account under that e-mail, and the filer
+cannot deliver it); the fields go out as `beneficiaryName` / `beneficiaryEmail` /
+`beneficiaryPhone` and the server records the caller as the filer (ON-1). Off,
+the form files for the caller as before.
+
+A request with `filedByUserId` carries a "Filed on behalf of" badge on
+`help-requests.html`, `dashboard.html` ("Filed on your behalf") and the admin
+queue. The name comes from the server's transient `beneficiaryName`, which is
+present only for a viewer entitled to it (the beneficiary, the filer, the
+assigned provider, an admin); any other provider browsing the list sees "Filed
+on someone's behalf". The filer's own card offers the responder's contact and no
+"Start Working", "On my way" or status controls: the filer is a party to the
+request, not its deliverer, and the server refuses the self-assignment anyway.
+
 ## Provider Services UI
 
 Volunteers and organizations manage structured services in `settings.html` through

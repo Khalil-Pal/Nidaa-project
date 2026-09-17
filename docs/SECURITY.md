@@ -115,6 +115,7 @@ transition (B-4). Every body, success or error, is the one envelope
 | Forgot-password always answers 200 with the same sentence, whether or not the account exists, whether or not the email could be sent | `PasswordResetController`, `PasswordResetService` (S-8) |
 | Unexpected errors return only an 8-character reference; the stack trace, constraint and column names go to the log under that reference. HTTP status is chosen by exception type, never by message text. | `GlobalExceptionHandler` (S-10) |
 | Records the caller may not see return 404 (see 3.2) | request services (S-4) |
+| A request filed on someone's behalf carries the beneficiary's name (`beneficiaryName`, transient) only in responses to the beneficiary, the filer, the assigned provider or an admin — the people who can already learn it; a provider browsing the open list sees that it was filed, not for whom | `HelpRequestService.withBeneficiaryNames()` (ON-2) |
 | CORS reflects only configured origins (`CORS_ORIGINS`) and accepts only `Authorization` and `Content-Type` | `SecurityConfig.corsConfigurationSource()` (S-6) |
 
 ### 3.5 Abuse and availability

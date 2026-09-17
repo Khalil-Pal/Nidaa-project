@@ -192,7 +192,7 @@ async function loadRecentRequests() {
       <tr>
         <td>
           <div class="req-title">${escHtml(r.title || r.description?.substring(0,40) || 'Help Request')}</div>
-          <div class="req-id">#${escHtml(r.id || r.requestId || '—')} &nbsp;&#128205; ${escHtml(r.address || 'Not specified')}</div>
+          <div class="req-id">#${escHtml(r.id || r.requestId || '—')} &nbsp;&#128205; ${escHtml(r.address || 'Not specified')}${r.filedByUserId != null ? ' <span class="tag tag-filed">Filed on your behalf</span>' : ''}</div>
         </td>
         <td><span class="tag ${typeClass(r.helpType)}">${escHtml(r.helpType || r.category || 'OTHER')}</span></td>
         <td><span class="tag ${statusClass(r.status)}">${escHtml(String(r.status || 'PENDING').replace('_', ' '))}</span></td>

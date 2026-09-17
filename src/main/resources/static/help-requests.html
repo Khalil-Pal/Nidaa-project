@@ -41,6 +41,14 @@
         .status-pending{background:#fefce8;color:#a16207}
         .status-assigned{background:#eff6ff;color:var(--blue)}
         .status-inprogress{background:#fff7ed;color:#9a3412}   /* W-1: the provider is on the way */
+        .tag-filed{background:#f5f3ff;color:#5b21b6}            /* ON-2: filed on someone's behalf */
+        /* ON-2: the "filing for someone else" toggle and the fields it reveals */
+        .on-behalf{border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;background:#faf5ff}
+        .on-behalf[hidden],.on-behalf-fields[hidden]{display:none}
+        .toggle-row{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;margin:0}
+        .toggle-row input{width:18px;height:18px;margin:0;accent-color:var(--blue);flex-shrink:0}
+        .on-behalf-fields{margin-top:12px}
+        .consent-copy{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 12px}
         .status-completed{background:#f0fdf4;color:var(--green)}
         .status-cancelled{background:#fef2f2;color:#b91c1c}
         .card-title{font-size:16px;font-weight:700;color:var(--dark)}
@@ -198,6 +206,27 @@
             <button class="modal-close" id="closeModalBtn">&#x2715;</button>
         </div>
         <form id="requestForm">
+            <!-- ON-2: volunteers and organizations file for someone else; beneficiaries never see this -->
+            <div class="form-group on-behalf" id="onBehalfGroup" hidden>
+                <label class="toggle-row"><input type="checkbox" id="onBehalfToggle"/><span>I am filing this request for someone else</span></label>
+                <div class="on-behalf-fields" id="onBehalfFields" hidden>
+                    <p class="consent-copy">Enter the details of the person who needs help. Only do this if they asked you to request help for them and agreed that their name and contact details are recorded on Nidaa and shared with the provider who accepts the request. They receive an account under this e-mail address and can claim it at any time; you will not be able to accept this request yourself.</p>
+                    <div class="form-group">
+                        <label for="onBehalfName">Their full name *</label>
+                        <input type="text" id="onBehalfName" maxlength="100" placeholder="e.g. Nadia Haddad" autocomplete="off"/>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="onBehalfEmail">Their e-mail *</label>
+                            <input type="email" id="onBehalfEmail" placeholder="name@example.org" autocomplete="off"/>
+                        </div>
+                        <div class="form-group">
+                            <label for="onBehalfPhone">Their phone</label>
+                            <input type="tel" id="onBehalfPhone" maxlength="20" placeholder="+218 ..." autocomplete="off"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
                 <label for="reqTitle">Request Title *</label>
                 <input type="text" id="reqTitle" placeholder="e.g. Food needed for 5 people" required/>

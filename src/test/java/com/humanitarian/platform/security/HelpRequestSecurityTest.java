@@ -259,6 +259,38 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
         mockMvc.perform(get("/api/help-requests")).andExpect(status().isOk());
     }
 
+    /**
+     * ON-2: the "Filed on behalf of <name>" badge gets the name only where the viewer
+     * could already learn it. A provider browsing the open list sees that the
+     * request was filed for someone, not for whom; the filer and an admin see the name.
+     */
+    @Test
+    @WithMockUser(roles = "VOLUNTEER")
+    void beneficiaryNameOnAFiledRequestReachesTheFilerAndAdminButNotABrowsingProvider() throws Exception {
+        HelpRequest filed = HelpRequest.builder().id(7L).beneficiaryId(OWNER_ID).filedByUserId(VOLUNTEER_USER_ID)
+                .title("Food for a family").helpType("FOOD").urgencyLevel("HIGH").status("PENDING").build();
+        HelpRequest own = HelpRequest.builder().id(8L).beneficiaryId(OWNER_ID).title("Water").helpType("WATER")
+                .urgencyLevel("LOW").status("PENDING").build();
+        when(helpRequestRepository.findAll(any(Pageable.class)))
+                .thenAnswer(inv -> new PageImpl<>(List.of(filed, own), PageRequest.of(0, 100), 2));
+        when(userRepository.findAllById(List.of(OWNER_ID))).thenReturn(List.of(user(OWNER_ID, UserRole.BENEFICIARY)));
+
+        actingAs(11L, UserRole.VOLUNTEER);   // some other provider
+        mockMvc.perform(get("/api/help-requests")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].filedByUserId").value(VOLUNTEER_USER_ID))
+                .andExpect(jsonPath("$.data.content[0].beneficiaryName").doesNotExist())
+                .andExpect(jsonPath("$.data.content[1].beneficiaryName").doesNotExist());
+
+        actingAs(VOLUNTEER_USER_ID, UserRole.VOLUNTEER);   // the filer
+        mockMvc.perform(get("/api/help-requests")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].beneficiaryName").value("BENEFICIARY 2"))
+                .andExpect(jsonPath("$.data.content[1].beneficiaryName").doesNotExist());
+
+        actingAs(99L, UserRole.ADMIN);
+        mockMvc.perform(get("/api/help-requests")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].beneficiaryName").value("BENEFICIARY 2"));
+    }
+
     // -- reading a single request ---------------------------------------------
 
     @Test
