@@ -82,6 +82,9 @@ public class HelpRequestService {
     @Autowired
     private NotificationService notifications;
 
+    @Autowired
+    private AttentionService attention;
+
     @Transactional
     public HelpRequest createRequest(HelpRequestDto dto) {
         User currentUser = userService.getCurrentUser();
@@ -272,6 +275,7 @@ public class HelpRequestService {
         log.info("Request {} assigned manually to {} {} by user {}", requestId,
                 assignedVolunteerId != null ? "volunteer" : "organization",
                 assignedVolunteerId != null ? assignedVolunteerId : assignedOrganizationId, currentUser.getId());
+        attention.clear(requestId);   // someone took it: the escalation is answered (GAP-2)
 
         HelpRequest saved = findOrThrow(requestId);
         // N-1: the people waiting learn of the acceptance without reloading

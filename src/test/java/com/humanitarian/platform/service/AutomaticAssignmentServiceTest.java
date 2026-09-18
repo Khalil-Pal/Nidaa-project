@@ -54,6 +54,7 @@ class AutomaticAssignmentServiceTest {
     @Spy private GeoMatchingService geoMatchingService = new GeoMatchingService();
     @Mock private ProviderResourceService providerResourceService;
     @Mock private com.humanitarian.platform.service.NotificationService notifications;
+    @Mock private AttentionService attention;
 
     @InjectMocks private AutomaticAssignmentService service;
 
@@ -398,6 +399,59 @@ class AutomaticAssignmentServiceTest {
                 .longitude(37.62)
                 .status("PENDING")
                 .build();
+    }
+
+    /** GAP-1: a provider who declined this request is never the one it is offered to again. */
+    @Test
+    void aProviderWhoDeclinedIsSkippedAndTheNextNearestGetsIt() {
+        HelpRequest request = HelpRequest.builder()
+                .id(40L).helpType("FOOD").peopleCount(2)
+                .latitude(55.75).longitude(37.62).status("PENDING").build();
+        Volunteer declined = Volunteer.builder()
+                .id(41L).user(userAt(401L, "Declined Earlier", 55.751, 37.621)).isAvailable(true).build();
+        Volunteer next = Volunteer.builder()
+                .id(42L).user(userAt(402L, "Next Nearest", 55.80, 37.70)).isAvailable(true).build();
+
+        when(providerResourceService.findEligibleProviderCapacityAssessments("FOOD", 2))
+                .thenReturn(capacities(401L, 402L));
+        when(providerResourceService.reserveForAssignment(402L, "FOOD", 2))
+                .thenReturn(Optional.of(reservation(402L, "FOOD", null)));
+        when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(declined, next));
+        when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of());
+        when(volunteerRepository.claimIfAvailable(42L)).thenReturn(1);
+        when(helpRequestRepository.assignVolunteer(40L, 42L, "ASSIGNED", "PENDING")).thenReturn(1);
+
+        assertTrue(service.assignNearestProvider(request,
+                new AutomaticAssignmentService.ProviderExclusions(List.of(41L), List.of())));
+
+        verify(volunteerRepository, never()).claimIfAvailable(41L);
+        ArgumentCaptor<Assignment> captor = ArgumentCaptor.forClass(Assignment.class);
+        verify(assignmentRepository).save(captor.capture());
+        assertEquals(42L, captor.getValue().getVolunteerId(), "the nearer one declined, so the next nearest has it");
+        verify(attention).clear(40L);   // an assignment answers any escalation (GAP-2)
+    }
+
+    /** GAP-1: when everyone eligible has declined, the request stays PENDING rather than going to a decliner. */
+    @Test
+    void aRequestEveryoneDeclinedStaysPendingAndIsNotLost() {
+        HelpRequest request = HelpRequest.builder()
+                .id(43L).helpType("WATER").peopleCount(1)
+                .latitude(55.75).longitude(37.62).status("PENDING").build();
+        Volunteer onlyOne = Volunteer.builder()
+                .id(44L).user(userAt(404L, "Only Provider", 55.76, 37.63)).isAvailable(true).build();
+
+        when(providerResourceService.findEligibleProviderCapacityAssessments("WATER", 1))
+                .thenReturn(capacities(404L));
+        when(volunteerRepository.findByIsAvailableTrue()).thenReturn(List.of(onlyOne));
+        when(organizationRepository.findByIsAvailableTrue()).thenReturn(List.of());
+
+        assertFalse(service.assignNearestProvider(request,
+                new AutomaticAssignmentService.ProviderExclusions(List.of(44L), List.of())));
+
+        verify(volunteerRepository, never()).claimIfAvailable(anyLong());
+        verify(assignmentRepository, never()).save(any(Assignment.class));
+        verify(providerResourceService, never()).reserveForAssignment(anyLong(), anyString(), org.mockito.ArgumentMatchers.anyInt());
+        assertEquals("PENDING", request.getStatus(), "still on the queue for the retry sweep");
     }
 
     private User userAt(Long id, String name, double latitude, double longitude) {

@@ -110,6 +110,40 @@ Approval alone creates the profile off duty and unverified, so a newly approved
 psychologist receives no crisis case until both have happened. This path is not
 part of provider-resource matching.
 
+### Declining, retrying and escalating
+
+A provider who cannot deliver an automatically matched request hands it back
+instead of cancelling it (`PUT /api/help-requests/{id}/decline`, GAP-1). The
+assignment becomes `DECLINED` — not `CANCELLED`, because the row records that
+this provider said no and is what the rematch excludes on — any reserved
+capacity is restored exactly once through the same guarded UPDATE the
+cancellation path uses, the provider is released if they hold nothing else, and
+the request returns to `PENDING` with its provider columns cleared. It is then
+offered to the next nearest provider, never to anyone who has already declined
+it. After three declines it is flagged for an administrator instead of going
+round again.
+
+A request that finds nobody is retried rather than forgotten
+(`StaleRequestScheduler`, GAP-2): every 30 minutes the `PENDING` requests with
+no open assignment are offered again, **in priority order**, with the same
+decline exclusions. After `app.matching.escalate-after-hours` (24 by default)
+with no provider, the request is flagged for an administrator, once.
+
+**This sweep is the only place where the priority score orders automatic
+matching.** On arrival a request is matched alone, so there is nothing to order;
+the ranked queue orders only what humans browse. `docs/SCORING.md` defends the
+weights themselves.
+
+`help_requests.needs_attention` (V23), with `needs_attention_at` and
+`needs_attention_reason`, is what both escalations raise; assignment clears it,
+whether the assignment is automatic or a provider taking the request manually.
+`AttentionService` owns both sides and notifies every administrator when the
+flag goes up.
+
+| Method | Endpoint | Access | Behavior |
+|---|---|---|---|
+| `PUT` | `/api/help-requests/{id}/decline?reason=` | The request's assigned provider | Request must be `ASSIGNED` (400 otherwise); anyone else gets **404**; answers `{requestId, status, declineCount, reassigned, needsAttention}` |
+
 Assignment history records material and psychological assignment events so admin
 analytics can measure waiting time, utilization, regional fairness, and strategy
 outcomes.

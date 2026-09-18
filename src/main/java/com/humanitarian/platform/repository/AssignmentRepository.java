@@ -29,6 +29,9 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
     Optional<Assignment> findFirstByPsychologicalRequestIdAndStatusOrderByAssignedAtDesc(
             Long psychologicalRequestId, String status);
     List<Assignment> findByVolunteerIdAndStatus(Long volunteerId, String status);
+    /** Who has already declined this request, and how many times (GAP-1). */
+    List<Assignment> findAllByRequestIdAndStatus(Long requestId, String status);
+    long countByRequestIdAndStatus(Long requestId, String status);
     long countByVolunteerIdAndStatus(Long volunteerId, String status);
     long countByOrganizationIdAndStatus(Long organizationId, String status);
     long countByPsychologistIdAndStatus(Long psychologistId, String status);

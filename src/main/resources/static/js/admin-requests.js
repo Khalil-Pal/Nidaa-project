@@ -71,6 +71,8 @@ function renderTable(list) {
                     <span class="u-name">${escHtml(r.requesterName||'—')}</span>
                     <span class="u-email">${escHtml(r.requesterEmail||'')}</span>
                     ${r.filedByUserId != null ? `<span class="tag tag-filed" data-filed-by="${Number(r.filedByUserId)}">Filed on behalf of ${escHtml(r.requesterName||'this person')}</span>` : ''}
+                    ${r.needsAttention ? `<span class="tag tag-attention" data-needs-attention="${Number(r.id)}" title="${escHtml(r.attentionReason||'')}">Needs attention: ${escHtml(r.attentionReason||'unmatched')}</span>` : ''}
+                    ${Number(r.declines) > 0 ? `<span class="tag tag-declined">${Number(r.declines)} declined</span>` : ''}
                 </div>
             </td>
             <td>
@@ -156,6 +158,8 @@ function normalizeRankedDashboard(payload) {
             requesterEmail: '',
             requesterPhone: '',
             filedByUserId: request.filedByUserId,   // ON-2: badge "Filed on behalf of"
+            needsAttention: request.needsAttention,  // GAP-1/GAP-2: three declines, or nobody for too long
+            attentionReason: request.needsAttentionReason,
             workerName,
             workerRole: '',
             suggestedVolunteerName: item.suggestedVolunteerName || 'N/A',

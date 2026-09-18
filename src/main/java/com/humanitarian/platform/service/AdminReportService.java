@@ -47,6 +47,9 @@ public class AdminReportService {
                    hr.title, hr.help_type, hr.urgency_level, hr.status,
                    hr.address, hr.created_at, hr.description,
                    hr.filed_by_user_id,
+                   hr.needs_attention, hr.needs_attention_reason,
+                   (SELECT count(*) FROM assignments a
+                     WHERE a.request_id = hr.request_id AND a.status = 'DECLINED') AS declines,
                    ru.full_name  AS requester_name,
                    ru.email      AS requester_email,
                    ru.phone      AS requester_phone,
@@ -71,6 +74,10 @@ public class AdminReportService {
             item.put("createdAt",      row.get("created_at"));
             item.put("description",    row.get("description"));
             item.put("filedByUserId",  row.get("filed_by_user_id"));
+            // GAP-1/GAP-2: what the admin queue has to look at, and why
+            item.put("needsAttention", row.get("needs_attention"));
+            item.put("attentionReason", row.get("needs_attention_reason"));
+            item.put("declines",       row.get("declines"));
             item.put("requesterName",  nvl(row.get("requester_name"),  "—"));
             item.put("requesterEmail", nvl(row.get("requester_email"), "—"));
             item.put("requesterPhone", nvl(row.get("requester_phone"), "—"));

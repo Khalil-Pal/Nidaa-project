@@ -53,6 +53,8 @@ class RequestLifecycleTest {
     @Mock private com.humanitarian.platform.service.NotificationService notifications;
     @Spy private PriorityScoreService priorityScoreService = new PriorityScoreService();
 
+    @Mock private com.humanitarian.platform.service.AttentionService attention;   // GAP-2
+
     @InjectMocks private HelpRequestService helpRequestService;
 
     @Test

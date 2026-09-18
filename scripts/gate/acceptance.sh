@@ -193,6 +193,45 @@ check "W-1" "repeating IN_PROGRESS" "$(code -X PUT "$BASE/api/help-requests/$W_I
 check "W-1" "beneficiary completes from IN_PROGRESS" "$(code -X PUT "$BASE/api/help-requests/$W_ID/status?status=COMPLETED" -H "Authorization: Bearer $B")" "403"
 check "W-1" "assigned volunteer completes from IN_PROGRESS" "$(code -X PUT "$BASE/api/help-requests/$W_ID/status?status=COMPLETED" -H "Authorization: Bearer $V")" "200"
 check "W-1" "COMPLETED with timestamp, assignment closed" "$(sql "select h.status||'/'||(h.completed_at is not null)||'/'||a.status from help_requests h join assignments a on a.request_id=h.request_id where h.request_id=$W_ID")" "COMPLETED/true/COMPLETED"
+# GAP-1: the assigned provider hands a request back instead of cancelling it; the request survives,
+# the capacity comes back, the decliner is never offered it again, and the third decline escalates
+D_ID=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" \
+  -d '{"title":"Gate request D","helpType":"FOOD","urgencyLevel":"HIGH","peopleCount":2}' | json data.id)
+check "GAP-1" "declining a request nobody holds" "$(code -X PUT "$BASE/api/help-requests/$D_ID/decline" -H "Authorization: Bearer $V")" "404"
+check "GAP-1" "volunteer accepts D" "$(code -X PUT "$BASE/api/help-requests/$D_ID/assign" -H "Authorization: Bearer $V")" "200"
+check "GAP-1" "the beneficiary cannot decline their own request" "$(code -X PUT "$BASE/api/help-requests/$D_ID/decline" -H "Authorization: Bearer $B")" "403"
+check "GAP-1" "a provider who is not the assignee sees no request to decline" "$(code -X PUT "$BASE/api/help-requests/$D_ID/decline" -H "Authorization: Bearer $V2")" "404"
+DEC=$(body -X PUT "$BASE/api/help-requests/$D_ID/decline?reason=Van+broke+down" -H "Authorization: Bearer $V")
+check "GAP-1" "the assigned volunteer declines" "$(echo "$DEC" | json data.declineCount)/$(echo "$DEC" | json data.needsAttention)" "1/False"
+check "GAP-1" "the request is alive, not cancelled, with no provider on it" "$(sql "select status||'/'||coalesce(assigned_volunteer_id::text,'none')||'/'||coalesce(assigned_organization_id::text,'none')||'/'||(cancelled_at is null) from help_requests where request_id=$D_ID")" "PENDING/none/none/true"
+check "GAP-1" "the assignment is DECLINED with the reason and a closing time" "$(sql "select status||'/'||(completed_at is not null)||'/'||(notes like '%Van broke down%') from assignments where request_id=$D_ID order by assignment_id desc limit 1")" "DECLINED/true/true"
+check "GAP-1" "capacity was restored exactly once" "$(sql "select count(*) from assignments where request_id=$D_ID and status='DECLINED' and (reserved_capacity_amount is null or capacity_restored_at is not null)")" "$(sql "select count(*) from assignments where request_id=$D_ID and status='DECLINED'")"
+check "GAP-1" "the beneficiary was told it is being matched again" "$(sql "select count(*) from notifications where user_id=$(uid "$BENE") and reference_id=$D_ID and title='Your request is being matched again'")" "1"
+check "GAP-1" "the decliner is not the one it went to" "$(sql "select count(*) from help_requests where request_id=$D_ID and assigned_volunteer_id=(select volunteer_id from volunteers where user_id=$(uid "$VOL"))")" "0"
+check "GAP-1" "the same provider cannot decline it twice" "$(code -X PUT "$BASE/api/help-requests/$D_ID/decline" -H "Authorization: Bearer $V")" "404"
+# Three declines escalate. Two earlier declines are planted (the rematch after the first real decline
+# found nobody else with the resource, which is itself the "stays PENDING" path checked above), then
+# the request is accepted and declined once more: that third decline must escalate, not loop.
+sql "INSERT INTO assignments (request_id, request_type, volunteer_id, assignment_source, status, assigned_at, completed_at, notes)
+     SELECT $D_ID, 'HELP_REQUEST', volunteer_id, 'AUTO_GEO', 'DECLINED', now(), now(), 'Gate fixture: earlier decline'
+     FROM volunteers WHERE user_id=$(uid "$VOL2")" >/dev/null
+check "GAP-1" "two declines on record before the last one" "$(sql "select count(*) from assignments where request_id=$D_ID and status='DECLINED'")" "2"
+check "GAP-1" "the volunteer who declined can still accept it manually if they change their mind" "$(code -X PUT "$BASE/api/help-requests/$D_ID/assign" -H "Authorization: Bearer $V")" "200"
+DEC3=$(body -X PUT "$BASE/api/help-requests/$D_ID/decline" -H "Authorization: Bearer $V")
+check "GAP-1" "the third decline escalates instead of looping" "$(echo "$DEC3" | json data.declineCount)/$(echo "$DEC3" | json data.needsAttention)/$(echo "$DEC3" | json data.reassigned)" "3/True/False"
+check "GAP-1" "the request is flagged for an administrator, with the reason" "$(sql "select needs_attention||'/'||(needs_attention_at is not null)||'/'||needs_attention_reason from help_requests where request_id=$D_ID")" "true/true/3 providers declined this request"
+check "GAP-1" "every administrator was told" "$(sql "select count(*) from notifications where reference_id=$D_ID and title='A request needs your attention'")" "$(sql "select count(*) from users where role='ADMIN' and is_active")"
+check "GAP-1" "the admin queue carries the flag and the decline count" "$(body "$BASE/api/admin/requests" -H "Authorization: Bearer $A" | python -c "import sys,json;r=[x for x in json.load(sys.stdin)['data'] if x['id']==$D_ID][0];print(str(r['needsAttention'])+'/'+str(r['declines']))")" "True/3"
+check "GAP-2" "a flagged request taken by a provider clears the flag" "$(code -X PUT "$BASE/api/help-requests/$D_ID/assign" -H "Authorization: Bearer $V")/$(sql "select needs_attention||'/'||(needs_attention_at is null)||'/'||(needs_attention_reason is null) from help_requests where request_id=$D_ID")" "200/false/true/true"
+check "GAP-1" "the capacity reserved by each decline came back: no unrestored decline rows" "$(sql "select count(*) from assignments where request_id=$D_ID and status='DECLINED' and reserved_capacity_amount is not null and capacity_restored_at is null")" "0"
+
+# GAP-2: a request nobody can take is kept, not lost, and is not flagged before the escalation age.
+# The sweep's ordering and its escalation are proven by StaleRequestSchedulerTest and
+# DeclineAndAttentionPersistenceTest; a 30-minute schedule cannot be exercised inside a gate run.
+U_ID=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B"   -d '{"title":"Gate request U","helpType":"CLOTHING","urgencyLevel":"LOW","peopleCount":1,"latitude":-70.0,"longitude":-170.0}' | json data.id)
+check "GAP-2" "a request with nobody in range stays PENDING and is not flagged yet" "$(sql "select status||'/'||needs_attention from help_requests where request_id=$U_ID")" "PENDING/false"
+check "GAP-2" "and it is still in the sweep's queue: unassigned" "$(sql "select count(*) from assignments where request_id=$U_ID and status='ASSIGNED'")" "0"
+
 R_B=$(body -X POST "$BASE/api/help-requests" -H "Content-Type: application/json" -H "Authorization: Bearer $B" -d '{"title":"Gate request B","helpType":"WATER","urgencyLevel":"LOW"}' | json data.id)
 check "S-5" "beneficiary cancels own B" "$(code -X PUT "$BASE/api/help-requests/$R_B/status?status=CANCELLED" -H "Authorization: Bearer $B")" "200"
 check "N-1" "cancelling an unassigned own request notifies nobody" "$(sql "select count(*) from notifications where reference_type='HELP_REQUEST' and reference_id=$R_B")" "0"

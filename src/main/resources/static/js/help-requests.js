@@ -120,6 +120,8 @@
                 // W-1: one tap tells the waiting person the provider is on the way
                 if (status === 'ASSIGNED') {
                     actionBtn += ` <button class="btn-action btn-accept" style="background:#c2410c" data-action="onmyway" data-id="${id}"><i class="fa fa-truck-fast" style="font-size:11px;margin-right:4px"></i>On my way</button>`;
+                    // GAP-1: handing it back puts it on the queue again; cancelling would destroy it
+                    actionBtn += ` <button class="btn-action btn-view" data-action="decline" data-id="${id}"><i class="fa fa-rotate-left" style="font-size:11px;margin-right:4px"></i>I can't do this one</button>`;
                 }
                 // R-1: the volunteer records what was delivered (reports are volunteer-only in the data model)
                 if (status === 'COMPLETED' && userRole === 'volunteer') {
@@ -337,6 +339,32 @@ ${people ? `<span><i class="fa fa-users" style="font-size:11px"></i> ${escHtml(p
             alert('Could not update the status: ' + e.message);
             btn.disabled = false;
             btn.innerHTML = '<i class="fa fa-truck-fast" style="font-size:11px;margin-right:4px"></i>On my way';
+        }
+    }
+
+    // ── GAP-1: "I can't do this one" — the assigned provider hands the request back ──
+    // The request returns to the queue and is offered to the next nearest provider,
+    // never to this one again. It is not a cancellation: the beneficiary keeps their
+    // request.
+    async function declineRequest(id, btn) {
+        if (!confirm('Hand this request back? It goes to another provider, and the person who asked keeps their request.')) return;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending...';
+        try {
+            const res = await apiFetch(API + '/help-requests/' + id + '/decline', {
+                method: 'PUT', headers: authHeader()
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+            allRequests = allRequests.filter(r => (r.requestId || r.id) != id);
+            filterCards();
+            reportToast(data.data && data.data.reassigned
+                ? 'Thank you. It has already gone to another provider.'
+                : 'Thank you. It is back on the queue for someone else.');
+        } catch (e) {
+            alert('Could not hand the request back: ' + e.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-rotate-left" style="font-size:11px;margin-right:4px"></i>I can\'t do this one';
         }
     }
 
@@ -688,4 +716,5 @@ wireEvent('cardsGrid', 'click', (event) => {
     else if (btn.dataset.action === 'contact') openContactModal(id);
     else if (btn.dataset.action === 'report') openReportModal(id);
     else if (btn.dataset.action === 'onmyway') markOnMyWay(id, btn);
+    else if (btn.dataset.action === 'decline') declineRequest(id, btn);
 });

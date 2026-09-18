@@ -21,6 +21,9 @@
  *   R-1  on a completed request the volunteer's card offers "Record what you
  *        delivered" and the beneficiary's "Rate this help"; both prompts work and
  *        the second view shows what the first recorded
+ *   GAP-1 the assigned volunteer's card offers "I can't do this one"; confirming
+ *        it returns the request to the queue without cancelling it, and the
+ *        beneficiary's own card shows it waiting again
  *   W-1  the assigned volunteer's card offers "On my way"; one tap moves the
  *        request to IN_PROGRESS, the chip changes on both sides and the
  *        beneficiary is notified
@@ -438,6 +441,67 @@ async function registerThroughUi(context, { fullName, email, password, role }) {
                 check('R-1', `rating shown as "${stars}"`, stars === '5 out of 5');
                 const row = sql(`select beneficiary_rating||'/'||feedback_from_beneficiary from reports r join assignments a on a.assignment_id=r.assignment_id where a.request_id=${reqId}`);
                 check('R-1', `database row: ${row}`, row === '5/Fast and friendly');
+                await bpage.close();
+            }
+
+            // ---------------- GAP-1: handing a request back from the card ----------------
+            {
+                // a second request for the same beneficiary, accepted by the volunteer through the API
+                const declineStamp = Date.now();
+                const created = await api('/api/help-requests', { method: 'POST', body: JSON.stringify({
+                    title: 'Browser gate: decline ' + declineStamp, description: 'Handed back in the browser',
+                    helpType: 'FOOD', urgencyLevel: 'MEDIUM', peopleCount: 2,
+                    latitude: 55.75, longitude: 37.62 }) }, bene.token);
+                const declineId = created.body && created.body.data && created.body.data.id;
+                // it may already be automatically matched to this volunteer on arrival; if not, they take it
+                let holder = sql(`select coalesce(assigned_volunteer_id::text,'none') from help_requests where request_id=${declineId}`);
+                if (holder === 'none') {
+                    await api(`/api/help-requests/${declineId}/assign`, { method: 'PUT' }, vol.token);
+                    holder = sql(`select coalesce(assigned_volunteer_id::text,'none') from help_requests where request_id=${declineId}`);
+                }
+                const mine = sql(`select volunteer_id from volunteers where user_id=(select user_id from users where email='${env('VOL_EMAIL')}')`);
+                check('GAP-1', `request ${declineId} is assigned to this volunteer (${holder})`, holder === mine);
+
+                const vpage = await browser.newPage();
+                vpage.on('dialog', async (d) => { await d.accept(); });   // the confirm before handing it back
+                await signIn(vpage, vol);
+                await vpage.goto(BASE + '/help-requests.html', { waitUntil: 'networkidle0' });
+                await vpage.waitForFunction((rid) => [...document.querySelectorAll('#cardsGrid .req-card')]
+                    .some((c) => c.querySelector('.fa-hashtag') && c.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(rid)),
+                    { timeout: 15000 }, declineId);
+                const label = await vpage.evaluate((rid) => {
+                    const c = [...document.querySelectorAll('#cardsGrid .req-card')]
+                        .find((x) => x.querySelector('.fa-hashtag') && x.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(rid));
+                    const b = c && c.querySelector('button[data-action="decline"]');
+                    return b ? b.textContent.trim() : null;
+                }, declineId);
+                check('GAP-1', `the assigned card offers "${label}"`, label === "I can't do this one");
+                await vpage.evaluate((rid) => {
+                    const c = [...document.querySelectorAll('#cardsGrid .req-card')]
+                        .find((x) => x.querySelector('.fa-hashtag') && x.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(rid));
+                    c.querySelector('button[data-action="decline"]').click();
+                }, declineId);
+                await vpage.waitForFunction((rid) => ![...document.querySelectorAll('#cardsGrid .req-card')]
+                    .some((c) => c.querySelector('.fa-hashtag') && c.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(rid)),
+                    { timeout: 15000 }, declineId);
+                check('GAP-1', 'the card leaves the volunteer\'s board once it is handed back', true);
+                await vpage.close();
+
+                const row = sql(`select status||'/'||(assigned_volunteer_id is null)||'/'||(cancelled_at is null)||'/'||(select count(*) from assignments a where a.request_id=${declineId} and a.status='DECLINED') from help_requests where request_id=${declineId}`);
+                check('GAP-1', `database: status/unassigned/not-cancelled/declines = ${row}`, row === 'PENDING/true/true/1');
+
+                const bpage = await browser.newPage();
+                await signIn(bpage, bene);
+                await bpage.goto(BASE + '/help-requests.html', { waitUntil: 'networkidle0' });
+                await bpage.waitForFunction((rid) => [...document.querySelectorAll('#cardsGrid .req-card')]
+                    .some((c) => c.querySelector('.fa-hashtag') && c.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(rid)),
+                    { timeout: 15000 }, declineId);
+                const beneSees = await bpage.evaluate((rid) => {
+                    const c = [...document.querySelectorAll('#cardsGrid .req-card')]
+                        .find((x) => x.querySelector('.fa-hashtag') && x.querySelector('.fa-hashtag').parentElement.textContent.trim() === String(rid));
+                    return [...c.querySelectorAll('.card-badges .tag')].map((tag) => tag.textContent.trim()).join('|');
+                }, declineId);
+                check('GAP-1', `the beneficiary still has the request, waiting: ${beneSees}`, /PENDING/.test(beneSees));
                 await bpage.close();
             }
         }

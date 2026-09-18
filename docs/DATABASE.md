@@ -58,6 +58,7 @@ and updates carry the database's; no code path reads `updated_at` for a decision
 | `psychological_requests.is_crisis`, `needs_review` | `CrisisDetectorService.assess()` at creation | `CrisisDetectorServiceTest` (scoring) and `PsychologicalRequestSecurityTest` (wiring) |
 | `volunteers.total_completed_requests`, `volunteers.rating` | `ProviderStatsService.refreshVolunteer()`: `COUNT` and `AVG(beneficiary_rating)` over the volunteer's `reports`, recomputed in full on every report and rating (AGG-1); mean rounded to hundredths, NULL without ratings | `ProviderStatsPersistenceTest` (5, 4, 3 → 4.00 and 3; none → NULL; a corrected rating gives the new true mean) |
 | `psychologists.consultation_count`, `psychologists.rating` | `ProviderStatsService.refreshPsychologist()`: the same over the psychologist's `consultations` (AGG-1) | `ProviderStatsPersistenceTest` |
+| `help_requests.needs_attention`, `needs_attention_at`, `needs_attention_reason` | `AttentionService`: raised once by the third decline (GAP-1) or by the escalation age passing with no provider (GAP-2), cleared by assignment. Both writes are guarded UPDATEs, so a flagged request cannot notify administrators twice | `DeclineAndAttentionPersistenceTest` |
 
 ## Invariants
 

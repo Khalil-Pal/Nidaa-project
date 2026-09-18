@@ -110,6 +110,14 @@ The first administrator is still inserted by hand (see below).
   brings the plain index on that column back: a consultation row is one
   session, and a case holds as many as it needs (owner decision after Gate 5,
   CS-1). Idempotent; safe to rerun.
+- `V23` adds `help_requests.needs_attention`, `needs_attention_at` and
+  `needs_attention_reason` (an administrator has to look: three declines, or an
+  escalation age passed with no provider), a partial index on `PENDING`
+  requests by `priority_score DESC` for the retry sweep, a partial index on the
+  flagged ones for the admin queue, and `(request_id, status)` on `assignments`
+  for the decline lookups (GAP-1, GAP-2). Declines themselves need no schema
+  change: `assignments.status` is `varchar(20)` with no value CHECK, so a
+  `DECLINED` row is just a status. Idempotent; safe to rerun.
 
 Every gate since Gate 3 has built a database from these files alone
 (`scripts/gate/fresh-db.sh`), checked that `flyway_schema_history` lists exactly

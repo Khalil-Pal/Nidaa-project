@@ -5,6 +5,7 @@ import com.humanitarian.platform.dto.ContactInfoResponse;
 import com.humanitarian.platform.dto.HelpRequestDto;
 import com.humanitarian.platform.model.HelpRequest;
 import com.humanitarian.platform.service.ContactInfoService;
+import com.humanitarian.platform.service.RequestDeclineService;
 import com.humanitarian.platform.service.HelpRequestService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ public class HelpRequestController {
 
     @Autowired private HelpRequestService helpRequestService;
     @Autowired private ContactInfoService contactInfoService;
+    @Autowired private RequestDeclineService requestDeclineService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<HelpRequest>> createRequest(
@@ -80,6 +82,19 @@ public class HelpRequestController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> assignToMe(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Request assigned",
                 helpRequestService.assignToMe(id)));
+    }
+
+    /**
+     * GAP-1: the assigned provider hands a request back instead of cancelling it.
+     * The role gate is coarse; the service decides whether this caller is the
+     * request's provider and answers 404 to everyone else.
+     */
+    @PutMapping("/{id}/decline")
+    @PreAuthorize("hasAnyRole('VOLUNTEER', 'ORGANIZATION')")
+    public ResponseEntity<ApiResponse<RequestDeclineService.DeclineOutcome>> decline(
+            @PathVariable Long id, @RequestParam(required = false) String reason) {
+        return ResponseEntity.ok(ApiResponse.success("Request declined and returned to the queue",
+                requestDeclineService.decline(id, reason)));
     }
 
     @GetMapping("/{id}/contact")

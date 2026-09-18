@@ -9,12 +9,14 @@ import com.humanitarian.platform.repository.HelpRequestRepository;
 import com.humanitarian.platform.repository.OrganizationRepository;
 import com.humanitarian.platform.repository.UserRepository;
 import com.humanitarian.platform.repository.VolunteerRepository;
+import com.humanitarian.platform.service.AttentionService;
 import com.humanitarian.platform.service.AutomaticAssignmentService;
 import com.humanitarian.platform.service.ContactInfoService;
 import com.humanitarian.platform.service.GeoMatchingService;
 import com.humanitarian.platform.service.HelpRequestService;
 import com.humanitarian.platform.service.PriorityScoreService;
 import com.humanitarian.platform.service.ProviderResourceService;
+import com.humanitarian.platform.service.RequestDeclineService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -65,6 +67,8 @@ class HelpRequestSecurityTest extends SecuritySliceTest {
     @MockBean private OrganizationRepository organizationRepository;
     @MockBean private AutomaticAssignmentService automaticAssignmentService;
     @MockBean private ProviderResourceService providerResourceService;
+    @MockBean private AttentionService attention;                       // GAP-2
+    @MockBean private RequestDeclineService requestDeclineService;      // GAP-1
 
     private HelpRequest storedRequest(long id, String status, Long assignedVolunteerId) {
         HelpRequest r = HelpRequest.builder()

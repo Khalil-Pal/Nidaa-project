@@ -100,4 +100,44 @@ public interface HelpRequestRepository extends JpaRepository<HelpRequest, Long> 
     @Query(value = "UPDATE help_requests SET priority_score = :score WHERE request_id = :id",
             nativeQuery = true)
     int updatePriorityScore(@Param("id") Long id, @Param("score") int score);
+
+    /**
+     * A declined request goes back on the queue: the provider columns are cleared
+     * and the status returns to PENDING, guarded on ASSIGNED so two callers racing
+     * from the same state cannot both win (B-4, GAP-1).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE help_requests SET status = 'PENDING', assigned_volunteer_id = NULL, "
+                 + "assigned_organization_id = NULL WHERE request_id = :id AND status = 'ASSIGNED'",
+            nativeQuery = true)
+    int releaseToPending(@Param("id") Long id);
+
+    /**
+     * The retry sweep's page: PENDING requests with no open assignment, most
+     * important first. This ordering is the only place the priority score decides
+     * what automatic matching looks at first (GAP-2) — on arrival, a request is
+     * matched immediately and alone.
+     */
+    @Query(value = "SELECT r FROM HelpRequest r WHERE r.status = 'PENDING' "
+                 + "AND NOT EXISTS (SELECT 1 FROM Assignment a WHERE a.requestId = r.id AND a.status = 'ASSIGNED') "
+                 + "ORDER BY r.priorityScore DESC, r.id ASC")
+    Page<HelpRequest> findUnassignedPendingByPriority(Pageable pageable);
+
+    /** Raises the flag once; a request already flagged is left alone (GAP-1, GAP-2). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE help_requests SET needs_attention = true, needs_attention_at = :at, "
+                 + "needs_attention_reason = :reason WHERE request_id = :id AND needs_attention = false",
+            nativeQuery = true)
+    int flagForAttention(@Param("id") Long id,
+                         @Param("at") java.time.LocalDateTime at,
+                         @Param("reason") String reason);
+
+    /** Assignment answers the escalation, so the flag comes down with it. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE help_requests SET needs_attention = false, needs_attention_at = NULL, "
+                 + "needs_attention_reason = NULL WHERE request_id = :id AND needs_attention = true",
+            nativeQuery = true)
+    int clearAttention(@Param("id") Long id);
+
+    long countByNeedsAttentionTrue();
 }

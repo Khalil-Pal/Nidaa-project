@@ -32,6 +32,17 @@ UNION ALL SELECT 'unrestored_capacity_on_cancelled', count(*) FROM assignments
     AND reserved_capacity_amount IS NOT NULL AND capacity_restored_at IS NULL
 UNION ALL SELECT 'restored_capacity_on_completed', count(*) FROM assignments
   WHERE status = 'COMPLETED' AND capacity_restored_at IS NOT NULL
+-- A decline gives capacity back, like a cancellation (GAP-1): a DECLINED row that
+-- reserved capacity and never restored it would have leaked a provider's stock.
+UNION ALL SELECT 'unrestored_capacity_on_declined', count(*) FROM assignments
+  WHERE status = 'DECLINED'
+    AND reserved_capacity_amount IS NOT NULL AND capacity_restored_at IS NULL
+-- A declined request must be back on the queue, never left holding the decliner.
+UNION ALL SELECT 'declined_request_still_assigned', count(*) FROM help_requests h
+  WHERE h.status = 'ASSIGNED' AND NOT EXISTS
+    (SELECT 1 FROM assignments a WHERE a.request_id = h.request_id AND a.status = 'ASSIGNED')
+    AND EXISTS
+    (SELECT 1 FROM assignments a WHERE a.request_id = h.request_id AND a.status = 'DECLINED')
 UNION ALL SELECT 'active_deleted_users', count(*) FROM users
   WHERE deleted_at IS NOT NULL AND is_active = true
 UNION ALL SELECT 'unanonymised_deleted_users', count(*) FROM users

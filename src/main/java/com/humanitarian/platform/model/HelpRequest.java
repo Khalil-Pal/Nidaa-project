@@ -99,4 +99,17 @@ public class HelpRequest {
 
     @Column(name = "cancellation_reason", columnDefinition = "TEXT")
     private String cancellationReason;
+
+    // GAP-1/GAP-2: an administrator has to look at this one — three providers
+    // declined it, or it waited past the escalation age with nobody to take it.
+    // Cleared when the request is finally assigned.
+    @Column(name = "needs_attention", nullable = false)
+    @Builder.Default
+    private Boolean needsAttention = false;
+
+    @Column(name = "needs_attention_at")
+    private LocalDateTime needsAttentionAt;
+
+    @Column(name = "needs_attention_reason", columnDefinition = "TEXT")
+    private String needsAttentionReason;
 }

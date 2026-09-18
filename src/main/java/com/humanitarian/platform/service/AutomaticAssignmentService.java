@@ -42,6 +42,7 @@ public class AutomaticAssignmentService {
     private final AssignmentRepository assignmentRepository;
     private final GeoMatchingService geoMatchingService;
     private final ProviderResourceService providerResourceService;
+    private final AttentionService attention;
     private final NotificationService notifications;
 
     public AutomaticAssignmentService(HelpRequestRepository helpRequestRepository,
@@ -52,6 +53,7 @@ public class AutomaticAssignmentService {
                                       AssignmentRepository assignmentRepository,
                                       GeoMatchingService geoMatchingService,
                                       ProviderResourceService providerResourceService,
+                                      AttentionService attention,
                                       NotificationService notifications) {
         this.helpRequestRepository = helpRequestRepository;
         this.psychologicalRequestRepository = psychologicalRequestRepository;
@@ -61,11 +63,36 @@ public class AutomaticAssignmentService {
         this.assignmentRepository = assignmentRepository;
         this.geoMatchingService = geoMatchingService;
         this.providerResourceService = providerResourceService;
+        this.attention = attention;
         this.notifications = notifications;
+    }
+
+    /**
+     * Providers this request must not be offered to again: the ones who already
+     * declined it (GAP-1). Ids are provider profile ids, which is what the
+     * candidate list carries.
+     */
+    public record ProviderExclusions(List<Long> volunteerIds, List<Long> organizationIds) {
+        public static final ProviderExclusions NONE = new ProviderExclusions(List.of(), List.of());
+
+        boolean excludes(GeoMatchingService.ProviderMatch candidate) {
+            return candidate.providerType() == UserRole.VOLUNTEER
+                    ? volunteerIds.contains(candidate.providerId())
+                    : organizationIds.contains(candidate.providerId());
+        }
+
+        boolean any() {
+            return !volunteerIds.isEmpty() || !organizationIds.isEmpty();
+        }
     }
 
     @Transactional
     public boolean assignNearestProvider(HelpRequest request) {
+        return assignNearestProvider(request, ProviderExclusions.NONE);
+    }
+
+    @Transactional
+    public boolean assignNearestProvider(HelpRequest request, ProviderExclusions excluded) {
         if (request == null || request.getId() == null
                 || request.getLatitude() == null || request.getLongitude() == null) {
             return false;
@@ -92,10 +119,15 @@ public class AutomaticAssignmentService {
                 .toList();
         List<GeoMatchingService.ProviderMatch> candidates =
                 geoMatchingService.rankProvidersByDistance(
-                        request, resourceMatchedVolunteers, resourceMatchedOrganizations);
+                        request, resourceMatchedVolunteers, resourceMatchedOrganizations).stream()
+                        // a provider who declined this request is never offered it again (GAP-1)
+                        .filter(candidate -> !excluded.excludes(candidate))
+                        .toList();
         if (candidates.isEmpty()) {
-            logger.info("Request {} ({}, {} people) stays PENDING: {} providers have the resource, none available in range",
-                    request.getId(), request.getHelpType(), request.getPeopleCount(), eligibleProviders.size());
+            logger.info("Request {} ({}, {} people) stays PENDING: {} providers have the resource, "
+                            + "none available in range{}",
+                    request.getId(), request.getHelpType(), request.getPeopleCount(), eligibleProviders.size(),
+                    excluded.any() ? " that has not already declined it" : "");
             return false;
         }
 
@@ -143,6 +175,7 @@ public class AutomaticAssignmentService {
                             candidate.providerType().name().toLowerCase(Locale.ROOT),
                             candidate.distanceKm()))
                     .build());
+            attention.clear(request.getId());       // an assignment answers the escalation (GAP-2)
             logger.info("Request {} auto-assigned to {} {} at {} km ({} of {} candidates tried)",
                     request.getId(), candidate.providerType(), candidate.providerId(),
                     String.format(Locale.ROOT, "%.2f", candidate.distanceKm()),
