@@ -1,8 +1,8 @@
 # Session handoff — Nidaa audit remediation
 
-Written 2026-09-16 at HEAD `dc4d243` on `audit-remediation`, updated 2026-09-17 after Gate 5
-(§4 and §6 rewritten; §1–§3 and §5 checked again and unchanged), for the next Claude Code
-session. Every statement here was checked on this machine on that date (commands run,
+Written 2026-09-16 at HEAD `dc4d243` on `audit-remediation`, updated 2026-09-18 after Gate 6
+(§2 counts, §4 and §6 rewritten; §1, §3 and §5 checked again and unchanged), for the next Claude
+Code session. Every statement here was checked on this machine on that date (commands run,
 files read), not recalled.
 
 This file holds only what a new session could **not** learn from the repository. It does
@@ -10,7 +10,7 @@ not restate:
 
 - the plan, phases, gates, standing rules and settled decisions — `C:\джава\NIDAA_MASTER_PLAN.md`
   (deliberately **not** in the repository; the session copy and this one are byte-identical)
-- what each gate found and the owner's decisions after Gate 4 — `docs/gates/GATE-3.md`, `docs/gates/GATE-4.md`, `docs/gates/GATE-5.md`
+- what each gate found and the owner's decisions after Gates 4 and 5 — `docs/gates/GATE-3.md`, `docs/gates/GATE-4.md`, `docs/gates/GATE-5.md`, `docs/gates/GATE-6.md`
 - architecture decisions — `docs/adr/` (005 so far; 001–004 are planned for Phase 7, see `docs/adr/README.md`)
 - security reasoning — `docs/SECURITY.md`; deferred items — `FUTURE_WORK.md`
 - what the gate scripts check — `scripts/gate/README.md`; configuration keys — `README.md` "Configuration", "Testing"
@@ -161,14 +161,16 @@ What each script needs (verified against the scripts' headers and their `process
 
 | Script | Needs | Output |
 |---|---|---|
-| `fresh-db.sh [db]` | `PSQL`; `PGUSER` (default postgres); `DB_PASSWORD` or `.env`; runs `./mvnw flyway:migrate` | PASS/FAIL lines (history V1–V11, V13–V21), then the G3 inventory. Current inventory (unchanged through Gate 5): one function `update_updated_at_column` and six `update_*_updated_at` BEFORE UPDATE triggers, no views |
+| `fresh-db.sh [db]` | `PSQL`; `PGUSER` (default postgres); `DB_PASSWORD` or `.env`; runs `./mvnw flyway:migrate` | PASS/FAIL lines (history V1–V11, V13–V23), then the G3 inventory. Current inventory (unchanged through Gate 6): one function `update_updated_at_column` and six `update_*_updated_at` BEFORE UPDATE triggers, no views |
 | `smtp-sink.py [port]` | Python; port free | one `MESSAGE from / to / subject` line per mail. Registration is transactional with the verification e-mail, so without a sink (or real SMTP) nobody can register |
-| `acceptance.sh` | app on a **fresh** `nidaa_gate` with `RATELIMIT_AUTH_PER_MINUTE=50`; `BASE`, `BASE_ALT`, `DB`, `PSQL`; `JWT_SECRET` for S-15 | 211 checks; exit non-zero on any FAIL |
-| `browser-checks.js` | app; `ADMIN_/BENE_/VOL_ EMAIL+PASSWORD` of approved accounts; `DB`, `PGUSER`, `PSQL` (REG reads `pending_registrations`); `CHROME`; `NODE_PATH` | 71 checks in sections S-2 4, L-1 4, F-4 4, REG 11, VER 7, N-1 7, W-1 4, R-1 6, ON-2 8, CM-1 7, CS-1 9 |
+| `acceptance.sh` | app on a **fresh** `nidaa_gate` with `RATELIMIT_AUTH_PER_MINUTE=50`; `BASE`, `BASE_ALT`, `DB`, `PSQL`; `JWT_SECRET` for S-15 | 238 checks; exit non-zero on any FAIL |
+| `browser-checks.js` | app; `ADMIN_/BENE_/VOL_ EMAIL+PASSWORD` of approved accounts; `DB`, `PGUSER`, `PSQL` (REG reads `pending_registrations`); `CHROME`; `NODE_PATH` | 78 checks in sections S-2 4, L-1 4, F-4 4, REG 11, VER 7, N-1 7, W-1 4, R-1 6, GAP-1 5, ON-2 8, CM-1 7, CS-1 11 |
 | `a11y-audit.js <label>` | app; `ADMIN_*`, `BENE_*`; `CHROME`; `NODE_PATH` (axe-core) | per-page line + totals; writes `a11y-<label>.json` in the CWD |
 | `keyboard-checks.js` | same as a11y | 19 checks |
 | `lighthouse.js <url> <label>` | `NODE_PATH` (lighthouse); Chrome path is hard-coded in the script | writes `lighthouse-<label>.json` in the CWD |
-| `invariants.sql` | `psql -f` against the gate DB | 15 rows, every `violations` 0 |
+| `scripts/perf/seed-requests.js`, `load-test.js` (PF-1) | app on a **fresh** database with `RATELIMIT_ENABLED=false`; `BASE`, `DB`, `PGUSER`, `PSQL`; the seeder prints the accounts the load test needs | 10,000 requests through the API, then p50/p95/p99 and throughput per endpoint at 1/10/50 users into a JSON file. Not part of a gate run; see `docs/PERFORMANCE.md` |
+| `scripts/ut/setup-participants.sh` (UT-1) | app on a **fresh** `nidaa_ut` with `RATELIMIT_AUTH_PER_MINUTE=50`; `BASE`, `DB`, `PGUSER`, `PSQL` | the six session accounts and the starting queue, then the facilitator's sheet. Refuses to run on a database that already has users |
+| `invariants.sql` | `psql -f` against the gate DB | 17 rows, every `violations` 0 |
 
 Record a gate run in `docs/gates/GATE-<n>.md` in the layout of `GATE-4.md`/`GATE-5.md` (item,
 PASS/FAIL/NOT RUN, evidence), then push.
@@ -247,55 +249,66 @@ PASS/FAIL/NOT RUN, evidence), then push.
 
 ---
 
-## 4 · Current working state (2026-09-17, after Gate 5)
+## 4 · Current working state (2026-09-18, after Gate 6)
 
-- **Branch** `audit-remediation`, **HEAD = the Gate 5 record commit** (`git log -1`), working tree
-  **clean**, **everything pushed**, CI green on every push of this phase (runs listed by the
-  actions API; the persistence tests run on Linux against a database built from V1).
+- **Branch** `audit-remediation`, **HEAD = the Gate 6 record commit** (`git log -1`), working tree
+  **clean**, **everything pushed**, CI green on every push of this phase (the persistence tests
+  run on Linux against a database built from V1).
 - `stash@{0}: On main: java-upgrade-precheck-20260419153813` predates the remediation. Not
   ours; leave it.
-- **Phase 5 is complete and Gate 5 passed** (`docs/gates/GATE-5.md`, no FAIL). Done, one commit
-  per task ID: N-1 `8d7a9f9`, R-1 `dc4d243`, CS-1 `c2d5e69`, AGG-1 `6c571c5`, W-1 `1e5474a`,
-  ON-2 `cf190ba`, CM-1 `4131fa7`, DOC-FW `c548528`; plus `2d9047d` (S-9 gate-check timing fix) and
-  `227c386` (this file). **DM-1 was not started** — on hold by the owner; the plan says ask first.
-- **No task is half-done.** Nothing of Phase 6 has been started. Phase 6 (EV-1, UT-1, PF-1;
-  EV-2 only after asking) starts only on the owner's word after reading GATE-5.md.
-- **Owner decisions after Gate 4** (register.html fix, ADR 005 + amended invariant, credential
-  verification as its own admin action with `is_on_duty=false` on approval, DEP-3 NOT RUN
-  accepted, Gate 7 blocked until `docker compose up --build` runs somewhere) are implemented
-  and recorded in `docs/gates/GATE-4.md`; do not re-ask.
-- **Judgement calls made in Phase 5** (mine, stated in the commits and in GATE-5.md G6, not
-  owner decisions — the owner may overturn any): CS-1 one consultation per case (V20 UNIQUE),
-  `GET` exists, admin reads the record minus `notes_for_psychologist` (key omitted), no
-  beneficiary identity in consultation responses or notifications; W-1 `IN_PROGRESS` for help
-  requests only (a delivery has a journey to report; psychological support has none — the span
-  between assignment and completion is the support; kept by the owner after Gate 5); ON-2 the transient `beneficiaryName` is filled only for
-  viewers entitled by `canView`; CM-1 like/unlike idempotent, (post, user) is the primary key,
-  comment removal audited in `message_deletions` with `comment_id`; AGG-1 counts = number of
-  reports/consultations, mean rounded to hundredths.
-- **Open for the owner** (from GATE-5.md): the unused `locations` table (seed it for real regions
-  in EV-1's fairness metric, or drop it in a later migration); the psychological page's status
-  label "Assigned (In Progress)" (cosmetic).
+- **Phase 6 is complete except UT-1's sessions, and Gate 6 passed** (`docs/gates/GATE-6.md`,
+  no FAIL, one NOT RUN). One commit per task ID since Gate 5: `4e257d0` CS-1 (per-session
+  records, V22), `bc875d0` W-1 justification, `fcd33bf` ON-2 identity principle, `c5e95b3`
+  DOC-FW, `b89e7ab` (Gate 5 decisions), `be6ad0b` EV-1 (**superseded**), `fc5ebfe` UT-1,
+  `3760fef` GAP-1, `fe8f154` GAP-2, `4a90354` DOC-SCORING, `8490dda` PF-1 harness, `c046433`
+  EV-1 (corrected), `671ea47` PF-1 measurements.
+- **UT-1 is the one thing left in Phase 6 and it needs people.** Everything to run a session is
+  ready and verified (`docs/evaluation/UT-1-user-testing.md`, the scripts and instruments in
+  `docs/evaluation/ut-1/`, `scripts/ut/setup-participants.sh`). `ut-1/results.md` is a template
+  whose first line says NOT YET RUN. **Do not invent participants, findings or SUS scores.**
+  After the sessions: fill in the template, fix the top three findings one commit each with
+  `Audit-Ref: UT-1`, re-test with new people, and update GATE-6.md's UT-1 row.
+- **Owner decisions after Gate 5** (all implemented, do not re-ask): CS-1 overturned to one
+  record per session (V22 dropped V20's UNIQUE; `GET` returns a list; a case stays ASSIGNED
+  until the psychologist completes it; every privacy rule kept); W-1 kept with a domain
+  justification (aid has a delivery journey, support does not); ON-2 kept, with one identity
+  principle in SECURITY.md §3.2; `locations` neither seeded nor dropped, written up as the
+  third future pipeline; **DM-1 cancelled**, moved to FUTURE_WORK.md permanently; Phase 6
+  approved with EV-1 mandatory. Then, after a supervisor review: GAP-1, GAP-2 and
+  `docs/SCORING.md`, all built before the experimental runs.
+- **Judgement calls made in Phase 6** (mine, in the commits and GATE-6.md G6): a decline is
+  `DECLINED` not `CANCELLED`; non-parties get 404 on the decline endpoint; the third decline
+  escalates instead of rematching; the attention flag is raised once by a guarded UPDATE and
+  cleared by any assignment; the sweep is not `@Transactional` so one failing request isolates;
+  the simulation charges the 30-minute sweep interval because the platform does.
+- **Open for the owner**: the UT-1 sessions; the Docker run (`docker compose up --build`, Gate 7
+  blocker since Gate 4); **EV-2** (PostGIS benchmark) — still optional and still "ask first".
 - **Contradictions already recorded** (don't re-flag): `reports.volunteer_id` is NOT NULL so
   completion reports are volunteer-only; a rejected application has no user row so rejection is
   e-mail only; the plan's "both transition maps" (W-1) are the one shared `RequestTransitions`
-  since C-3 plus the two page copies, all extended.
-- **Latest migration is V21** (V20 consultations link + unique; V21 reactions, comments,
-  `message_deletions.comment_id`); the next is **V22**. V12 was never issued.
-- **Baseline numbers** (Gate 5 run, §2 commands): `./mvnw clean test` **365 tests, 0 failures,
-  0 errors, 0 skipped** (79 persistence); `node --test src/test/js/nidaa-common.test.js` 1/1;
-  `acceptance.sh` **211/211**; `browser-checks.js` **71/71**; `a11y-audit.js` 18 pages, **0 axe
-  / 0 CSP / 0 inline**; `keyboard-checks.js` **19/19**; `invariants.sql` 15 checks all 0 on
-  `nidaa_gate` and `Web_DB`; `fresh-db.sh` history = the files (V1–V11, V13–V21); Lighthouse
-  index.html mobile 90 / LCP 2.0 s, desktop 80 / 2.1 s, images 138 KB. Any drop is a regression.
-- **Databases now:** `nidaa_gate` holds the Gate 5 fixtures (rebuild before the next acceptance
-  run); `Web_DB` is at `18:BASELINE, 19, 20, 21` (the app was started against it during the
-  phase — not by a gate script — so V20/V21 are proven on the baselined dev database);
-  `nidaa_test` at the same versions, empty. **Processes:** nothing of ours is running; 8081,
-  1025 and 8090 are free.
+  since C-3 plus the two page copies.
+- **Latest migration is V23** (V22 drops the one-consultation-per-case UNIQUE; V23 adds
+  `help_requests.needs_attention*` and four indexes for GAP-1/GAP-2); the next is **V24**.
+  V12 was never issued.
+- **Baseline numbers** (Gate 6 run, §2 commands): `./mvnw clean test` **400 tests, 0 failures,
+  0 errors, 0 skipped** (83 persistence); `node --test src/test/js/nidaa-common.test.js` 1/1;
+  `acceptance.sh` **238/238**; `browser-checks.js` **78/78**; `a11y-audit.js` 18 pages, **0 axe
+  / 0 CSP / 0 inline**; `keyboard-checks.js` **19/19**; `invariants.sql` **17** checks all 0;
+  `fresh-db.sh` history = the files (V1–V11, V13–V23); Lighthouse index.html mobile 90 /
+  LCP 2.9 s, desktop 82 / 2.0 s, images 142 KB mobile. Any drop is a regression.
+- **EV-1 reproduces from a seed.** `MatchingStudyMain --out docs/evaluation/ev-1 --reps 10
+  --seed 20260917` prints `checksum 9c0f4b2f6e68ef7d` and regenerates every committed file byte
+  for byte (about 5 minutes; no database). If a change to the matching or priority code moves
+  that checksum, the chapter's numbers are stale and must be regenerated **and** re-read: the
+  discussion quotes them.
+- **Databases now:** `nidaa_gate` holds the Gate 6 fixtures (rebuild before the next acceptance
+  run); `nidaa_test` and `Web_DB` are at V23 on their `18:BASELINE` history; `nidaa_perf` holds
+  the PF-1 data (121,495 requests — drop or rebuild it before reusing). `nidaa_ut` was dropped
+  after the setup script was verified. **Processes:** nothing of ours is running; 8081, 1025 and
+  8090 are free.
 - **Commit format in use:** `type(TASK-ID): summary`, body explaining what and why, then
-  `Audit-Ref: <ID>` (omitted only on owner-requested docs commits such as `a68121c`), then
-  `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`. One commit per task ID.
+  `Audit-Ref: <ID>`, then `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`. One commit
+  per task ID — if a change touches two task IDs, split it rather than combining them.
 
 ## 5 · Tried and did not work — do not retry
 
@@ -331,22 +344,24 @@ Paste this into a new Claude Code session opened in `C:\джава\platform`:
 Continue the Nidaa audit remediation on branch audit-remediation (tree clean, everything pushed).
 Read, in this order, before doing anything: C:\джава\NIDAA_MASTER_PLAN.md (the plan; not in
 the repo — every standing rule in its §1 applies), SESSION_HANDOFF.md (environment, gate
-commands, traps, current state), docs/gates/GATE-5.md (what Phase 5 delivered, the judgement
-calls, what is open for the owner), docs/gates/GATE-4.md (owner decisions), FUTURE_WORK.md.
+commands, traps, current state), docs/gates/GATE-6.md (what Phase 6 delivered, what is NOT RUN,
+the judgement calls), docs/gates/GATE-5.md and GATE-4.md (owner decisions), FUTURE_WORK.md.
 
-Phase 5 is complete and Gate 5 passed. Phase 6 (EV-1 matching study, UT-1 user testing, PF-1
-performance measurement; EV-2 PostGIS only after asking) starts only on a green Gate 5 — which
-it is — and on the owner's go-ahead. DM-1 stays on hold unless the owner asks for it. Two items
-wait for the owner's word: the unused `locations` table and Docker (`docker compose up --build`
-on a machine that has Docker; Gate 7 blocker).
+Phase 6 is complete except UT-1's sessions, and Gate 6 passed. Phase 7 (FR-1 feature freeze,
+the documentation set, the diagrams, defence preparation) starts only on the owner's word.
+Three things wait for the owner: the UT-1 sessions (five to ten people; everything to run them
+is ready, and nothing in the repository may report a finding or a SUS score until they have
+happened), the Docker run (docker compose up --build on a machine with Docker, the Gate 7
+blocker), and EV-2 (PostGIS benchmark, optional, ask first).
 
 First action: confirm the CI run for HEAD is green (curl the actions API as SESSION_HANDOFF.md
-§1 describes; no gh here), then ask the owner which of Phase 6, DM-1 or the open items to start.
+§1 describes; no gh here), then ask the owner which of those, or Phase 7, to start.
 
 Working rules that apply to every task: one commit per task ID with `Audit-Ref: <ID>` and the
-Co-Authored-By line; ./mvnw test green (baseline 365/0) after every task; the gate scripts run
+Co-Authored-By line; ./mvnw test green (baseline 400/0) after every task; the gate scripts run
 exactly as SESSION_HANDOFF.md §2 shows; never put secrets in tracked files or print them;
 never touch NIDAA_7_PHASES_IMPLEMENTATION_REPORT.md; if the schema or code contradicts the
-plan, stop and say so rather than improvise. Report each task as what changed / how it was
-verified / contradictions found.
+plan, stop and say so rather than improvise. If you change matching or priority code, re-run
+EV-1 and check its checksum — the chapter quotes its numbers. Report each task as what changed
+/ how it was verified / contradictions found.
 ```
