@@ -32,6 +32,7 @@ Repository: [github.com/Khalil-Pal/Nidaa-project](https://github.com/Khalil-Pal/
 - [Security](docs/SECURITY.md): assets, threat model, the controls and where each is enforced, the audit findings with their fixes, and the limitations kept by choice.
 - [Future work](FUTURE_WORK.md): follow-ups identified during remediation and deliberately deferred.
 - [Database](docs/DATABASE.md): schema inventory (triggers, functions, views) and computed-and-stored values; data dictionary and ERD to follow.
+- [Scoring](docs/SCORING.md): the priority weights, the reasoning behind each one, what the model refuses to do, and its limitations.
 - [Gate records](docs/gates/): PASS/FAIL evidence for every phase gate; tooling in [scripts/gate](scripts/gate/README.md).
 - [Evaluation](docs/evaluation/): the matching strategy study ([EV-1](docs/evaluation/EV-1-matching-study.md), with its data and figures) and the user testing protocol ([UT-1](docs/evaluation/UT-1-user-testing.md)).
 
@@ -101,6 +102,8 @@ Material requests receive points for:
 | Waiting time | +1 per two full hours, capped at +20 |
 
 The total is capped at 100. Psychological requests receive urgency points, a `+35` crisis bonus, and the same waiting-time growth. Scores of pending requests are recomputed every 30 minutes so waiting time keeps counting.
+
+Why each weight is what it is — including why a disability outweighs children, and where the model can be argued with — is [docs/SCORING.md](docs/SCORING.md).
 
 ### Geographic assignment
 
