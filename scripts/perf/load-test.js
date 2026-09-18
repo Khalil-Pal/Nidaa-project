@@ -35,6 +35,8 @@ const opt = (name, fallback) => {
 };
 const OUT = opt('out', 'perf-run.json');
 const LABEL = opt('label', 'run');
+/** --only login,ranked-queue runs a subset, e.g. the read-only scenarios against a larger dataset. */
+const ONLY = opt('only', '').split(',').map((s) => s.trim()).filter(Boolean);
 
 const env = (name) => {
     const v = process.env[name];
@@ -140,6 +142,10 @@ async function measure(name, concurrency, request) {
     console.log(`${LABEL}: ${BASE}, ${WARMUP}s warm-up + ${SECONDS}s measured per level`);
     console.log(`dataset: ${JSON.stringify(total.data)}\n`);
 
+    // Order matters: 'submit-request' inserts rows, so it runs last. A read scenario
+    // after it would measure a larger database than the one the run reports, and a
+    // second run against the same database would measure a different system again.
+    // The dataset size is recorded before and after every scenario for the same reason.
     const scenarios = [
         {
             name: 'login',
@@ -149,6 +155,16 @@ async function measure(name, concurrency, request) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: env('BENE_EMAIL'), password: env('BENE_PASSWORD') })
             })
+        },
+        {
+            name: 'ranked-queue',
+            what: 'GET /api/v1/admin/dashboard/ranked?size=20 — the ranked page with provider suggestions',
+            request: () => call('/api/v1/admin/dashboard/ranked?page=0&size=20', { headers: auth(adminToken) })
+        },
+        {
+            name: 'admin-dashboard',
+            what: 'GET /api/admin/stats — the aggregate counters behind admin.html',
+            request: () => call('/api/admin/stats', { headers: auth(adminToken) })
         },
         {
             name: 'submit-request',
@@ -167,27 +183,27 @@ async function measure(name, concurrency, request) {
                     longitude: 37.4 + Math.random() * 0.3
                 })
             })
-        },
-        {
-            name: 'ranked-queue',
-            what: 'GET /api/v1/admin/dashboard/ranked?size=20 — the ranked page with provider suggestions',
-            request: () => call('/api/v1/admin/dashboard/ranked?page=0&size=20', { headers: auth(adminToken) })
-        },
-        {
-            name: 'admin-dashboard',
-            what: 'GET /api/admin/stats — the aggregate counters behind admin.html',
-            request: () => call('/api/admin/stats', { headers: auth(adminToken) })
         }
     ];
 
+    const requestCount = async () => {
+        const r = await call('/api/admin/stats', { headers: auth(adminToken) });
+        try { return JSON.parse(r.body).data.totalRequests; } catch (e) { return null; }
+    };
+
     const results = [];
-    for (const scenario of scenarios) {
+    for (const scenario of scenarios.filter((s) => ONLY.length === 0 || ONLY.includes(s.name))) {
         console.log(`${scenario.name} — ${scenario.what}`);
+        const before = await requestCount();
         const levels = [];
         for (const concurrency of CONCURRENCIES) {
             levels.push(await measure(scenario.name, concurrency, scenario.request));
         }
-        results.push({ name: scenario.name, what: scenario.what, levels });
+        const after = await requestCount();
+        if (after !== before) {
+            console.log(`  (this scenario grew the dataset: ${before} -> ${after} requests)`);
+        }
+        results.push({ name: scenario.name, what: scenario.what, requestsBefore: before, requestsAfter: after, levels });
         console.log('');
     }
 

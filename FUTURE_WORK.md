@@ -133,6 +133,33 @@ mentions them.
   its own security surface (type sniffing, size limits, storage, serving) and no
   endpoint accepts one.
 
+## Evaluation (Phase 6)
+
+- **A 2 × 2 design separating the ordering rule from the provider-selection
+  rule.** EV-1 compares the four strategies as they are defined in code, which
+  confounds the two: FIFO and weighted scoring take the first free provider,
+  geo-nearest and multi-objective take the nearest. The discussion attributes
+  effects to the rule that plausibly caused them, but only a design that crosses
+  {arrival order, priority order} with {first free, nearest} can prove it. It is
+  the first thing to do with the harness.
+- **Replaying real requests.** Every EV-1 dataset is synthetic because the
+  platform has no operational history. Once it has one, the same simulation can
+  be driven from real arrivals and compared against what actually happened,
+  which is the only way to validate the model's assumptions (uniform arrivals,
+  straight-line travel, a flat 10 % decline rate).
+- **Vulnerability weights from field practice.** `docs/SCORING.md` defends the
+  15/10/10 split by an argument about substitutability of help. Numbers taken
+  from a protection cluster's vulnerability criteria would replace reasoning
+  with evidence; the sensitivity analysis shows the strategy comparison would
+  not change, but which requests wait would.
+- **Statistics that do not count the whole table.** PF-1 measured
+  `GET /api/admin/stats` at 15.7 ms over 10,000 requests and 79.9 ms over
+  121,495: thirteen aggregate queries, each an index-only scan of everything.
+  Past roughly 10⁵ requests the dashboard should cache its counters or maintain
+  them incrementally, the way `ProviderStatsService` maintains the provider
+  counters (AGG-1). Not built, because at the specified scale the endpoint
+  answers in 16 ms.
+
 ## Operations
 
 - **Public `/actuator/health`.** The deny-by-default chain answers it 401, so a
