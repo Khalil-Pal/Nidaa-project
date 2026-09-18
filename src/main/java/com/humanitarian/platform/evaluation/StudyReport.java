@@ -7,12 +7,14 @@ import com.humanitarian.platform.evaluation.MatchingStudy.Load;
 import com.humanitarian.platform.evaluation.MatchingStudy.MeanSd;
 import com.humanitarian.platform.evaluation.MatchingStudy.Run;
 import com.humanitarian.platform.evaluation.MatchingStudy.Summary;
+import com.humanitarian.platform.evaluation.MatchingStudy.VariantResult;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -33,7 +35,11 @@ public final class StudyReport {
     /** The metrics tabulated in results.md. */
     static final List<String> TABULATED = List.of(
             "critical_mean_wait_h", "critical_p95_wait_h", "urgent_within_6h_pct", "p95_wait_h", "utilisation_gini",
-            "mean_distance_km", "completed_within_horizon_pct", "regional_fairness_jain");
+            "mean_distance_km", "completed_within_horizon_pct", "regional_fairness_jain", "escalated_pct");
+
+    /** The metrics the sensitivity analysis compares across weight variants. */
+    static final List<String> SENSITIVITY_METRICS = List.of(
+            "critical_mean_wait_h", "urgent_within_6h_pct", "completed_within_horizon_pct", "p95_wait_h");
 
     private StudyReport() {
     }
@@ -51,6 +57,99 @@ public final class StudyReport {
             figure++;
         }
         Files.writeString(dir.resolve("figure-5-trade-off.svg"), tradeOff(summaries), StandardCharsets.UTF_8);
+    }
+
+    /** The sensitivity analysis: one CSV of every variant's cell means, and a Markdown comparison. */
+    public static void writeSensitivity(Path dir, List<VariantResult> results) throws IOException {
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("sensitivity.csv"), sensitivityCsv(results), StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("sensitivity.md"), sensitivityMarkdown(results), StandardCharsets.UTF_8);
+    }
+
+    static String sensitivityCsv(List<VariantResult> results) {
+        StringBuilder sb = new StringBuilder("variant,strategy,load,density,n");
+        List<String> metrics = new ArrayList<>(results.get(0).metrics().keySet());
+        metrics.forEach(m -> sb.append(',').append(m).append("_mean,").append(m).append("_sd"));
+        sb.append('\n');
+        for (VariantResult r : results) {
+            sb.append(r.variant()).append(',').append(r.strategy()).append(',').append(r.load()).append(',')
+                    .append(r.density()).append(',').append(r.metrics().values().iterator().next().n());
+            metrics.forEach(m -> sb.append(',').append(number(r.metrics().get(m).mean()))
+                    .append(',').append(number(r.metrics().get(m).sd())));
+            sb.append('\n');
+        }
+        return sb.toString();
+    }
+
+    /**
+     * For each cell and metric, which strategy each weight variant favours, and by
+     * how much the production weights' own numbers move. A conclusion that survives
+     * every variant is one the weights did not manufacture.
+     */
+    static String sensitivityMarkdown(List<VariantResult> results) {
+        List<String> variants = results.stream().map(VariantResult::variant).distinct().toList();
+        StringBuilder sb = new StringBuilder();
+        sb.append("# EV-1 sensitivity analysis\n\n");
+        sb.append("The same seeded datasets, re-run with the priority weights changed. ")
+                .append("The weights themselves are defended in `docs/SCORING.md`; ")
+                .append("this table asks whether the study's conclusions depend on them.\n\n");
+        sb.append("Ranking is over the cell means; **1** is best on that metric ")
+                .append("(lowest waiting time, highest coverage, highest completion).\n\n");
+
+        for (String metric : SENSITIVITY_METRICS) {
+            sb.append("## ").append(RunMetrics.LABELS.get(metric)).append("\n\n");
+            sb.append("| Load / density |");
+            variants.forEach(v -> sb.append(' ').append(v).append(" |"));
+            sb.append("\n|---|");
+            variants.forEach(v -> sb.append("---|"));
+            sb.append('\n');
+            List<String> cells = results.stream()
+                    .map(r -> r.load() + "/" + r.density()).distinct().toList();
+            for (String cell : cells) {
+                sb.append("| ").append(cell).append(" |");
+                for (String variant : variants) {
+                    List<VariantResult> here = results.stream()
+                            .filter(r -> r.variant().equals(variant) && (r.load() + "/" + r.density()).equals(cell))
+                            .toList();
+                    sb.append(' ').append(bestStrategy(here, metric)).append(" |");
+                }
+                sb.append('\n');
+            }
+            sb.append('\n');
+        }
+
+        sb.append("## What the production weights' own numbers do\n\n");
+        sb.append("| Cell | Strategy | Metric | production | levelled-vulnerability | doubled-urgency | uncapped-waiting | no-vulnerability |\n");
+        sb.append("|---|---|---|---:|---:|---:|---:|---:|\n");
+        for (VariantResult r : results.stream().filter(x -> x.variant().equals("production")).toList()) {
+            for (String metric : SENSITIVITY_METRICS) {
+                sb.append("| ").append(r.load()).append('/').append(r.density()).append(" | ")
+                        .append(SvgCharts.SHORT.get(r.strategy())).append(" | ")
+                        .append(RunMetrics.LABELS.get(metric)).append(" |");
+                for (String variant : variants) {
+                    Optional<VariantResult> row = results.stream()
+                            .filter(x -> x.variant().equals(variant) && x.strategy().equals(r.strategy())
+                                    && x.load() == r.load() && x.density() == r.density())
+                            .findFirst();
+                    sb.append(' ').append(row.map(x -> SvgCharts.format(x.metrics().get(metric).mean())).orElse("—")).append(" |");
+                }
+                sb.append('\n');
+            }
+        }
+        return sb.toString();
+    }
+
+    /** The strategy with the best mean on this metric, with the runner-up in brackets. */
+    static String bestStrategy(List<VariantResult> cell, String metric) {
+        boolean higherIsBetter = metric.endsWith("_pct") && !metric.equals("escalated_pct");
+        Comparator<VariantResult> order = Comparator.comparingDouble(r -> r.metrics().get(metric).mean());
+        List<VariantResult> sorted = cell.stream().sorted(higherIsBetter ? order.reversed() : order).toList();
+        if (sorted.isEmpty()) {
+            return "—";
+        }
+        String best = SvgCharts.SHORT.get(sorted.get(0).strategy());
+        String second = sorted.size() > 1 ? SvgCharts.SHORT.get(sorted.get(1).strategy()) : "—";
+        return best + " (then " + second + ")";
     }
 
     static String runsCsv(List<Run> runs) {

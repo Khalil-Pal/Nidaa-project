@@ -2,6 +2,7 @@ package com.humanitarian.platform.evaluation;
 
 import com.humanitarian.platform.service.GeoMatchingService;
 import com.humanitarian.platform.service.PriorityScoreService;
+import com.humanitarian.platform.service.PriorityWeights;
 import com.humanitarian.platform.service.RequestRegionResolver;
 import com.humanitarian.platform.service.matching.FifoMatchingStrategy;
 import com.humanitarian.platform.service.matching.GeoNearestStrategy;
@@ -26,7 +27,11 @@ public final class StudyStrategies {
     }
 
     public static MatchingStrategy create(String name, Clock clock) {
-        PriorityScoreService priority = new PriorityScoreService(clock);
+        return create(name, clock, PriorityWeights.DEFAULT);
+    }
+
+    public static MatchingStrategy create(String name, Clock clock, PriorityWeights weights) {
+        PriorityScoreService priority = new PriorityScoreService(clock, weights);
         GeoMatchingService geo = new GeoMatchingService();
         RequestRegionResolver regions = new RequestRegionResolver();
         return switch (name) {

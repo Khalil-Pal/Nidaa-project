@@ -42,9 +42,19 @@ public final class MatchingStudyMain {
         }
         Design design = Design.full(reps, seed);
         long started = System.nanoTime();
-        List<Run> runs = new MatchingStudy().run(design, System.out::println);
+        MatchingStudy study = new MatchingStudy();
+        List<Run> runs = study.run(design, System.out::println);
         List<Summary> summaries = MatchingStudy.summarise(runs);
         StudyReport.write(out, design, runs, summaries);
+
+        // The sensitivity analysis runs on sparse provision only: with a queue to
+        // order, which is the only condition where the priority weights can matter.
+        System.out.println(System.lineSeparator() + "sensitivity: the same datasets under " + MatchingStudy.WeightVariant.SENSITIVITY.size()
+                + " weight variants");
+        Design sparse = new Design(design.loads(), List.of(MatchingStudy.Density.SPARSE),
+                design.repetitions(), design.baseSeed());
+        StudyReport.writeSensitivity(out, study.sensitivity(sparse, MatchingStudy.WeightVariant.SENSITIVITY,
+                System.out::println));
         double seconds = (System.nanoTime() - started) / 1e9;
         System.out.printf(Locale.ROOT, "%d runs (%d cells x %d repetitions) in %.1f s -> %s%n",
                 runs.size(), summaries.size(), reps, seconds, out.toAbsolutePath());

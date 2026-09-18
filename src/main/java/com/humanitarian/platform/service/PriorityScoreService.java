@@ -21,6 +21,10 @@ import java.time.temporal.ChronoUnit;
  * clock (the constructor Spring picks); the matching study (EV-1) builds its
  * own instance on a simulated clock so the same model ages requests in
  * simulated time.
+ *
+ * The weights themselves are a {@link PriorityWeights} record, defaulting to the
+ * production model and defended in {@code docs/SCORING.md}. Only EV-1's
+ * sensitivity analysis constructs anything else.
  */
 @Service
 public class PriorityScoreService {
@@ -29,30 +33,36 @@ public class PriorityScoreService {
     public static final int MAX_AGING_BONUS = 20;
 
     private final Clock clock;
+    private final PriorityWeights weights;
 
     public PriorityScoreService() {
-        this(Clock.systemDefaultZone());
+        this(Clock.systemDefaultZone(), PriorityWeights.DEFAULT);
     }
 
     public PriorityScoreService(Clock clock) {
+        this(clock, PriorityWeights.DEFAULT);
+    }
+
+    public PriorityScoreService(Clock clock, PriorityWeights weights) {
         this.clock = clock;
+        this.weights = weights;
     }
 
     public int calculate(HelpRequest request) {
         int score = urgencyScore(request.getUrgencyLevel());
 
         if (Boolean.TRUE.equals(request.getHasChildren())) {
-            score += 10;
+            score += weights.children();
         }
         if (Boolean.TRUE.equals(request.getHasElderly())) {
-            score += 10;
+            score += weights.elderly();
         }
         if (Boolean.TRUE.equals(request.getHasDisabled())) {
-            score += 15;
+            score += weights.disabled();
         }
 
         int peopleCount = request.getPeopleCount() != null ? request.getPeopleCount() : 1;
-        score += Math.min(Math.max(peopleCount, 0) * 2, 20);
+        score += Math.min(Math.max(peopleCount, 0) * weights.perPerson(), weights.peopleCap());
 
         score += waitingTimeScore(request.getCreatedAt());
 
@@ -63,7 +73,7 @@ public class PriorityScoreService {
         int score = urgencyScore(request.getUrgencyLevel());
 
         if (Boolean.TRUE.equals(request.getIsCrisis())) {
-            score += 35;
+            score += weights.crisisBonus();
         }
 
         return clamp(score + waitingTimeScore(request.getCreatedAt()));
@@ -71,22 +81,22 @@ public class PriorityScoreService {
 
     private int urgencyScore(String urgencyLevel) {
         return switch (normalize(urgencyLevel)) {
-            case "CRITICAL" -> 40;
-            case "HIGH" -> 30;
-            case "MEDIUM" -> 20;
-            case "LOW" -> 10;
-            default -> 10;
+            case "CRITICAL" -> weights.critical();
+            case "HIGH" -> weights.high();
+            case "MEDIUM" -> weights.medium();
+            case "LOW" -> weights.low();
+            default -> weights.low();
         };
     }
 
-    /** Half a point per full hour waited, capped at {@link #MAX_AGING_BONUS}. */
+    /** Half a point per full hour waited, capped at {@link #MAX_AGING_BONUS} by the default weights. */
     private int waitingTimeScore(LocalDateTime createdAt) {
         if (createdAt == null) {
             return 0;
         }
 
         long hours = ChronoUnit.HOURS.between(createdAt, LocalDateTime.now(clock));
-        return (int) Math.min(Math.max(hours, 0) * 0.5, MAX_AGING_BONUS);
+        return (int) Math.min(Math.max(hours, 0) * weights.agingPerHour(), weights.agingCap());
     }
 
     private static int clamp(int score) {

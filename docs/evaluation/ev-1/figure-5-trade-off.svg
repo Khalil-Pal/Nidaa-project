@@ -3,14 +3,16 @@
 <text x="360.0" y="24.0" font-size="16" text-anchor="middle" font-weight="700">The trade-off under sparse provision: travel distance against CRITICAL waiting time</text>
 <line x1="64.0" y1="368.0" x2="696.0" y2="368.0" stroke="#e2e8f0" stroke-width="1.0"/>
 <text x="58.0" y="372.0" font-size="10" text-anchor="end" font-weight="400">0</text>
-<line x1="64.0" y1="288.0" x2="696.0" y2="288.0" stroke="#e2e8f0" stroke-width="1.0"/>
-<text x="58.0" y="292.0" font-size="10" text-anchor="end" font-weight="400">20</text>
-<line x1="64.0" y1="208.0" x2="696.0" y2="208.0" stroke="#e2e8f0" stroke-width="1.0"/>
-<text x="58.0" y="212.0" font-size="10" text-anchor="end" font-weight="400">40</text>
-<line x1="64.0" y1="128.0" x2="696.0" y2="128.0" stroke="#e2e8f0" stroke-width="1.0"/>
-<text x="58.0" y="132.0" font-size="10" text-anchor="end" font-weight="400">60</text>
+<line x1="64.0" y1="304.0" x2="696.0" y2="304.0" stroke="#e2e8f0" stroke-width="1.0"/>
+<text x="58.0" y="308.0" font-size="10" text-anchor="end" font-weight="400">20</text>
+<line x1="64.0" y1="240.0" x2="696.0" y2="240.0" stroke="#e2e8f0" stroke-width="1.0"/>
+<text x="58.0" y="244.0" font-size="10" text-anchor="end" font-weight="400">40</text>
+<line x1="64.0" y1="176.0" x2="696.0" y2="176.0" stroke="#e2e8f0" stroke-width="1.0"/>
+<text x="58.0" y="180.0" font-size="10" text-anchor="end" font-weight="400">60</text>
+<line x1="64.0" y1="112.0" x2="696.0" y2="112.0" stroke="#e2e8f0" stroke-width="1.0"/>
+<text x="58.0" y="116.0" font-size="10" text-anchor="end" font-weight="400">80</text>
 <line x1="64.0" y1="48.0" x2="696.0" y2="48.0" stroke="#e2e8f0" stroke-width="1.0"/>
-<text x="58.0" y="52.0" font-size="10" text-anchor="end" font-weight="400">80</text>
+<text x="58.0" y="52.0" font-size="10" text-anchor="end" font-weight="400">100</text>
 <line x1="64.0" y1="48.0" x2="64.0" y2="368.0" stroke="#e2e8f0" stroke-width="1.0"/>
 <text x="64.0" y="382.0" font-size="10" text-anchor="middle" font-weight="400">0</text>
 <line x1="274.7" y1="48.0" x2="274.7" y2="368.0" stroke="#e2e8f0" stroke-width="1.0"/>
@@ -23,30 +25,30 @@
 <line x1="64.0" y1="368.0" x2="696.0" y2="368.0" stroke="#334155" stroke-width="1.0"/>
 <text x="380.0" y="400.0" font-size="12" text-anchor="middle" font-weight="400">Mean travel distance (km)</text>
 <text x="16.0" y="208.0" font-size="12" text-anchor="middle" font-weight="400" transform="rotate(-90 16 208.0)">CRITICAL mean waiting time (h)</text>
-<circle cx="634.6" cy="365.4" r="5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.5"><title>FIFO L/S: 54.2, 0.66</title></circle>
-<text x="641.6" y="368.4" font-size="9" text-anchor="start" font-weight="400">L/S</text>
-<circle cx="613.7" cy="292.3" r="5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.5"><title>FIFO M/S: 52.2, 18.9</title></circle>
-<text x="620.7" y="295.3" font-size="9" text-anchor="start" font-weight="400">M/S</text>
-<circle cx="629.4" cy="65.4" r="5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.5"><title>FIFO H/S: 53.7, 75.7</title></circle>
-<text x="636.4" y="68.4" font-size="9" text-anchor="start" font-weight="400">H/S</text>
-<circle cx="630.7" cy="366.5" r="5" fill="#2563eb" stroke="#0f172a" stroke-width="0.5"><title>Weighted L/S: 53.8, 0.37</title></circle>
-<text x="637.7" y="369.5" font-size="9" text-anchor="start" font-weight="400">L/S</text>
-<circle cx="634.4" cy="362.2" r="5" fill="#2563eb" stroke="#0f172a" stroke-width="0.5"><title>Weighted M/S: 54.2, 1.44</title></circle>
-<text x="641.4" y="365.2" font-size="9" text-anchor="start" font-weight="400">M/S</text>
-<circle cx="632.6" cy="320.9" r="5" fill="#2563eb" stroke="#0f172a" stroke-width="0.5"><title>Weighted H/S: 54.0, 11.8</title></circle>
-<text x="639.6" y="323.9" font-size="9" text-anchor="start" font-weight="400">H/S</text>
-<circle cx="390.0" cy="367.5" r="5" fill="#16a34a" stroke="#0f172a" stroke-width="0.5"><title>Geo-nearest L/S: 31.0, 0.13</title></circle>
-<text x="397.0" y="370.5" font-size="9" text-anchor="start" font-weight="400">L/S</text>
-<circle cx="305.8" cy="356.7" r="5" fill="#16a34a" stroke="#0f172a" stroke-width="0.5"><title>Geo-nearest M/S: 23.0, 2.81</title></circle>
-<text x="312.8" y="359.7" font-size="9" text-anchor="start" font-weight="400">M/S</text>
-<circle cx="230.4" cy="264.3" r="5" fill="#16a34a" stroke="#0f172a" stroke-width="0.5"><title>Geo-nearest H/S: 15.8, 25.9</title></circle>
-<text x="237.4" y="267.3" font-size="9" text-anchor="start" font-weight="400">H/S</text>
-<circle cx="402.8" cy="367.5" r="5" fill="#d97706" stroke="#0f172a" stroke-width="0.5"><title>Multi-objective L/S: 32.2, 0.13</title></circle>
-<text x="409.8" y="370.5" font-size="9" text-anchor="start" font-weight="400">L/S</text>
-<circle cx="402.0" cy="366.0" r="5" fill="#d97706" stroke="#0f172a" stroke-width="0.5"><title>Multi-objective M/S: 32.1, 0.51</title></circle>
-<text x="409.0" y="369.0" font-size="9" text-anchor="start" font-weight="400">M/S</text>
-<circle cx="303.7" cy="365.1" r="5" fill="#d97706" stroke="#0f172a" stroke-width="0.5"><title>Multi-objective H/S: 22.8, 0.71</title></circle>
-<text x="310.7" y="368.1" font-size="9" text-anchor="start" font-weight="400">H/S</text>
+<circle cx="626.1" cy="364.6" r="5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.5"><title>FIFO L/S: 53.4, 1.07</title></circle>
+<text x="633.1" y="367.6" font-size="9" text-anchor="start" font-weight="400">L/S</text>
+<circle cx="609.6" cy="299.9" r="5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.5"><title>FIFO M/S: 51.8, 21.3</title></circle>
+<text x="616.6" y="302.9" font-size="9" text-anchor="start" font-weight="400">M/S</text>
+<circle cx="632.4" cy="109.4" r="5" fill="#94a3b8" stroke="#0f172a" stroke-width="0.5"><title>FIFO H/S: 54.0, 80.8</title></circle>
+<text x="639.4" y="112.4" font-size="9" text-anchor="start" font-weight="400">H/S</text>
+<circle cx="637.6" cy="366.3" r="5" fill="#2563eb" stroke="#0f172a" stroke-width="0.5"><title>Weighted L/S: 54.5, 0.54</title></circle>
+<text x="644.6" y="369.3" font-size="9" text-anchor="start" font-weight="400">L/S</text>
+<circle cx="608.0" cy="360.4" r="5" fill="#2563eb" stroke="#0f172a" stroke-width="0.5"><title>Weighted M/S: 51.6, 2.38</title></circle>
+<text x="615.0" y="363.4" font-size="9" text-anchor="start" font-weight="400">M/S</text>
+<circle cx="630.3" cy="295.4" r="5" fill="#2563eb" stroke="#0f172a" stroke-width="0.5"><title>Weighted H/S: 53.8, 22.7</title></circle>
+<text x="637.3" y="298.4" font-size="9" text-anchor="start" font-weight="400">H/S</text>
+<circle cx="390.3" cy="367.0" r="5" fill="#16a34a" stroke="#0f172a" stroke-width="0.5"><title>Geo-nearest L/S: 31.0, 0.32</title></circle>
+<text x="397.3" y="370.0" font-size="9" text-anchor="start" font-weight="400">L/S</text>
+<circle cx="364.1" cy="341.2" r="5" fill="#16a34a" stroke="#0f172a" stroke-width="0.5"><title>Geo-nearest M/S: 28.5, 8.37</title></circle>
+<text x="371.1" y="344.2" font-size="9" text-anchor="start" font-weight="400">M/S</text>
+<circle cx="324.4" cy="224.2" r="5" fill="#16a34a" stroke="#0f172a" stroke-width="0.5"><title>Geo-nearest H/S: 24.7, 44.9</title></circle>
+<text x="331.4" y="227.2" font-size="9" text-anchor="start" font-weight="400">H/S</text>
+<circle cx="404.4" cy="367.2" r="5" fill="#d97706" stroke="#0f172a" stroke-width="0.5"><title>Multi-objective L/S: 32.3, 0.24</title></circle>
+<text x="411.4" y="370.2" font-size="9" text-anchor="start" font-weight="400">L/S</text>
+<circle cx="433.7" cy="364.9" r="5" fill="#d97706" stroke="#0f172a" stroke-width="0.5"><title>Multi-objective M/S: 35.1, 0.96</title></circle>
+<text x="440.7" y="367.9" font-size="9" text-anchor="start" font-weight="400">M/S</text>
+<circle cx="354.6" cy="358.0" r="5" fill="#d97706" stroke="#0f172a" stroke-width="0.5"><title>Multi-objective H/S: 27.6, 3.12</title></circle>
+<text x="361.6" y="361.0" font-size="9" text-anchor="start" font-weight="400">H/S</text>
 <rect x="64" y="410" width="12" height="12" fill="#94a3b8"/>
 <text x="80.0" y="420.0" font-size="11" text-anchor="start" font-weight="400">FIFO</text>
 <rect x="128" y="410" width="12" height="12" fill="#2563eb"/>

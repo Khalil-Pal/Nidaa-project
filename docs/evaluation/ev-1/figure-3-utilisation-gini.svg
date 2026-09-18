@@ -17,56 +17,56 @@
 <text x="58.0" y="60.0" font-size="10" text-anchor="end" font-weight="400">0.10</text>
 <line x1="64.0" y1="56.0" x2="64.0" y2="316.0" stroke="#334155" stroke-width="1.0"/>
 <line x1="64.0" y1="316.0" x2="488.0" y2="316.0" stroke="#334155" stroke-width="1.0"/>
-<rect x="79.1" y="261.8" width="26.3" height="54.2" fill="#94a3b8"><title>FIFO: 0.02 ± 0.01</title></rect>
-<line x1="92.3" y1="244.9" x2="92.3" y2="278.6" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="89.3" y1="244.9" x2="95.3" y2="244.9" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="89.3" y1="278.6" x2="95.3" y2="278.6" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="107.4" y="243.5" width="26.3" height="72.5" fill="#2563eb"><title>Weighted: 0.03 ± 0.01</title></rect>
-<line x1="120.5" y1="223.0" x2="120.5" y2="263.9" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="117.5" y1="223.0" x2="123.5" y2="223.0" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="117.5" y1="263.9" x2="123.5" y2="263.9" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="135.7" y="136.4" width="26.3" height="179.6" fill="#16a34a"><title>Geo-nearest: 0.07 ± 0.02</title></rect>
-<line x1="148.8" y1="85.5" x2="148.8" y2="187.3" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="145.8" y1="85.5" x2="151.8" y2="85.5" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="145.8" y1="187.3" x2="151.8" y2="187.3" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="163.9" y="148.6" width="26.3" height="167.4" fill="#d97706"><title>Multi-objective: 0.06 ± 0.01</title></rect>
-<line x1="177.1" y1="111.4" x2="177.1" y2="185.9" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="174.1" y1="111.4" x2="180.1" y2="111.4" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="174.1" y1="185.9" x2="180.1" y2="185.9" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="79.1" y="239.8" width="26.3" height="76.2" fill="#94a3b8"><title>FIFO: 0.03 ± 0.01</title></rect>
+<line x1="92.3" y1="215.5" x2="92.3" y2="264.1" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="89.3" y1="215.5" x2="95.3" y2="215.5" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="89.3" y1="264.1" x2="95.3" y2="264.1" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="107.4" y="252.5" width="26.3" height="63.5" fill="#2563eb"><title>Weighted: 0.02 ± 0.01</title></rect>
+<line x1="120.5" y1="230.5" x2="120.5" y2="274.6" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="117.5" y1="230.5" x2="123.5" y2="230.5" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="117.5" y1="274.6" x2="123.5" y2="274.6" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="135.7" y="138.5" width="26.3" height="177.5" fill="#16a34a"><title>Geo-nearest: 0.07 ± 0.02</title></rect>
+<line x1="148.8" y1="92.3" x2="148.8" y2="184.6" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="145.8" y1="92.3" x2="151.8" y2="92.3" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="145.8" y1="184.6" x2="151.8" y2="184.6" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="163.9" y="136.8" width="26.3" height="179.2" fill="#d97706"><title>Multi-objective: 0.07 ± 0.02</title></rect>
+<line x1="177.1" y1="87.4" x2="177.1" y2="186.3" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="174.1" y1="87.4" x2="180.1" y2="87.4" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="174.1" y1="186.3" x2="180.1" y2="186.3" stroke="#0f172a" stroke-width="1.0"/>
 <text x="134.7" y="332.0" font-size="11" text-anchor="middle" font-weight="400">LOW load (1/h)</text>
-<rect x="220.5" y="292.4" width="26.3" height="23.6" fill="#94a3b8"><title>FIFO: 0.01 ± 0.00</title></rect>
-<line x1="233.6" y1="286.8" x2="233.6" y2="298.1" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="230.6" y1="286.8" x2="236.6" y2="286.8" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="230.6" y1="298.1" x2="236.6" y2="298.1" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="248.7" y="291.9" width="26.3" height="24.1" fill="#2563eb"><title>Weighted: 0.01 ± 0.00</title></rect>
-<line x1="261.9" y1="284.3" x2="261.9" y2="299.6" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="258.9" y1="284.3" x2="264.9" y2="284.3" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="258.9" y1="299.6" x2="264.9" y2="299.6" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="277.0" y="278.0" width="26.3" height="38.0" fill="#16a34a"><title>Geo-nearest: 0.01 ± 0.00</title></rect>
-<line x1="290.1" y1="268.3" x2="290.1" y2="287.6" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="287.1" y1="268.3" x2="293.1" y2="268.3" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="287.1" y1="287.6" x2="293.1" y2="287.6" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="305.3" y="290.5" width="26.3" height="25.5" fill="#d97706"><title>Multi-objective: 0.01 ± 0.00</title></rect>
-<line x1="318.4" y1="286.9" x2="318.4" y2="294.1" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="315.4" y1="286.9" x2="321.4" y2="286.9" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="315.4" y1="294.1" x2="321.4" y2="294.1" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="220.5" y="289.4" width="26.3" height="26.6" fill="#94a3b8"><title>FIFO: 0.01 ± 0.00</title></rect>
+<line x1="233.6" y1="282.2" x2="233.6" y2="296.6" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="230.6" y1="282.2" x2="236.6" y2="282.2" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="230.6" y1="296.6" x2="236.6" y2="296.6" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="248.7" y="289.2" width="26.3" height="26.8" fill="#2563eb"><title>Weighted: 0.01 ± 0.00</title></rect>
+<line x1="261.9" y1="284.1" x2="261.9" y2="294.3" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="258.9" y1="284.1" x2="264.9" y2="284.1" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="258.9" y1="294.3" x2="264.9" y2="294.3" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="277.0" y="277.2" width="26.3" height="38.8" fill="#16a34a"><title>Geo-nearest: 0.01 ± 0.00</title></rect>
+<line x1="290.1" y1="265.3" x2="290.1" y2="289.2" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="287.1" y1="265.3" x2="293.1" y2="265.3" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="287.1" y1="289.2" x2="293.1" y2="289.2" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="305.3" y="282.5" width="26.3" height="33.5" fill="#d97706"><title>Multi-objective: 0.01 ± 0.00</title></rect>
+<line x1="318.4" y1="273.9" x2="318.4" y2="291.0" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="315.4" y1="273.9" x2="321.4" y2="273.9" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="315.4" y1="291.0" x2="321.4" y2="291.0" stroke="#0f172a" stroke-width="1.0"/>
 <text x="276.0" y="332.0" font-size="11" text-anchor="middle" font-weight="400">MEDIUM load (2/h)</text>
-<rect x="361.8" y="304.1" width="26.3" height="11.9" fill="#94a3b8"><title>FIFO: 0.00 ± 0.00</title></rect>
-<line x1="374.9" y1="300.0" x2="374.9" y2="308.3" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="371.9" y1="300.0" x2="377.9" y2="300.0" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="371.9" y1="308.3" x2="377.9" y2="308.3" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="390.1" y="304.4" width="26.3" height="11.6" fill="#2563eb"><title>Weighted: 0.00 ± 0.00</title></rect>
-<line x1="403.2" y1="301.6" x2="403.2" y2="307.1" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="400.2" y1="301.6" x2="406.2" y2="301.6" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="400.2" y1="307.1" x2="406.2" y2="307.1" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="418.3" y="297.5" width="26.3" height="18.5" fill="#16a34a"><title>Geo-nearest: 0.01 ± 0.00</title></rect>
-<line x1="431.5" y1="291.4" x2="431.5" y2="303.6" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="428.5" y1="291.4" x2="434.5" y2="291.4" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="428.5" y1="303.6" x2="434.5" y2="303.6" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="446.6" y="302.4" width="26.3" height="13.6" fill="#d97706"><title>Multi-objective: 0.01 ± 0.00</title></rect>
-<line x1="459.7" y1="299.1" x2="459.7" y2="305.6" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="456.7" y1="299.1" x2="462.7" y2="299.1" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="456.7" y1="305.6" x2="462.7" y2="305.6" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="361.8" y="301.6" width="26.3" height="14.4" fill="#94a3b8"><title>FIFO: 0.01 ± 0.00</title></rect>
+<line x1="374.9" y1="297.6" x2="374.9" y2="305.7" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="371.9" y1="297.6" x2="377.9" y2="297.6" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="371.9" y1="305.7" x2="377.9" y2="305.7" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="390.1" y="301.6" width="26.3" height="14.4" fill="#2563eb"><title>Weighted: 0.01 ± 0.00</title></rect>
+<line x1="403.2" y1="298.1" x2="403.2" y2="305.2" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="400.2" y1="298.1" x2="406.2" y2="298.1" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="400.2" y1="305.2" x2="406.2" y2="305.2" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="418.3" y="296.0" width="26.3" height="20.0" fill="#16a34a"><title>Geo-nearest: 0.01 ± 0.00</title></rect>
+<line x1="431.5" y1="289.7" x2="431.5" y2="302.3" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="428.5" y1="289.7" x2="434.5" y2="289.7" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="428.5" y1="302.3" x2="434.5" y2="302.3" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="446.6" y="296.3" width="26.3" height="19.7" fill="#d97706"><title>Multi-objective: 0.01 ± 0.00</title></rect>
+<line x1="459.7" y1="289.3" x2="459.7" y2="303.4" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="456.7" y1="289.3" x2="462.7" y2="289.3" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="456.7" y1="303.4" x2="462.7" y2="303.4" stroke="#0f172a" stroke-width="1.0"/>
 <text x="417.3" y="332.0" font-size="11" text-anchor="middle" font-weight="400">HIGH load (4/h)</text>
 <text x="732.0" y="46.0" font-size="13" text-anchor="middle" font-weight="600">DENSE: 6 providers per settlement</text>
 <line x1="520.0" y1="316.0" x2="944.0" y2="316.0" stroke="#e2e8f0" stroke-width="1.0"/>
@@ -83,56 +83,56 @@
 <text x="514.0" y="60.0" font-size="10" text-anchor="end" font-weight="400">0.50</text>
 <line x1="520.0" y1="56.0" x2="520.0" y2="316.0" stroke="#334155" stroke-width="1.0"/>
 <line x1="520.0" y1="316.0" x2="944.0" y2="316.0" stroke="#334155" stroke-width="1.0"/>
-<rect x="535.1" y="271.9" width="26.3" height="44.1" fill="#94a3b8"><title>FIFO: 0.08 ± 0.02</title></rect>
-<line x1="548.3" y1="260.3" x2="548.3" y2="283.5" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="545.3" y1="260.3" x2="551.3" y2="260.3" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="545.3" y1="283.5" x2="551.3" y2="283.5" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="563.4" y="271.6" width="26.3" height="44.4" fill="#2563eb"><title>Weighted: 0.09 ± 0.02</title></rect>
-<line x1="576.5" y1="258.8" x2="576.5" y2="284.4" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="573.5" y1="258.8" x2="579.5" y2="258.8" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="573.5" y1="284.4" x2="579.5" y2="284.4" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="591.7" y="115.5" width="26.3" height="200.5" fill="#16a34a"><title>Geo-nearest: 0.39 ± 0.06</title></rect>
-<line x1="604.8" y1="86.9" x2="604.8" y2="144.1" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="601.8" y1="86.9" x2="607.8" y2="86.9" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="601.8" y1="144.1" x2="607.8" y2="144.1" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="619.9" y="115.5" width="26.3" height="200.5" fill="#d97706"><title>Multi-objective: 0.39 ± 0.06</title></rect>
-<line x1="633.1" y1="86.9" x2="633.1" y2="144.1" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="630.1" y1="86.9" x2="636.1" y2="86.9" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="630.1" y1="144.1" x2="636.1" y2="144.1" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="535.1" y="269.5" width="26.3" height="46.5" fill="#94a3b8"><title>FIFO: 0.09 ± 0.02</title></rect>
+<line x1="548.3" y1="260.5" x2="548.3" y2="278.5" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="545.3" y1="260.5" x2="551.3" y2="260.5" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="545.3" y1="278.5" x2="551.3" y2="278.5" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="563.4" y="269.5" width="26.3" height="46.5" fill="#2563eb"><title>Weighted: 0.09 ± 0.02</title></rect>
+<line x1="576.5" y1="260.5" x2="576.5" y2="278.5" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="573.5" y1="260.5" x2="579.5" y2="260.5" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="573.5" y1="278.5" x2="579.5" y2="278.5" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="591.7" y="122.4" width="26.3" height="193.6" fill="#16a34a"><title>Geo-nearest: 0.37 ± 0.06</title></rect>
+<line x1="604.8" y1="89.0" x2="604.8" y2="155.7" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="601.8" y1="89.0" x2="607.8" y2="89.0" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="601.8" y1="155.7" x2="607.8" y2="155.7" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="619.9" y="122.4" width="26.3" height="193.6" fill="#d97706"><title>Multi-objective: 0.37 ± 0.06</title></rect>
+<line x1="633.1" y1="89.0" x2="633.1" y2="155.7" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="630.1" y1="89.0" x2="636.1" y2="89.0" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="630.1" y1="155.7" x2="636.1" y2="155.7" stroke="#0f172a" stroke-width="1.0"/>
 <text x="590.7" y="332.0" font-size="11" text-anchor="middle" font-weight="400">LOW load (1/h)</text>
-<rect x="676.5" y="288.7" width="26.3" height="27.3" fill="#94a3b8"><title>FIFO: 0.05 ± 0.01</title></rect>
-<line x1="689.6" y1="283.7" x2="689.6" y2="293.8" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="686.6" y1="283.7" x2="692.6" y2="283.7" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="686.6" y1="293.8" x2="692.6" y2="293.8" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="704.7" y="289.0" width="26.3" height="27.0" fill="#2563eb"><title>Weighted: 0.05 ± 0.01</title></rect>
-<line x1="717.9" y1="283.9" x2="717.9" y2="294.0" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="714.9" y1="283.9" x2="720.9" y2="283.9" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="714.9" y1="294.0" x2="720.9" y2="294.0" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="733.0" y="172.7" width="26.3" height="143.3" fill="#16a34a"><title>Geo-nearest: 0.28 ± 0.04</title></rect>
-<line x1="746.1" y1="150.0" x2="746.1" y2="195.4" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="743.1" y1="150.0" x2="749.1" y2="150.0" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="743.1" y1="195.4" x2="749.1" y2="195.4" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="761.3" y="172.5" width="26.3" height="143.5" fill="#d97706"><title>Multi-objective: 0.28 ± 0.04</title></rect>
-<line x1="774.4" y1="149.8" x2="774.4" y2="195.2" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="771.4" y1="149.8" x2="777.4" y2="149.8" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="771.4" y1="195.2" x2="777.4" y2="195.2" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="676.5" y="292.3" width="26.3" height="23.7" fill="#94a3b8"><title>FIFO: 0.05 ± 0.01</title></rect>
+<line x1="689.6" y1="287.1" x2="689.6" y2="297.5" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="686.6" y1="287.1" x2="692.6" y2="287.1" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="686.6" y1="297.5" x2="692.6" y2="297.5" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="704.7" y="292.0" width="26.3" height="24.0" fill="#2563eb"><title>Weighted: 0.05 ± 0.01</title></rect>
+<line x1="717.9" y1="286.9" x2="717.9" y2="297.2" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="714.9" y1="286.9" x2="720.9" y2="286.9" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="714.9" y1="297.2" x2="720.9" y2="297.2" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="733.0" y="177.9" width="26.3" height="138.1" fill="#16a34a"><title>Geo-nearest: 0.27 ± 0.04</title></rect>
+<line x1="746.1" y1="155.4" x2="746.1" y2="200.4" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="743.1" y1="155.4" x2="749.1" y2="155.4" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="743.1" y1="200.4" x2="749.1" y2="200.4" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="761.3" y="178.1" width="26.3" height="137.9" fill="#d97706"><title>Multi-objective: 0.27 ± 0.04</title></rect>
+<line x1="774.4" y1="155.9" x2="774.4" y2="200.3" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="771.4" y1="155.9" x2="777.4" y2="155.9" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="771.4" y1="200.3" x2="777.4" y2="200.3" stroke="#0f172a" stroke-width="1.0"/>
 <text x="732.0" y="332.0" font-size="11" text-anchor="middle" font-weight="400">MEDIUM load (2/h)</text>
-<rect x="817.8" y="307.6" width="26.3" height="8.4" fill="#94a3b8"><title>FIFO: 0.02 ± 0.00</title></rect>
-<line x1="830.9" y1="306.1" x2="830.9" y2="309.0" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="827.9" y1="306.1" x2="833.9" y2="306.1" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="827.9" y1="309.0" x2="833.9" y2="309.0" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="846.1" y="307.3" width="26.3" height="8.7" fill="#2563eb"><title>Weighted: 0.02 ± 0.00</title></rect>
-<line x1="859.2" y1="305.7" x2="859.2" y2="309.0" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="856.2" y1="305.7" x2="862.2" y2="305.7" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="856.2" y1="309.0" x2="862.2" y2="309.0" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="874.3" y="281.3" width="26.3" height="34.7" fill="#16a34a"><title>Geo-nearest: 0.07 ± 0.01</title></rect>
-<line x1="887.5" y1="276.3" x2="887.5" y2="286.4" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="884.5" y1="276.3" x2="890.5" y2="276.3" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="884.5" y1="286.4" x2="890.5" y2="286.4" stroke="#0f172a" stroke-width="1.0"/>
-<rect x="902.6" y="286.8" width="26.3" height="29.2" fill="#d97706"><title>Multi-objective: 0.06 ± 0.02</title></rect>
-<line x1="915.7" y1="278.5" x2="915.7" y2="295.0" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="912.7" y1="278.5" x2="918.7" y2="278.5" stroke="#0f172a" stroke-width="1.0"/>
-<line x1="912.7" y1="295.0" x2="918.7" y2="295.0" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="817.8" y="307.8" width="26.3" height="8.2" fill="#94a3b8"><title>FIFO: 0.02 ± 0.00</title></rect>
+<line x1="830.9" y1="305.9" x2="830.9" y2="309.6" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="827.9" y1="305.9" x2="833.9" y2="305.9" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="827.9" y1="309.6" x2="833.9" y2="309.6" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="846.1" y="308.3" width="26.3" height="7.7" fill="#2563eb"><title>Weighted: 0.01 ± 0.00</title></rect>
+<line x1="859.2" y1="306.8" x2="859.2" y2="309.7" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="856.2" y1="306.8" x2="862.2" y2="306.8" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="856.2" y1="309.7" x2="862.2" y2="309.7" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="874.3" y="283.7" width="26.3" height="32.3" fill="#16a34a"><title>Geo-nearest: 0.06 ± 0.01</title></rect>
+<line x1="887.5" y1="276.4" x2="887.5" y2="290.9" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="884.5" y1="276.4" x2="890.5" y2="276.4" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="884.5" y1="290.9" x2="890.5" y2="290.9" stroke="#0f172a" stroke-width="1.0"/>
+<rect x="902.6" y="287.8" width="26.3" height="28.2" fill="#d97706"><title>Multi-objective: 0.05 ± 0.02</title></rect>
+<line x1="915.7" y1="278.9" x2="915.7" y2="296.6" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="912.7" y1="278.9" x2="918.7" y2="278.9" stroke="#0f172a" stroke-width="1.0"/>
+<line x1="912.7" y1="296.6" x2="918.7" y2="296.6" stroke="#0f172a" stroke-width="1.0"/>
 <text x="873.3" y="332.0" font-size="11" text-anchor="middle" font-weight="400">HIGH load (4/h)</text>
 <rect x="64" y="350" width="12" height="12" fill="#94a3b8"/>
 <text x="80.0" y="360.0" font-size="11" text-anchor="start" font-weight="400">FIFO</text>

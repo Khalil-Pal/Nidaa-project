@@ -19,6 +19,8 @@ import java.util.Map;
  * @param crossClusterPercent         share of assignments whose provider lives in another settlement than the request
  * @param completedWithinHorizonPercent share of requests whose delivery finished inside the 72-hour horizon
  * @param regionalFairnessJain        Jain's index over the per-region share of requests assigned within 24 h (1 = every region served alike)
+ * @param escalatedPercent            share of requests that were refused by three providers and went to a human (GAP-1)
+ * @param unassignedPercent           share that every eligible provider refused, so nobody ever took them
  * @param providerCount               providers in the run (context, not a dependent variable)
  * @param requestCount                requests in the run
  */
@@ -32,6 +34,8 @@ public record RunMetrics(double criticalMeanWaitHours,
                          double crossClusterPercent,
                          double completedWithinHorizonPercent,
                          double regionalFairnessJain,
+                         double escalatedPercent,
+                         double unassignedPercent,
                          int providerCount,
                          int requestCount) {
 
@@ -48,6 +52,8 @@ public record RunMetrics(double criticalMeanWaitHours,
         m.put("cross_cluster_pct", crossClusterPercent);
         m.put("completed_within_horizon_pct", completedWithinHorizonPercent);
         m.put("regional_fairness_jain", regionalFairnessJain);
+        m.put("escalated_pct", escalatedPercent);
+        m.put("unassigned_pct", unassignedPercent);
         return m;
     }
 
@@ -61,5 +67,7 @@ public record RunMetrics(double criticalMeanWaitHours,
             Map.entry("mean_distance_km", "Mean travel distance (km)"),
             Map.entry("cross_cluster_pct", "Assignments across settlements (%)"),
             Map.entry("completed_within_horizon_pct", "Completed within the 72 h horizon (%)"),
-            Map.entry("regional_fairness_jain", "Regional fairness, Jain index (1 = equal)"));
+            Map.entry("regional_fairness_jain", "Regional fairness, Jain index (1 = equal)"),
+            Map.entry("escalated_pct", "Escalated to a human after three declines (%)"),
+            Map.entry("unassigned_pct", "Never taken by anyone (%)"));
 }
